@@ -2,7 +2,7 @@ from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_login import LoginManager, login_required, current_user
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from werkzeug.security import generate_password_hash
+import datetime
 from models import Base, User, FormA, FormB, FormC, FormD
 from config import Config
 from auth import bp as auth_bp
@@ -10,10 +10,8 @@ from auth import bp as auth_bp
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Database engine
 db_engine = create_engine(app.config["SQLALCHEMY_DATABASE_URI"], pool_pre_ping=True)
 
-# Login manager
 login_manager = LoginManager()
 login_manager.login_view = "auth.login"
 login_manager.init_app(app)
@@ -23,7 +21,6 @@ def load_user(user_id):
     with Session(db_engine) as session:
         return session.get(User, int(user_id))
 
-# Register blueprints
 app.register_blueprint(auth_bp)
 
 @app.route("/")
@@ -92,26 +89,23 @@ def form_c():
         return redirect(url_for("dashboard"))
     return render_template("form_c.html")
 
-# ---- Form D ----
-@app.route("/form/d", methods=["GET", "POST"])
+# ---- Button D: Records Table ----
+@app.route("/form/d", methods=["GET"])
 @login_required
 def form_d():
-    if request.method == "POST":
-        heading = request.form.get("heading", "").strip()
-        body = request.form.get("body", "").strip()
-        tag = request.form.get("tag", "").strip()
-        if not heading:
-            flash("Heading is required.", "error")
-            return render_template("form_d.html")
-        with Session(db_engine) as session:
-            record = FormD(user_id=current_user.id, heading=heading, body=body, tag=tag)
-            session.add(record)
-            session.commit()
-        flash("Form D submitted.", "success")
-        return redirect(url_for("dashboard"))
-    return render_template("form_d.html")
+    records = []
+    with Session(db_engine) as session:
+        for rec in session.query(FormA).filter(FormA.user_id == current_user.id).all():
+            records.append({"type": "Form A", "text": rec.title, "created_at": rec.created_at, "id": f"A-{rec.id}"})
+        for rec in session.query(FormB).filter(FormB.user_id == current_user.id).all():
+            records.append({"type": "Form B", "text": rec.name, "created_at": rec.created_at, "id": f"B-{rec.id}"})
+        for rec in session.query(FormC).filter(FormC.user_id == current_user.id).all():
+            records.append({"type": "Form C", "text": rec.subject, "created_at": rec.created_at, "id": f"C-{rec.id}"})
+        for rec in session.query(FormD).filter(FormD.user_id == current_user.id).all():
+            records.append({"type": "Form D", "text": rec.heading, "created_at": rec.created_at, "id": f"D-{rec.id}"})
+    records.sort(key=lambda r: r["created_at"] or datetime.datetime.min, reverse=True)
+    return render_template("form_d.html", records=records)
 
 if __name__ == "__main__":
-    # Create tables if they don't exist
     Base.metadata.create_all(db_engine)
     app.run(debug=True)
