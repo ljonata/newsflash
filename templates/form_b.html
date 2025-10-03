@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Form B</h2>
+<form method="post" class="form">
+    <label for="name">Name *</label>
+    <input id="name" name="name" required>
+    <label for="summary">Summary</label>
+    <textarea id="summary" name="summary"></textarea>
+    <label for="comment">Comment</label>
+    <textarea id="comment" name="comment"></textarea>
+    <button type="submit" class="btn-primary">Submit</button>
+</form>
+{% endblock %}

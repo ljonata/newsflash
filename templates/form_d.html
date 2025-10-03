@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Form D</h2>
+<form method="post" class="form">
+    <label for="heading">Heading *</label>
+    <input id="heading" name="heading" required>
+    <label for="body">Body</label>
+    <textarea id="body" name="body"></textarea>
+    <label for="tag">Tag</label>
+    <input id="tag" name="tag">
+    <button type="submit" class="btn-primary">Submit</button>
+</form>
+{% endblock %}

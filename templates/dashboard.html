@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="center">Welcome!</h1>
+<div class="grid">
+    <a class="big-btn" href="{{ url_for('form_a') }}">Action A</a>
+    <a class="big-btn" href="{{ url_for('form_b') }}">Action B</a>
+    <a class="big-btn" href="{{ url_for('form_c') }}">Action C</a>
+    <a class="big-btn" href="{{ url_for('form_d') }}">Action D</a>
+</div>
+{% endblock %}
