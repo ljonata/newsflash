@@ -2,12 +2,30 @@
 {% block content %}
 <h2>Form A</h2>
 <form method="post" class="form">
-    <label for="title">Title *</label>
-    <input id="title" name="title" required>
-    <label for="description">Description</label>
-    <textarea id="description" name="description"></textarea>
-    <label for="notes">Notes</label>
-    <textarea id="notes" name="notes"></textarea>
+    <label for="about">About *</label>
+    <input id="about" name="about" required>
+
+    <label for="headline">Headline</label>
+    <input id="headline" name="headline">
+
+    <label for="lede">Lede</label>
+    <textarea id="lede" name="lede"></textarea>
+
+    <label for="nut_graf">Nut graf</label>
+    <textarea id="nut_graf" name="nut_graf"></textarea>
+
+    <label for="body">Body</label>
+    <textarea id="body" name="body"></textarea>
+
+    <label for="conclusion">Conclusion</label>
+    <textarea id="conclusion" name="conclusion"></textarea>
+
+    <label for="organizations">Organizations</label>
+    <textarea id="organizations" name="organizations"></textarea>
+
+    <label for="persons">Persons</label>
+    <textarea id="persons" name="persons"></textarea>
+
     <button type="submit" class="btn-primary">Submit</button>
 </form>
 {% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Form A Details</h2>
+
+<div class="form">
+    <div class="detail-field">
+        <label>UUID</label>
+        <p>{{ record.id }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>About</label>
+        <p>{{ record.about }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>Headline</label>
+        <p>{{ record.headline or "N/A" }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>Lede</label>
+        <p>{{ record.lede or "N/A" }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>Nut graf</label>
+        <p>{{ record.nut_graf or "N/A" }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>Body</label>
+        <p>{{ record.body or "N/A" }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>Conclusion</label>
+        <p>{{ record.conclusion or "N/A" }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>Organizations</label>
+        <p>{{ record.organizations or "N/A" }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>Persons</label>
+        <p>{{ record.persons or "N/A" }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>Author</label>
+        <p>{{ record.author or "N/A" }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>Status</label>
+        <p>{{ record.status or "N/A" }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>Active</label>
+        <p>{{ "Yes" if record.active else "No" }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>Created At</label>
+        <p>{{ record.created_at.strftime("%Y-%m-%d %H:%M:%S") if record.created_at else "N/A" }}</p>
+    </div>
+
+    <div class="detail-field">
+        <label>Last Update</label>
+        <p>{{ record.last_update.strftime("%Y-%m-%d %H:%M:%S") if record.last_update else "N/A" }}</p>
+    </div>
+
+    <a href="{{ url_for('form_d', key=keyword) }}" class="btn-primary" style="display: inline-block; text-decoration: none; text-align: center;">Back to List</a>
+</div>
+{% endblock %}

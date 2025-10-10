@@ -110,6 +110,12 @@ table.table { width: 100%; border-collapse: collapse; background: var(--card); }
 .table th, .table td { padding: .75rem; border-bottom: 1px solid var(--border); text-align: left; }
 .table thead th { font-weight: 700; color: var(--muted); }
 .table tbody tr:hover { background: #f9fafb; }
+.table tbody tr.clickable-row { cursor: pointer; transition: background 0.15s ease; }
+.table tbody tr.clickable-row:hover { background: #e5e7eb; }
+
+.detail-field { margin-bottom: 1.5rem; }
+.detail-field label { display: block; font-weight: 700; color: var(--muted); margin-bottom: 0.5rem; }
+.detail-field p { margin: 0; color: var(--text); white-space: pre-wrap; }
 
 /* Mobile optimization */
 @media (max-width: 600px) {

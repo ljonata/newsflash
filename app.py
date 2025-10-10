@@ -61,14 +61,31 @@ def dashboard():
 @keyword_required
 def form_a():
     if request.method == "POST":
-        title = request.form.get("title", "").strip()
-        description = request.form.get("description", "").strip()
-        notes = request.form.get("notes", "").strip()
-        if not title:
-            flash("Title is required.", "error")
+        about = request.form.get("about", "").strip()
+        headline = request.form.get("headline", "").strip()
+        lede = request.form.get("lede", "").strip()
+        nut_graf = request.form.get("nut_graf", "").strip()
+        body = request.form.get("body", "").strip()
+        conclusion = request.form.get("conclusion", "").strip()
+        organizations = request.form.get("organizations", "").strip()
+        persons = request.form.get("persons", "").strip()
+
+        if not about:
+            flash("About is required.", "error")
             return render_template("form_a.html", keyword=g.keyword)
+
         with Session(db_engine) as db_session:
-            record = FormA(user_id=g.current_user.id, title=title, description=description, notes=notes)
+            record = FormA(
+                user_id=g.current_user.id,
+                about=about,
+                headline=headline,
+                lede=lede,
+                nut_graf=nut_graf,
+                body=body,
+                conclusion=conclusion,
+                organizations=organizations,
+                persons=persons
+            )
             db_session.add(record)
             db_session.commit()
         flash("Form A submitted.", "success")
@@ -120,15 +137,26 @@ def form_d():
     records = []
     with Session(db_engine) as db_session:
         for rec in db_session.query(FormA).filter(FormA.user_id == g.current_user.id).all():
-            records.append({"type": "Form A", "text": rec.title, "created_at": rec.created_at, "id": f"A-{rec.id}"})
-        for rec in db_session.query(FormB).filter(FormB.user_id == g.current_user.id).all():
-            records.append({"type": "Form B", "text": rec.name, "created_at": rec.created_at, "id": f"B-{rec.id}"})
-        for rec in db_session.query(FormC).filter(FormC.user_id == g.current_user.id).all():
-            records.append({"type": "Form C", "text": rec.subject, "created_at": rec.created_at, "id": f"C-{rec.id}"})
-        for rec in db_session.query(FormD).filter(FormD.user_id == g.current_user.id).all():
-            records.append({"type": "Form D", "text": rec.heading, "created_at": rec.created_at, "id": f"D-{rec.id}"})
+            records.append({
+                "type": "Form A",
+                "uuid": str(rec.id),
+                "headline": rec.headline or rec.about[:50],
+                "author": rec.author or "N/A",
+                "created_at": rec.created_at
+            })
     records.sort(key=lambda r: r["created_at"] or datetime.datetime.min, reverse=True)
     return render_template("form_d.html", records=records, keyword=g.keyword)
+
+# ---- Form D Detail View ----
+@app.route("/form/d/<uuid:record_id>", methods=["GET"])
+@keyword_required
+def form_d_detail(record_id):
+    with Session(db_engine) as db_session:
+        record = db_session.query(FormA).filter(FormA.id == record_id, FormA.user_id == g.current_user.id).one_or_none()
+        if not record:
+            flash("Record not found.", "error")
+            return redirect(url_for("form_d", key=g.keyword))
+    return render_template("form_d_detail.html", record=record, keyword=g.keyword)
 
 if __name__ == "__main__":
     Base.metadata.create_all(db_engine)
