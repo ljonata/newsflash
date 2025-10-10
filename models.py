@@ -1,5 +1,4 @@
 from datetime import datetime
-from flask_login import UserMixin
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, DateTime, ForeignKey, Text
 
@@ -7,7 +6,7 @@ class Base(DeclarativeBase):
     pass
 
 # User model
-class User(UserMixin, Base):
+class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
