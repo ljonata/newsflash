@@ -10,16 +10,7 @@
     <nav class="nav">
         <div class="nav-brand">
             <img class="logo" src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo">
-            <a href="{{ url_for('dashboard') }}">My Dashboard</a>
-        </div>
-        <div class="nav-links">
-            {% if current_user.is_authenticated %}
-                <span class="nav-user">{{ current_user.email }}</span>
-                <a href="{{ url_for('auth.logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('auth.login') }}">Login</a>
-                <a href="{{ url_for('auth.register') }}">Register</a>
-            {% endif %}
+            <a href="{{ url_for('dashboard', key=keyword) if keyword else url_for('home') }}">My Dashboard</a>
         </div>
     </nav>
 

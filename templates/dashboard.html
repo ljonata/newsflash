@@ -2,9 +2,21 @@
 {% block content %}
 <h1 class="center">Welcome!</h1>
 <div class="grid">
-    <a class="big-btn" href="{{ url_for('form_a') }}">Action A</a>
-    <a class="big-btn" href="{{ url_for('form_b') }}">Action B</a>
-    <a class="big-btn" href="{{ url_for('form_c') }}">Action C</a>
-    <a class="big-btn" href="{{ url_for('form_d') }}">All Records</a>
+    <a class="big-btn" href="{{ url_for('form_a', key=keyword) }}">
+        <img class="big-btn-image" src="https://images.unsplash.com/photo-1557683316-973673baf926?w=800&auto=format&fit=crop" alt="">
+        <span class="big-btn-text">Action A</span>
+    </a>
+    <a class="big-btn" href="{{ url_for('form_b', key=keyword) }}">
+        <img class="big-btn-image" src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop" alt="">
+        <span class="big-btn-text">Action B</span>
+    </a>
+    <a class="big-btn" href="{{ url_for('form_c', key=keyword) }}">
+        <img class="big-btn-image" src="https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=800&auto=format&fit=crop" alt="">
+        <span class="big-btn-text">Action C</span>
+    </a>
+    <a class="big-btn" href="{{ url_for('form_d', key=keyword) }}">
+        <img class="big-btn-image" src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop" alt="">
+        <span class="big-btn-text">All Records</span>
+    </a>
 </div>
 {% endblock %}
