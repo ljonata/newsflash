@@ -3,14 +3,14 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ title or "Flask App" }}</title>
+    <title>{{ title or "Newsflash" }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <nav class="nav">
         <div class="nav-brand">
-            <img class="logo" src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo">
-            <a href="{{ url_for('dashboard', key=keyword) if keyword else url_for('home') }}">My Dashboard</a>
+            <img class="logo" src="{{ url_for('static', filename='img/foot.png') }}" alt="Logo">
+            <a href="{{ url_for('dashboard', key=keyword) if keyword else url_for('home') }}">Newsflash</a>
         </div>
     </nav>
 
