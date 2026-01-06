@@ -4,6 +4,7 @@ const goal = document.getElementById('goal');
 const winMessage = document.getElementById('win-message');
 const loseMessage = document.getElementById('lose-message');
 const levelDisplay = document.getElementById('level-display');
+const houseTimerDisplay = document.getElementById('house-timer');
 
 const gridSize = 20;
 const step = 20;
@@ -12,8 +13,16 @@ const containerSize = 600;
 let gameOver = false;
 let currentLevel = 1;
 let monsterInterval = null;
+let houseTimerInterval = null;
 
-// Labyrinth layout: 1 = wall, 0 = path
+// House system
+const HOUSE_MAX_STAY = 30; // seconds player can stay in house
+const HOUSE_COOLDOWN = 40; // seconds before house can be used again
+let playerInHouse = false;
+let currentHouseIndex = -1;
+let houseStayTimer = 0;
+
+// Labyrinth layout: 1 = wall, 0 = path, 2 = house
 const maze = [
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
     [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
@@ -47,6 +56,15 @@ const maze = [
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ];
 
+// House positions (placed on wall positions that become accessible)
+const housePositions = [
+    { x: 9, y: 2 },   // House 1 - upper area
+    { x: 9, y: 22 }   // House 2 - lower area
+];
+
+// House data
+const houses = [];
+
 // Monster data: { x, y, element, direction }
 const monsters = [];
 
@@ -55,11 +73,16 @@ const possibleSpawnPositions = [];
 
 // Find all valid spawn positions
 function initSpawnPositions() {
+    possibleSpawnPositions.length = 0;
     for (let y = 0; y < maze.length; y++) {
         for (let x = 0; x < maze[y].length; x++) {
-            // Skip walls, player start area, and goal area
+            // Skip walls, houses, player start area, and goal area
             if (maze[y][x] === 0 && !(x <= 2 && y <= 2) && !(x >= 26 && y >= 26)) {
-                possibleSpawnPositions.push({ x, y });
+                // Also skip house positions
+                const isHouse = housePositions.some(h => h.x === x && h.y === y);
+                if (!isHouse) {
+                    possibleSpawnPositions.push({ x, y });
+                }
             }
         }
     }
@@ -96,12 +119,52 @@ function createWalls() {
     }
 }
 
+// Create houses
+function createHouses() {
+    for (let i = 0; i < housePositions.length; i++) {
+        const pos = housePositions[i];
+        const houseEl = document.createElement('div');
+        houseEl.className = 'house';
+        houseEl.style.left = pos.x * gridSize + 'px';
+        houseEl.style.top = pos.y * gridSize + 'px';
+        container.appendChild(houseEl);
+
+        houses.push({
+            x: pos.x,
+            y: pos.y,
+            element: houseEl,
+            cooldown: 0,
+            cooldownInterval: null
+        });
+    }
+}
+
 // Clear all monsters
 function clearMonsters() {
     for (const monster of monsters) {
         monster.element.remove();
     }
     monsters.length = 0;
+}
+
+// Reset houses for new level
+function resetHouses() {
+    for (const house of houses) {
+        house.cooldown = 0;
+        house.element.classList.remove('cooldown');
+        if (house.cooldownInterval) {
+            clearInterval(house.cooldownInterval);
+            house.cooldownInterval = null;
+        }
+    }
+    playerInHouse = false;
+    currentHouseIndex = -1;
+    houseStayTimer = 0;
+    if (houseTimerInterval) {
+        clearInterval(houseTimerInterval);
+        houseTimerInterval = null;
+    }
+    houseTimerDisplay.textContent = '';
 }
 
 // Create monsters based on current level
@@ -153,6 +216,7 @@ function startLevel() {
     loseMessage.style.display = 'none';
 
     clearMonsters();
+    resetHouses();
     resetPlayerPosition();
     createMonsters();
     updateLevelDisplay();
@@ -171,20 +235,137 @@ goal.style.top = goalY * gridSize + 'px';
 // Create the labyrinth walls
 createWalls();
 
+// Create houses
+createHouses();
+
 // Initialize spawn positions
 initSpawnPositions();
 
 // Start level 1
 startLevel();
 
-// Check if a position is valid (not a wall)
-function canMove(x, y) {
+// Check if a position is valid for player (not a wall, can enter houses)
+function canPlayerMove(x, y) {
     if (x < 0 || x >= 30 || y < 0 || y >= 30) return false;
+
+    // Check if it's a house
+    for (let i = 0; i < houses.length; i++) {
+        if (houses[i].x === x && houses[i].y === y) {
+            // Can only enter if not on cooldown
+            return houses[i].cooldown === 0;
+        }
+    }
+
     return maze[y][x] === 0;
+}
+
+// Check if a position is valid for monsters (not a wall, cannot enter houses)
+function canMonsterMove(x, y) {
+    if (x < 0 || x >= 30 || y < 0 || y >= 30) return false;
+
+    // Monsters cannot enter houses
+    for (const house of houses) {
+        if (house.x === x && house.y === y) {
+            return false;
+        }
+    }
+
+    return maze[y][x] === 0;
+}
+
+// Check if player is in a house
+function checkPlayerInHouse() {
+    for (let i = 0; i < houses.length; i++) {
+        if (houses[i].x === playerX && houses[i].y === playerY) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// Start house stay timer
+function startHouseStayTimer(houseIndex) {
+    playerInHouse = true;
+    currentHouseIndex = houseIndex;
+    houseStayTimer = HOUSE_MAX_STAY;
+
+    updateHouseTimerDisplay();
+
+    if (houseTimerInterval) {
+        clearInterval(houseTimerInterval);
+    }
+
+    houseTimerInterval = setInterval(() => {
+        houseStayTimer--;
+        updateHouseTimerDisplay();
+
+        if (houseStayTimer <= 0) {
+            // Force player out - they lose!
+            clearInterval(houseTimerInterval);
+            houseTimerInterval = null;
+            triggerLose();
+        }
+    }, 1000);
+}
+
+// Stop house stay timer and start cooldown
+function stopHouseStayTimer() {
+    if (houseTimerInterval) {
+        clearInterval(houseTimerInterval);
+        houseTimerInterval = null;
+    }
+
+    if (currentHouseIndex >= 0) {
+        const house = houses[currentHouseIndex];
+        house.cooldown = HOUSE_COOLDOWN;
+        house.element.classList.add('cooldown');
+
+        // Start cooldown timer
+        house.cooldownInterval = setInterval(() => {
+            house.cooldown--;
+            if (house.cooldown <= 0) {
+                house.cooldown = 0;
+                house.element.classList.remove('cooldown');
+                clearInterval(house.cooldownInterval);
+                house.cooldownInterval = null;
+            }
+            updateHouseTimerDisplay();
+        }, 1000);
+    }
+
+    playerInHouse = false;
+    currentHouseIndex = -1;
+    houseStayTimer = 0;
+    updateHouseTimerDisplay();
+}
+
+// Update house timer display
+function updateHouseTimerDisplay() {
+    let displayText = '';
+
+    if (playerInHouse && houseStayTimer > 0) {
+        displayText = `In House: ${houseStayTimer}s`;
+    }
+
+    // Show cooldowns for houses
+    const cooldowns = houses
+        .map((h, i) => h.cooldown > 0 ? `House ${i + 1}: ${h.cooldown}s` : null)
+        .filter(c => c !== null);
+
+    if (cooldowns.length > 0) {
+        if (displayText) displayText += '\n';
+        displayText += 'Cooldown:\n' + cooldowns.join('\n');
+    }
+
+    houseTimerDisplay.textContent = displayText;
+    houseTimerDisplay.style.whiteSpace = 'pre-line';
 }
 
 // Check if player collides with any monster
 function checkMonsterCollision() {
+    // Player is safe in house
+    if (playerInHouse) return false;
+
     for (const monster of monsters) {
         if (monster.x === playerX && monster.y === playerY) {
             return true;
@@ -199,6 +380,9 @@ function triggerLose() {
     if (monsterInterval) {
         clearInterval(monsterInterval);
     }
+    if (houseTimerInterval) {
+        clearInterval(houseTimerInterval);
+    }
     loseMessage.style.display = 'block';
 }
 
@@ -208,6 +392,9 @@ function checkWin() {
         gameOver = true;
         if (monsterInterval) {
             clearInterval(monsterInterval);
+        }
+        if (houseTimerInterval) {
+            clearInterval(houseTimerInterval);
         }
         winMessage.style.display = 'block';
 
@@ -238,12 +425,12 @@ function moveMonsters() {
         let newY = monster.y + dir.dy;
 
         // If can't move in current direction, pick a new random direction
-        if (!canMove(newX, newY)) {
+        if (!canMonsterMove(newX, newY)) {
             // Find all valid directions
             const validDirs = [];
             for (let i = 0; i < 4; i++) {
                 const d = directions[i];
-                if (canMove(monster.x + d.dx, monster.y + d.dy)) {
+                if (canMonsterMove(monster.x + d.dx, monster.y + d.dy)) {
                     validDirs.push(i);
                 }
             }
@@ -272,38 +459,50 @@ function moveMonsters() {
     }
 }
 
-// Handle keyboard input
-document.addEventListener('keydown', (e) => {
+// Move player in a direction
+function movePlayer(direction) {
     if (gameOver) return;
 
     let newX = playerX;
     let newY = playerY;
 
-    switch (e.key) {
-        case 'ArrowUp':
+    switch (direction) {
+        case 'up':
             newY = playerY - 1;
             break;
-        case 'ArrowDown':
+        case 'down':
             newY = playerY + 1;
             break;
-        case 'ArrowLeft':
+        case 'left':
             newX = playerX - 1;
             break;
-        case 'ArrowRight':
+        case 'right':
             newX = playerX + 1;
             break;
         default:
             return;
     }
 
-    e.preventDefault();
-
     // Only move if the new position is valid
-    if (canMove(newX, newY)) {
+    if (canPlayerMove(newX, newY)) {
+        // Check if leaving a house
+        const wasInHouse = playerInHouse;
+
         playerX = newX;
         playerY = newY;
         square.style.left = playerX * gridSize + 'px';
         square.style.top = playerY * gridSize + 'px';
+
+        // Check if entering a house
+        const houseIndex = checkPlayerInHouse();
+
+        if (houseIndex >= 0 && !wasInHouse) {
+            // Entering a house
+            startHouseStayTimer(houseIndex);
+        } else if (houseIndex < 0 && wasInHouse) {
+            // Leaving a house
+            stopHouseStayTimer();
+        }
 
         // Check collision after player moves
         if (checkMonsterCollision()) {
@@ -311,5 +510,195 @@ document.addEventListener('keydown', (e) => {
         } else {
             checkWin();
         }
+    }
+}
+
+// Handle keyboard input
+document.addEventListener('keydown', (e) => {
+    if (gameOver) return;
+
+    let direction = null;
+
+    switch (e.key) {
+        case 'ArrowUp':
+            direction = 'up';
+            break;
+        case 'ArrowDown':
+            direction = 'down';
+            break;
+        case 'ArrowLeft':
+            direction = 'left';
+            break;
+        case 'ArrowRight':
+            direction = 'right';
+            break;
+        default:
+            return;
+    }
+
+    e.preventDefault();
+    movePlayer(direction);
+});
+
+// Joystick controls
+const joystickContainer = document.getElementById('joystick-container');
+const joystickKnob = document.getElementById('joystick-knob');
+const joystickDirectionDisplay = document.getElementById('joystick-direction');
+
+let joystickActive = false;
+let joystickStartX = 0;
+let joystickStartY = 0;
+let lastJoystickDirection = null;
+let joystickMoveInterval = null;
+const JOYSTICK_THRESHOLD = 20; // Minimum distance to register a direction
+const JOYSTICK_MAX_DISTANCE = 40; // Maximum knob movement
+const JOYSTICK_MOVE_DELAY = 150; // Milliseconds between moves when holding
+
+function getJoystickDirection(deltaX, deltaY) {
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    if (distance < JOYSTICK_THRESHOLD) {
+        return null;
+    }
+
+    // Determine primary direction based on angle
+    const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+
+    if (angle >= -45 && angle < 45) {
+        return 'right';
+    } else if (angle >= 45 && angle < 135) {
+        return 'down';
+    } else if (angle >= -135 && angle < -45) {
+        return 'up';
+    } else {
+        return 'left';
+    }
+}
+
+function updateJoystickKnob(deltaX, deltaY) {
+    // Limit the knob movement
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    if (distance > JOYSTICK_MAX_DISTANCE) {
+        const scale = JOYSTICK_MAX_DISTANCE / distance;
+        deltaX *= scale;
+        deltaY *= scale;
+    }
+
+    joystickKnob.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+}
+
+function resetJoystickKnob() {
+    joystickKnob.style.transform = 'translate(-50%, -50%)';
+}
+
+function startJoystickMove(direction) {
+    if (direction && direction !== lastJoystickDirection) {
+        // Clear any existing interval
+        if (joystickMoveInterval) {
+            clearInterval(joystickMoveInterval);
+        }
+
+        // Move immediately
+        movePlayer(direction);
+        lastJoystickDirection = direction;
+
+        // Continue moving while held
+        joystickMoveInterval = setInterval(() => {
+            if (lastJoystickDirection) {
+                movePlayer(lastJoystickDirection);
+            }
+        }, JOYSTICK_MOVE_DELAY);
+    }
+}
+
+function stopJoystickMove() {
+    if (joystickMoveInterval) {
+        clearInterval(joystickMoveInterval);
+        joystickMoveInterval = null;
+    }
+    lastJoystickDirection = null;
+}
+
+// Touch events for joystick
+joystickContainer.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    joystickActive = true;
+    const touch = e.touches[0];
+    const rect = joystickContainer.getBoundingClientRect();
+    joystickStartX = rect.left + rect.width / 2;
+    joystickStartY = rect.top + rect.height / 2;
+}, { passive: false });
+
+joystickContainer.addEventListener('touchmove', (e) => {
+    if (!joystickActive) return;
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - joystickStartX;
+    const deltaY = touch.clientY - joystickStartY;
+
+    updateJoystickKnob(deltaX, deltaY);
+
+    const direction = getJoystickDirection(deltaX, deltaY);
+    joystickDirectionDisplay.textContent = direction ? direction.toUpperCase() : '';
+
+    if (direction !== lastJoystickDirection) {
+        stopJoystickMove();
+        if (direction) {
+            startJoystickMove(direction);
+        }
+    }
+}, { passive: false });
+
+joystickContainer.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    joystickActive = false;
+    resetJoystickKnob();
+    stopJoystickMove();
+    joystickDirectionDisplay.textContent = '';
+}, { passive: false });
+
+joystickContainer.addEventListener('touchcancel', (e) => {
+    joystickActive = false;
+    resetJoystickKnob();
+    stopJoystickMove();
+    joystickDirectionDisplay.textContent = '';
+});
+
+// Mouse events for joystick (for testing on desktop)
+joystickContainer.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    joystickActive = true;
+    const rect = joystickContainer.getBoundingClientRect();
+    joystickStartX = rect.left + rect.width / 2;
+    joystickStartY = rect.top + rect.height / 2;
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (!joystickActive) return;
+
+    const deltaX = e.clientX - joystickStartX;
+    const deltaY = e.clientY - joystickStartY;
+
+    updateJoystickKnob(deltaX, deltaY);
+
+    const direction = getJoystickDirection(deltaX, deltaY);
+    joystickDirectionDisplay.textContent = direction ? direction.toUpperCase() : '';
+
+    if (direction !== lastJoystickDirection) {
+        stopJoystickMove();
+        if (direction) {
+            startJoystickMove(direction);
+        }
+    }
+});
+
+document.addEventListener('mouseup', () => {
+    if (joystickActive) {
+        joystickActive = false;
+        resetJoystickKnob();
+        stopJoystickMove();
+        joystickDirectionDisplay.textContent = '';
     }
 });
