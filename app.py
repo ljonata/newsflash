@@ -1,13 +1,19 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, session, g
+from flask import Flask, render_template, redirect, url_for, request, flash, session, g, jsonify, send_from_directory
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 import datetime
+import os
 from functools import wraps
-from models import Base, User, FormA, FormB, FormC, FormD
+import jwt
+import bcrypt
+from models import Base, User, FormA, FormB, FormC, FormD, GameUser
 from config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# JWT secret for game authentication
+GAME_JWT_SECRET = os.getenv('GAME_JWT_SECRET', 'labyrinth-game-secret-key-change-in-production')
 
 db_engine = create_engine(app.config["SQLALCHEMY_DATABASE_URI"], pool_pre_ping=True)
 
@@ -157,6 +163,202 @@ def form_d_detail(record_id):
             flash("Record not found.", "error")
             return redirect(url_for("form_d", key=g.keyword))
     return render_template("form_d_detail.html", record=record, keyword=g.keyword)
+
+# ============================================
+# LABYRINTH GAME ROUTES
+# ============================================
+
+# Serve game static files
+GAME_DIR = os.path.join(os.path.dirname(__file__), 'games', '01')
+
+@app.route('/games/01/')
+@app.route('/games/01/<path:filename>')
+def serve_game(filename='login.html'):
+    return send_from_directory(GAME_DIR, filename)
+
+# Game JWT authentication decorator
+def game_token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+
+        if not token:
+            return jsonify({'error': 'Access token required'}), 401
+
+        try:
+            data = jwt.decode(token, GAME_JWT_SECRET, algorithms=['HS256'])
+            g.game_user_id = data['id']
+            g.game_username = data['username']
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token expired'}), 403
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Invalid token'}), 403
+
+        return f(*args, **kwargs)
+    return decorated
+
+# Game API: Register
+@app.route('/games/01/api/register', methods=['POST'])
+def game_register():
+    data = request.get_json()
+
+    name = data.get('name', '').strip()
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+
+    if not name or not username or not password:
+        return jsonify({'error': 'Name, username, and password are required'}), 400
+
+    if len(username) < 3:
+        return jsonify({'error': 'Username must be at least 3 characters'}), 400
+
+    if len(password) < 4:
+        return jsonify({'error': 'Password must be at least 4 characters'}), 400
+
+    with Session(db_engine) as db_session:
+        # Check if username exists
+        existing = db_session.query(GameUser).filter(GameUser.username == username).first()
+        if existing:
+            return jsonify({'error': 'Username already taken'}), 400
+
+        # Hash password
+        hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+        # Create user
+        user = GameUser(
+            name=name,
+            username=username,
+            password=hashed.decode('utf-8'),
+            coins=0,
+            highest_level=1
+        )
+        db_session.add(user)
+        db_session.commit()
+
+        return jsonify({'message': 'User registered successfully', 'userId': user.id}), 201
+
+# Game API: Login
+@app.route('/games/01/api/login', methods=['POST'])
+def game_login():
+    data = request.get_json()
+
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+
+    if not username or not password:
+        return jsonify({'error': 'Username and password are required'}), 400
+
+    with Session(db_engine) as db_session:
+        user = db_session.query(GameUser).filter(GameUser.username == username).first()
+
+        if not user:
+            return jsonify({'error': 'Invalid username or password'}), 401
+
+        if not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
+            return jsonify({'error': 'Invalid username or password'}), 401
+
+        # Generate JWT token (7 days expiry)
+        token = jwt.encode({
+            'id': user.id,
+            'username': user.username,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
+        }, GAME_JWT_SECRET, algorithm='HS256')
+
+        return jsonify({
+            'message': 'Login successful',
+            'token': token,
+            'user': {
+                'id': user.id,
+                'name': user.name,
+                'username': user.username,
+                'coins': user.coins,
+                'highest_level': user.highest_level
+            }
+        })
+
+# Game API: Get Profile
+@app.route('/games/01/api/user/profile', methods=['GET'])
+@game_token_required
+def game_profile():
+    with Session(db_engine) as db_session:
+        user = db_session.query(GameUser).filter(GameUser.id == g.game_user_id).first()
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        return jsonify({
+            'user': {
+                'id': user.id,
+                'name': user.name,
+                'username': user.username,
+                'coins': user.coins,
+                'highest_level': user.highest_level
+            }
+        })
+
+# Game API: Update Coins
+@app.route('/games/01/api/user/coins', methods=['PUT'])
+@game_token_required
+def game_update_coins():
+    data = request.get_json()
+    coins = data.get('coins')
+
+    if not isinstance(coins, int) or coins < 0:
+        return jsonify({'error': 'Invalid coins value'}), 400
+
+    with Session(db_engine) as db_session:
+        user = db_session.query(GameUser).filter(GameUser.id == g.game_user_id).first()
+        if user:
+            user.coins = coins
+            db_session.commit()
+
+        return jsonify({'message': 'Coins updated', 'coins': coins})
+
+# Game API: Update Progress
+@app.route('/games/01/api/user/progress', methods=['PUT'])
+@game_token_required
+def game_update_progress():
+    data = request.get_json()
+    level = data.get('level', 1)
+    coins = data.get('coins', 0)
+
+    with Session(db_engine) as db_session:
+        user = db_session.query(GameUser).filter(GameUser.id == g.game_user_id).first()
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        user.highest_level = max(user.highest_level, level)
+        user.coins = coins
+        db_session.commit()
+
+        return jsonify({
+            'message': 'Progress saved',
+            'coins': coins,
+            'highest_level': user.highest_level
+        })
+
+# Game API: Leaderboard
+@app.route('/games/01/api/leaderboard', methods=['GET'])
+def game_leaderboard():
+    with Session(db_engine) as db_session:
+        users = db_session.query(GameUser).order_by(
+            GameUser.highest_level.desc(),
+            GameUser.coins.desc()
+        ).limit(10).all()
+
+        leaderboard = [{
+            'name': u.name,
+            'username': u.username,
+            'coins': u.coins,
+            'highest_level': u.highest_level
+        } for u in users]
+
+        return jsonify({'leaderboard': leaderboard})
+
 
 if __name__ == "__main__":
     Base.metadata.create_all(db_engine)

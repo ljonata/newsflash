@@ -90,3 +90,14 @@ class FormD(Base):
     status: Mapped[str] = mapped_column(String(100), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="forms_d")
+
+# Game user model for Labyrinth Game
+class GameUser(Base):
+    __tablename__ = "game_users"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    username: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    password: Mapped[str] = mapped_column(String(255), nullable=False)
+    coins: Mapped[int] = mapped_column(Integer, default=0)
+    highest_level: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
