@@ -14,6 +14,7 @@ let gameOver = false;
 let currentLevel = 1;
 let monsterInterval = null;
 let houseTimerInterval = null;
+let playerCoins = 0;
 
 // House system
 const HOUSE_MAX_STAY = 30; // seconds player can stay in house
@@ -241,6 +242,18 @@ createHouses();
 // Initialize spawn positions
 initSpawnPositions();
 
+// Load user coins from localStorage if logged in
+function loadUserCoins() {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+        const user = JSON.parse(userStr);
+        playerCoins = user.coins || 0;
+    }
+}
+
+// Initialize user coins
+loadUserCoins();
+
 // Start level 1
 startLevel();
 
@@ -396,7 +409,17 @@ function checkWin() {
         if (houseTimerInterval) {
             clearInterval(houseTimerInterval);
         }
+
+        // Award coins based on level (level * 10 coins)
+        const coinsEarned = currentLevel * 10;
+        playerCoins += coinsEarned;
+        winMessage.textContent = `You Win! +${coinsEarned} coins`;
         winMessage.style.display = 'block';
+
+        // Save progress if logged in
+        if (typeof saveProgress === 'function') {
+            saveProgress(currentLevel, playerCoins);
+        }
 
         // After 2 seconds, advance to next level
         setTimeout(() => {

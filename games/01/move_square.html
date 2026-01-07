@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Labyrinth Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #game-container {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            background-color: green;
+            border: 4px solid #fff;
+        }
+        #square {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #e94560;
+            z-index: 10;
+        }
+        .wall {
+            position: absolute;
+            background-color: #333;
+        }
+        #goal {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: gold;
+        }
+        #instructions {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+        }
+        #level-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        #win-message, #lose-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: Arial, sans-serif;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            z-index: 100;
+        }
+        #win-message {
+            color: gold;
+        }
+        #lose-message {
+            color: #e94560;
+        }
+        .monster {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #000;
+            z-index: 5;
+        }
+        .house {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: lime;
+            z-index: 2;
+        }
+        .house.cooldown {
+            background-color: #666;
+        }
+        #house-timer {
+            position: fixed;
+            top: 50px;
+            right: 20px;
+            color: lime;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        #joystick-container {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 120px;
+            height: 120px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            touch-action: none;
+            z-index: 200;
+        }
+        #joystick-knob {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        #joystick-direction {
+            position: fixed;
+            bottom: 160px;
+            left: 30px;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            opacity: 0.7;
+        }
+        #top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 300;
+        }
+        #user-info {
+            color: #fff;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+        }
+        #user-info .username {
+            color: gold;
+            font-weight: bold;
+        }
+        #user-info .coins {
+            color: lime;
+            margin-left: 15px;
+        }
+        #auth-link {
+            color: #e94560;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        #auth-link:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+        #guest-notice {
+            color: #aaa;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="top-bar">
+        <div id="user-info">
+            <span id="guest-notice">Playing as Guest - <a href="login.html" style="color: #e94560;">Login to save progress</a></span>
+            <span id="logged-user" style="display: none;">
+                Welcome, <span class="username" id="display-name"></span>
+                <span class="coins" id="display-coins"></span>
+            </span>
+        </div>
+        <a id="auth-link" href="login.html">Login</a>
+    </div>
+    <div id="instructions">Use arrow keys to navigate the labyrinth. Reach the gold square!</div>
+    <div id="level-display">Level: 1</div>
+    <div id="house-timer"></div>
+    <div id="game-container">
+        <div id="square"></div>
+        <div id="goal"></div>
+    </div>
+    <div id="win-message">You Win!</div>
+    <div id="lose-message">Game Over!</div>
+    <div id="joystick-container">
+        <div id="joystick-knob"></div>
+    </div>
+    <div id="joystick-direction"></div>
+    <script>
+        // User authentication handling
+        const API_URL = 'http://localhost:3000/api';
+
+        function initUserDisplay() {
+            const userStr = localStorage.getItem('user');
+            const authLink = document.getElementById('auth-link');
+            const guestNotice = document.getElementById('guest-notice');
+            const loggedUser = document.getElementById('logged-user');
+
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                guestNotice.style.display = 'none';
+                loggedUser.style.display = 'inline';
+                document.getElementById('display-name').textContent = user.name;
+                document.getElementById('display-coins').textContent = `Coins: ${user.coins || 0}`;
+                authLink.textContent = 'Logout';
+                authLink.href = '#';
+                authLink.onclick = handleLogout;
+            } else {
+                guestNotice.style.display = 'inline';
+                loggedUser.style.display = 'none';
+                authLink.textContent = 'Login';
+                authLink.href = 'login.html';
+                authLink.onclick = null;
+            }
+        }
+
+        function handleLogout(e) {
+            e.preventDefault();
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            initUserDisplay();
+        }
+
+        async function updateUserCoins(coins) {
+            const userStr = localStorage.getItem('user');
+            const token = localStorage.getItem('token');
+
+            if (userStr && token) {
+                const user = JSON.parse(userStr);
+                user.coins = coins;
+                localStorage.setItem('user', JSON.stringify(user));
+                document.getElementById('display-coins').textContent = `Coins: ${coins}`;
+
+                // Update on server
+                try {
+                    await fetch(`${API_URL}/user/coins`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ coins })
+                    });
+                } catch (error) {
+                    console.error('Failed to update coins on server:', error);
+                }
+            }
+        }
+
+        async function saveProgress(level, coins) {
+            const token = localStorage.getItem('token');
+            if (!token) return; // Guest user, don't save
+
+            try {
+                await fetch(`${API_URL}/user/progress`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ level, coins })
+                });
+
+                // Update local storage
+                const userStr = localStorage.getItem('user');
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    user.coins = coins;
+                    user.highest_level = Math.max(user.highest_level || 1, level);
+                    localStorage.setItem('user', JSON.stringify(user));
+                    document.getElementById('display-coins').textContent = `Coins: ${coins}`;
+                }
+            } catch (error) {
+                console.error('Failed to save progress:', error);
+            }
+        }
+
+        // Initialize user display when page loads
+        document.addEventListener('DOMContentLoaded', initUserDisplay);
+    </script>
+    <script src="move_square.js"></script>
+</body>
+</html>

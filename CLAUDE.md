@@ -4,11 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
+This repository contains two applications:
+
+### 1. Newsflash (Main Application)
 **Newsflash** is a Flask web application with PostgreSQL/SQLite backend that provides keyword-based authentication and journalism-focused data collection forms. Users access the application via unique keyword URLs without traditional login/password. The application features a mobile-first, phone-optimized UI with image-based navigation buttons.
+
+### 2. Labyrinth Game (`games/01/`)
+A browser-based maze game where players navigate a red square through increasingly difficult labyrinths while avoiding monsters. Features user accounts with JWT authentication, level progression, coin rewards, and a leaderboard system.
 
 ## Tech Stack
 
-### Backend
+### Newsflash Backend
 - **Python 3.x**
 - **Flask 3.0.3** - Web framework
 - **SQLAlchemy 2.0.34** - ORM with typed mappings
@@ -17,19 +23,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **python-dotenv 1.0.1** - Environment variable management
 - **Gunicorn 21.2.0** - Production WSGI server
 
-### Frontend
+### Newsflash Frontend
 - **Jinja2 Templates** - Server-side rendering
 - **Custom CSS** - Mobile-first responsive design
 - **Unsplash Images** - Background images for navigation buttons
 
-### Database
+### Newsflash Database
 - **PostgreSQL** (production) or **SQLite** (development)
 - **UUID Primary Keys** - All tables use UUID instead of integer IDs
 - **Automatic Timestamps** - `created_at` and `last_update` fields with auto-updates
 
+### Labyrinth Game Tech Stack (`games/01/`)
+- **Node.js + Express.js** - Backend server (port 3000)
+- **sql.js** - SQLite database (file-based)
+- **bcryptjs** - Password hashing
+- **jsonwebtoken** - JWT authentication (7-day expiration)
+- **Vanilla JavaScript** - Frontend game logic
+- **HTML5/CSS3** - UI with flexbox, animations
+
 ## Development Setup
 
-### Initial Setup
+### Newsflash Setup
 ```bash
 # Copy environment template and configure
 cp .env.example .env
@@ -52,7 +66,19 @@ python init_db.py
 python init_db.py --create-user --email user@example.com --keyword secretword123
 ```
 
-### Running the Application
+### Labyrinth Game Setup (`games/01/`)
+```bash
+cd games/01
+npm install
+
+# Run the server
+npm start
+# or for development
+npm run dev
+```
+Server runs at: `http://localhost:3000`
+
+### Running the Newsflash Application
 ```bash
 # Development server (debug mode)
 flask --app app run --debug
@@ -61,7 +87,7 @@ flask --app app run --debug
 gunicorn app:app --workers 3 --threads 2 --bind 0.0.0.0:8000 --timeout 120
 ```
 
-### Database Management
+### Database Management (Newsflash)
 ```bash
 # Initialize all database tables
 python init_db.py
@@ -88,15 +114,23 @@ newsflash/
 │   └── img/
 │       ├── foot.png       # Logo image
 │       └── logo.png       # Backup logo
-└── templates/
-    ├── base.html          # Base template with nav and layout
-    ├── dashboard.html     # Main menu with 4 image buttons
-    ├── form_a.html        # Form A input template
-    ├── form_b.html        # Form B input template
-    ├── form_c.html        # Form C input template
-    ├── form_d.html        # Form D list view (table)
-    ├── form_d_detail.html # Form D detail view (single record)
-    └── invalid_key.html   # Error page for wrong/missing keywords
+├── templates/
+│   ├── base.html          # Base template with nav and layout
+│   ├── dashboard.html     # Main menu with 4 image buttons
+│   ├── form_a.html        # Form A input template
+│   ├── form_b.html        # Form B input template
+│   ├── form_c.html        # Form C input template
+│   ├── form_d.html        # Form D list view (table)
+│   ├── form_d_detail.html # Form D detail view (single record)
+│   └── invalid_key.html   # Error page for wrong/missing keywords
+└── games/
+    └── 01/                # Labyrinth Game
+        ├── server.js      # Express.js backend server
+        ├── package.json   # Node.js dependencies
+        ├── login.html     # User authentication page
+        ├── move_square.html # Game interface
+        ├── move_square.js # Game logic (maze, monsters, controls)
+        └── game.db        # SQLite database (created at runtime)
 ```
 
 ## Database Architecture
@@ -354,3 +388,77 @@ Users visit: `https://newsflash.com/?key=newskey123`
 - All navigation maintains keyword in URL
 - Invalid keywords show error message immediately
 - Records are user-isolated (users only see their own data)
+
+---
+
+## Labyrinth Game (`games/01/`)
+
+### Game Overview
+A browser-based maze game where players control a red square navigating through a labyrinth to reach the goal while avoiding monsters.
+
+### Game Mechanics
+
+**Core Gameplay:**
+- Player controls a red square (20x20px) on a 600x600px game board (30x30 grid)
+- Objective: Navigate from top-left to bottom-right (gold goal square)
+- Controls: Arrow keys (desktop) or touch joystick (mobile)
+
+**Difficulty Progression:**
+- Monster count = `currentLevel × 3` (Level 1: 3 monsters, Level 2: 6, etc.)
+- Coin reward = `currentLevel × 10` per level completed
+- Monsters move every 1 second in random directions
+
+**Houses (Safe Zones):**
+- Two houses at grid positions (9,2) and (9,22)
+- Maximum stay: 30 seconds (forced out = lose)
+- Cooldown after exit: 40 seconds before reusable
+- Monsters cannot enter houses
+
+**Win/Lose Conditions:**
+- Win: Reach the gold goal square
+- Lose: Collision with any monster OR overstay in house
+
+### Authentication System
+
+**JWT-Based Authentication:**
+- Registration: Display name, username (3+ chars), password (4+ chars)
+- Login returns JWT token (7-day expiration)
+- Token stored in localStorage
+- Guest mode available (progress not saved)
+
+**User Data:**
+- `id` (INTEGER, PK, auto-increment)
+- `name` (TEXT) - Display name
+- `username` (TEXT, unique)
+- `password` (TEXT) - bcrypt hashed
+- `coins` (INTEGER, default 0)
+- `highest_level` (INTEGER, default 1)
+- `created_at` (TEXT)
+
+### API Endpoints
+
+**Authentication:**
+- `POST /api/register` - Create new user
+- `POST /api/login` - Authenticate, receive JWT
+
+**Protected (require Bearer token):**
+- `GET /api/user/profile` - Get user profile
+- `PUT /api/user/coins` - Update coin balance
+- `PUT /api/user/progress` - Save level progress + coins
+
+**Public:**
+- `GET /api/leaderboard` - Top 10 players by level/coins
+- `GET /` - Serves login page
+
+### Key Files
+
+- `server.js` - Express server with all API routes and JWT middleware
+- `login.html` - Login/register UI with tab switching
+- `move_square.html` - Game canvas and UI elements
+- `move_square.js` - Game logic: maze layout, monster AI, collision detection, joystick controls
+
+### Security Note
+The JWT secret is hardcoded in `server.js`. For production, use environment variable:
+```javascript
+const JWT_SECRET = process.env.JWT_SECRET || 'labyrinth-game-secret-key';
+```
