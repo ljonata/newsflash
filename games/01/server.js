@@ -3,55 +3,43 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const fs = require('fs');
-const initSqlJs = require('sql.js');
+const { Pool } = require('pg');
 
 const app = express();
-const PORT = 3000;
-const JWT_SECRET = 'labyrinth-game-secret-key-change-in-production';
-const DB_PATH = path.join(__dirname, 'game.db');
+const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'labyrinth-game-secret-key-change-in-production';
 
-let db;
+// PostgreSQL connection
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-// Initialize SQLite database
+// Initialize PostgreSQL database
 async function initDatabase() {
-    const SQL = await initSqlJs();
-
-    // Load existing database or create new one
-    if (fs.existsSync(DB_PATH)) {
-        const fileBuffer = fs.readFileSync(DB_PATH);
-        db = new SQL.Database(fileBuffer);
-    } else {
-        db = new SQL.Database();
+    const client = await pool.connect();
+    try {
+        // Create users table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS game_users (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                coins INTEGER DEFAULT 0,
+                highest_level INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('Database initialized with game_users table');
+    } finally {
+        client.release();
     }
-
-    // Create users table
-    db.run(`
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            coins INTEGER DEFAULT 0,
-            highest_level INTEGER DEFAULT 1,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
-
-    saveDatabase();
-    console.log('Database initialized with users table');
-}
-
-// Save database to file
-function saveDatabase() {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(DB_PATH, buffer);
 }
 
 // Authentication middleware
@@ -92,8 +80,11 @@ app.post('/api/register', async (req, res) => {
         }
 
         // Check if username already exists
-        const existingUser = db.exec('SELECT id FROM users WHERE username = ?', [username]);
-        if (existingUser.length > 0 && existingUser[0].values.length > 0) {
+        const existingUser = await pool.query(
+            'SELECT id FROM game_users WHERE username = $1',
+            [username]
+        );
+        if (existingUser.rows.length > 0) {
             return res.status(400).json({ error: 'Username already taken' });
         }
 
@@ -101,18 +92,14 @@ app.post('/api/register', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Insert user
-        db.run(
-            'INSERT INTO users (name, username, password, coins, highest_level) VALUES (?, ?, ?, 0, 1)',
+        const result = await pool.query(
+            'INSERT INTO game_users (name, username, password, coins, highest_level) VALUES ($1, $2, $3, 0, 1) RETURNING id',
             [name, username, hashedPassword]
         );
-        saveDatabase();
-
-        const result = db.exec('SELECT last_insert_rowid() as id');
-        const userId = result[0].values[0][0];
 
         res.status(201).json({
             message: 'User registered successfully',
-            userId
+            userId: result.rows[0].id
         });
     } catch (error) {
         console.error('Registration error:', error);
@@ -130,15 +117,16 @@ app.post('/api/login', async (req, res) => {
         }
 
         // Find user
-        const result = db.exec('SELECT * FROM users WHERE username = ?', [username]);
-        if (result.length === 0 || result[0].values.length === 0) {
+        const result = await pool.query(
+            'SELECT * FROM game_users WHERE username = $1',
+            [username]
+        );
+
+        if (result.rows.length === 0) {
             return res.status(401).json({ error: 'Invalid username or password' });
         }
 
-        const columns = result[0].columns;
-        const values = result[0].values[0];
-        const user = {};
-        columns.forEach((col, i) => user[col] = values[i]);
+        const user = result.rows[0];
 
         // Check password
         const validPassword = await bcrypt.compare(password, user.password);
@@ -171,20 +159,18 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Get user profile
-app.get('/api/user/profile', authenticateToken, (req, res) => {
+app.get('/api/user/profile', authenticateToken, async (req, res) => {
     try {
-        const result = db.exec('SELECT id, name, username, coins, highest_level FROM users WHERE id = ?', [req.user.id]);
+        const result = await pool.query(
+            'SELECT id, name, username, coins, highest_level FROM game_users WHERE id = $1',
+            [req.user.id]
+        );
 
-        if (result.length === 0 || result[0].values.length === 0) {
+        if (result.rows.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        const columns = result[0].columns;
-        const values = result[0].values[0];
-        const user = {};
-        columns.forEach((col, i) => user[col] = values[i]);
-
-        res.json({ user });
+        res.json({ user: result.rows[0] });
     } catch (error) {
         console.error('Profile error:', error);
         res.status(500).json({ error: 'Server error fetching profile' });
@@ -192,7 +178,7 @@ app.get('/api/user/profile', authenticateToken, (req, res) => {
 });
 
 // Update user coins
-app.put('/api/user/coins', authenticateToken, (req, res) => {
+app.put('/api/user/coins', authenticateToken, async (req, res) => {
     try {
         const { coins } = req.body;
 
@@ -200,8 +186,10 @@ app.put('/api/user/coins', authenticateToken, (req, res) => {
             return res.status(400).json({ error: 'Invalid coins value' });
         }
 
-        db.run('UPDATE users SET coins = ? WHERE id = ?', [coins, req.user.id]);
-        saveDatabase();
+        await pool.query(
+            'UPDATE game_users SET coins = $1 WHERE id = $2',
+            [coins, req.user.id]
+        );
 
         res.json({ message: 'Coins updated', coins });
     } catch (error) {
@@ -211,22 +199,27 @@ app.put('/api/user/coins', authenticateToken, (req, res) => {
 });
 
 // Update user progress (level and coins)
-app.put('/api/user/progress', authenticateToken, (req, res) => {
+app.put('/api/user/progress', authenticateToken, async (req, res) => {
     try {
         const { level, coins } = req.body;
 
         // Get current highest level
-        const result = db.exec('SELECT highest_level FROM users WHERE id = ?', [req.user.id]);
+        const result = await pool.query(
+            'SELECT highest_level FROM game_users WHERE id = $1',
+            [req.user.id]
+        );
 
-        if (result.length === 0 || result[0].values.length === 0) {
+        if (result.rows.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        const currentHighestLevel = result[0].values[0][0];
+        const currentHighestLevel = result.rows[0].highest_level;
         const newHighestLevel = Math.max(currentHighestLevel, level || 1);
 
-        db.run('UPDATE users SET coins = ?, highest_level = ? WHERE id = ?', [coins || 0, newHighestLevel, req.user.id]);
-        saveDatabase();
+        await pool.query(
+            'UPDATE game_users SET coins = $1, highest_level = $2 WHERE id = $3',
+            [coins || 0, newHighestLevel, req.user.id]
+        );
 
         res.json({
             message: 'Progress saved',
@@ -240,26 +233,16 @@ app.put('/api/user/progress', authenticateToken, (req, res) => {
 });
 
 // Get leaderboard
-app.get('/api/leaderboard', (req, res) => {
+app.get('/api/leaderboard', async (req, res) => {
     try {
-        const result = db.exec(`
+        const result = await pool.query(`
             SELECT name, username, coins, highest_level
-            FROM users
+            FROM game_users
             ORDER BY highest_level DESC, coins DESC
             LIMIT 10
         `);
 
-        let leaderboard = [];
-        if (result.length > 0) {
-            const columns = result[0].columns;
-            leaderboard = result[0].values.map(row => {
-                const obj = {};
-                columns.forEach((col, i) => obj[col] = row[i]);
-                return obj;
-            });
-        }
-
-        res.json({ leaderboard });
+        res.json({ leaderboard: result.rows });
     } catch (error) {
         console.error('Leaderboard error:', error);
         res.status(500).json({ error: 'Server error fetching leaderboard' });
@@ -274,7 +257,10 @@ app.get('/', (req, res) => {
 // Start server
 initDatabase().then(() => {
     app.listen(PORT, () => {
-        console.log(`Server running at http://localhost:${PORT}`);
+        console.log(`Server running on port ${PORT}`);
         console.log(`Game available at http://localhost:${PORT}/login.html`);
     });
+}).catch(err => {
+    console.error('Failed to initialize database:', err);
+    process.exit(1);
 });

@@ -48,7 +48,7 @@ A browser-based maze game where players navigate a red square through increasing
 
 ### Tech Stack
 - Node.js + Express.js
-- SQLite (via sql.js)
+- PostgreSQL (via pg package)
 - bcryptjs + JWT authentication
 - Vanilla JavaScript frontend
 
@@ -56,9 +56,19 @@ A browser-based maze game where players navigate a red square through increasing
 ```bash
 cd games/01
 npm install
+
+# Set environment variables
+export DATABASE_URL=postgresql://user:pass@host:5432/dbname
+export JWT_SECRET=your-secret-key
+
 npm start
 ```
 Server runs at: `http://localhost:3000`
+
+### Render Deployment (Game)
+- **Build command**: `cd games/01 && npm install`
+- **Start command**: `cd games/01 && npm start`
+- **Environment variables**: `DATABASE_URL` (from Render PostgreSQL), `JWT_SECRET`, `NODE_ENV=production`
 
 ### Game Controls
 - **Desktop**: Arrow keys

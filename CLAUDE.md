@@ -35,7 +35,7 @@ A browser-based maze game where players navigate a red square through increasing
 
 ### Labyrinth Game Tech Stack (`games/01/`)
 - **Node.js + Express.js** - Backend server (port 3000)
-- **sql.js** - SQLite database (file-based)
+- **PostgreSQL** - Database (via `pg` package)
 - **bcryptjs** - Password hashing
 - **jsonwebtoken** - JWT authentication (7-day expiration)
 - **Vanilla JavaScript** - Frontend game logic
@@ -457,8 +457,11 @@ A browser-based maze game where players control a red square navigating through 
 - `move_square.html` - Game canvas and UI elements
 - `move_square.js` - Game logic: maze layout, monster AI, collision detection, joystick controls
 
-### Security Note
-The JWT secret is hardcoded in `server.js`. For production, use environment variable:
-```javascript
-const JWT_SECRET = process.env.JWT_SECRET || 'labyrinth-game-secret-key';
-```
+### Environment Variables (Render Deployment)
+Required environment variables for the game server:
+- `DATABASE_URL` - PostgreSQL connection string (from Render's PostgreSQL service)
+- `JWT_SECRET` - Secret key for JWT tokens (set a secure random string)
+- `NODE_ENV` - Set to `production` for SSL database connections
+- `PORT` - Automatically set by Render
+
+The `game_users` table is created automatically on server startup.
