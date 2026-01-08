@@ -6,9 +6,84 @@ const loseMessage = document.getElementById('lose-message');
 const levelDisplay = document.getElementById('level-display');
 const houseTimerDisplay = document.getElementById('house-timer');
 
-const gridSize = 20;
-const step = 20;
-const containerSize = 600;
+// Dynamic sizing based on screen
+const GRID_CELLS = 30;
+let containerSize = 600;
+let gridSize = 20;
+let step = 20;
+
+function calculateGameSize() {
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+
+    if (screenWidth <= 480) {
+        // Phone
+        containerSize = Math.min(screenWidth * 0.95, screenHeight * 0.5);
+    } else if (screenWidth <= 768) {
+        // Tablet
+        containerSize = Math.min(screenWidth * 0.85, screenHeight * 0.6);
+    } else {
+        // Desktop
+        containerSize = 600;
+    }
+
+    gridSize = containerSize / GRID_CELLS;
+    step = gridSize;
+
+    // Update CSS variables
+    document.documentElement.style.setProperty('--game-size', containerSize + 'px');
+    document.documentElement.style.setProperty('--cell-size', gridSize + 'px');
+
+    // Update container size
+    container.style.width = containerSize + 'px';
+    container.style.height = containerSize + 'px';
+}
+
+// Calculate size on load
+calculateGameSize();
+
+// Recalculate on resize (debounced)
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        calculateGameSize();
+        rebuildGame();
+    }, 250);
+});
+
+// Rebuild game elements with new sizes
+function rebuildGame() {
+    createWalls();
+
+    // Update houses positions
+    for (const house of houses) {
+        house.element.style.left = house.x * gridSize + 'px';
+        house.element.style.top = house.y * gridSize + 'px';
+        house.element.style.width = gridSize + 'px';
+        house.element.style.height = gridSize + 'px';
+    }
+
+    // Update monsters positions
+    for (const monster of monsters) {
+        monster.element.style.left = monster.x * gridSize + 'px';
+        monster.element.style.top = monster.y * gridSize + 'px';
+        monster.element.style.width = gridSize + 'px';
+        monster.element.style.height = gridSize + 'px';
+    }
+
+    // Update player position
+    square.style.left = playerX * gridSize + 'px';
+    square.style.top = playerY * gridSize + 'px';
+    square.style.width = gridSize + 'px';
+    square.style.height = gridSize + 'px';
+
+    // Update goal position
+    goal.style.left = goalX * gridSize + 'px';
+    goal.style.top = goalY * gridSize + 'px';
+    goal.style.width = gridSize + 'px';
+    goal.style.height = gridSize + 'px';
+}
 
 let gameOver = false;
 let gamePaused = false;
@@ -106,6 +181,10 @@ function getRandomSpawnPositions(count) {
 
 // Create walls from maze array
 function createWalls() {
+    // Remove existing walls first
+    const existingWalls = container.querySelectorAll('.wall');
+    existingWalls.forEach(wall => wall.remove());
+
     for (let row = 0; row < maze.length; row++) {
         for (let col = 0; col < maze[row].length; col++) {
             if (maze[row][col] === 1) {
@@ -129,6 +208,8 @@ function createHouses() {
         houseEl.className = 'house';
         houseEl.style.left = pos.x * gridSize + 'px';
         houseEl.style.top = pos.y * gridSize + 'px';
+        houseEl.style.width = gridSize + 'px';
+        houseEl.style.height = gridSize + 'px';
         container.appendChild(houseEl);
 
         houses.push({
@@ -179,6 +260,8 @@ function createMonsters() {
         monsterEl.className = 'monster';
         monsterEl.style.left = pos.x * gridSize + 'px';
         monsterEl.style.top = pos.y * gridSize + 'px';
+        monsterEl.style.width = gridSize + 'px';
+        monsterEl.style.height = gridSize + 'px';
         container.appendChild(monsterEl);
 
         monsters.push({
@@ -204,6 +287,8 @@ function resetPlayerPosition() {
     playerY = 1;
     square.style.left = playerX * gridSize + 'px';
     square.style.top = playerY * gridSize + 'px';
+    square.style.width = gridSize + 'px';
+    square.style.height = gridSize + 'px';
 }
 
 // Update level display
@@ -230,9 +315,15 @@ function startLevel() {
     monsterInterval = setInterval(moveMonsters, 1000);
 }
 
-// Initialize goal position
+// Initialize goal position with dynamic sizing
 goal.style.left = goalX * gridSize + 'px';
 goal.style.top = goalY * gridSize + 'px';
+goal.style.width = gridSize + 'px';
+goal.style.height = gridSize + 'px';
+
+// Initialize player square with dynamic sizing
+square.style.width = gridSize + 'px';
+square.style.height = gridSize + 'px';
 
 // Create the labyrinth walls
 createWalls();
