@@ -247,7 +247,7 @@
                     localStorage.setItem('token', data.token);
                     showMessage('Login successful! Redirecting...', 'success');
                     setTimeout(() => {
-                        window.location.href = 'game.html';
+                        window.location.href = 'home.html';
                     }, 1000);
                 } else {
                     showMessage(data.error || 'Login failed', 'error');
@@ -301,7 +301,7 @@
         window.onload = function() {
             const user = localStorage.getItem('user');
             if (user) {
-                window.location.href = 'game.html';
+                window.location.href = 'home.html';
             }
         };
     </script>

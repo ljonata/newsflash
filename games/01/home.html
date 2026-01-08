@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Labyrinth Game - Home</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a2e;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 300;
+        }
+        #user-info {
+            color: #fff;
+            font-size: 14px;
+        }
+        #user-info .username {
+            color: gold;
+            font-weight: bold;
+        }
+        #user-info .coins {
+            color: lime;
+            margin-left: 15px;
+        }
+        #logout-btn {
+            color: #e94560;
+            font-size: 14px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        #logout-btn:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            padding-top: 80px;
+        }
+        h1 {
+            color: gold;
+            font-size: 42px;
+            margin-bottom: 10px;
+            text-align: center;
+            text-shadow: 2px 2px 4px #000;
+        }
+        h2 {
+            color: #e94560;
+            font-size: 18px;
+            margin-bottom: 50px;
+            text-align: center;
+        }
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 300px;
+        }
+        .menu-btn {
+            padding: 18px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            text-align: center;
+            display: block;
+        }
+        .menu-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+        .menu-btn:active {
+            transform: scale(0.98);
+        }
+        .btn-play {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: #fff;
+        }
+        .btn-play:hover {
+            background: linear-gradient(135deg, #5CBF60, #55b059);
+        }
+        .btn-marketplace {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: #fff;
+        }
+        .btn-marketplace:hover {
+            background: linear-gradient(135deg, #ffa726, #fb8c00);
+        }
+        .btn-leaders {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: #fff;
+        }
+        .btn-leaders:hover {
+            background: linear-gradient(135deg, #42a5f5, #1e88e5);
+        }
+        .btn-profile {
+            background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+            color: #fff;
+        }
+        .btn-profile:hover {
+            background: linear-gradient(135deg, #ab47bc, #8e24aa);
+        }
+
+        /* Phone */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 32px;
+            }
+            h2 {
+                font-size: 14px;
+                margin-bottom: 30px;
+            }
+            .menu-btn {
+                padding: 15px 30px;
+                font-size: 18px;
+            }
+            #top-bar {
+                padding: 8px 15px;
+            }
+            #user-info {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="top-bar">
+        <div id="user-info">
+            Welcome, <span class="username" id="display-name"></span>
+            <span class="coins" id="display-coins"></span>
+        </div>
+        <a id="logout-btn" onclick="handleLogout()">Logout</a>
+    </div>
+
+    <div class="container">
+        <h1>Labyrinth Game</h1>
+        <h2>Navigate the maze, avoid the monsters!</h2>
+
+        <div class="menu-buttons">
+            <a href="game.html" class="menu-btn btn-play">Play</a>
+            <a href="marketplace.html" class="menu-btn btn-marketplace">Marketplace</a>
+            <a href="leaders.html" class="menu-btn btn-leaders">Leaders</a>
+            <a href="profile.html" class="menu-btn btn-profile">Profile</a>
+        </div>
+    </div>
+
+    <script>
+        // Check if user is logged in
+        function checkAuth() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const user = JSON.parse(userStr);
+            document.getElementById('display-name').textContent = user.name;
+            document.getElementById('display-coins').textContent = `Coins: ${user.coins || 0}`;
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+
+        // Initialize on page load
+        window.onload = checkAuth;
+    </script>
+</body>
+</html>
