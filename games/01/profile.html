@@ -463,21 +463,49 @@
             document.getElementById('profile-content').innerHTML = html;
         }
 
-        function selectAvatar(avatarId) {
-            const userStr = localStorage.getItem('user');
-            if (userStr) {
-                const user = JSON.parse(userStr);
-                user.selectedAvatar = avatarId;
-                localStorage.setItem('user', JSON.stringify(user));
+        async function selectAvatar(avatarId) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Please log in again');
+                window.location.href = 'login.html';
+                return;
+            }
 
-                // Update UI
-                document.querySelectorAll('.owned-avatar').forEach(img => {
-                    img.classList.remove('selected');
-                    if (img.src.includes(avatarId)) {
-                        img.classList.add('selected');
-                    }
+            try {
+                const response = await fetch(`${API_URL}/user/avatars/select`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ avatar_id: avatarId })
                 });
-                document.getElementById('main-avatar').src = getAvatarUrl(avatarId);
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Update localStorage
+                    const userStr = localStorage.getItem('user');
+                    if (userStr) {
+                        const user = JSON.parse(userStr);
+                        user.selectedAvatar = avatarId;
+                        localStorage.setItem('user', JSON.stringify(user));
+                    }
+
+                    // Update UI
+                    document.querySelectorAll('.owned-avatar').forEach(img => {
+                        img.classList.remove('selected');
+                        if (img.src.includes(avatarId)) {
+                            img.classList.add('selected');
+                        }
+                    });
+                    document.getElementById('main-avatar').src = getAvatarUrl(avatarId);
+                } else {
+                    alert(data.error || 'Failed to select avatar');
+                }
+            } catch (error) {
+                console.error('Select avatar error:', error);
+                alert('Server error. Please try again.');
             }
         }
 
@@ -569,25 +597,34 @@
             const token = localStorage.getItem('token');
             if (token) {
                 try {
-                    const response = await fetch(`${API_URL}/user/profile`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
+                    // Fetch both profile and avatar data in parallel
+                    const [profileResponse, avatarsResponse] = await Promise.all([
+                        fetch(`${API_URL}/user/profile`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        }),
+                        fetch(`${API_URL}/user/avatars`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        })
+                    ]);
 
-                    if (response.ok) {
-                        const data = await response.json();
-                        // Merge server data with local data (local has avatars info)
-                        const mergedUser = {
-                            ...user,
-                            ...data.user,
-                            ownedAvatars: user.ownedAvatars || ['avatar-default'],
-                            selectedAvatar: user.selectedAvatar || 'avatar-default'
-                        };
-                        localStorage.setItem('user', JSON.stringify(mergedUser));
-                        renderProfile(mergedUser);
-                        updateTopBar(mergedUser);
+                    let serverUser = { ...user };
+
+                    if (profileResponse.ok) {
+                        const profileData = await profileResponse.json();
+                        serverUser = { ...serverUser, ...profileData.user };
                     }
+
+                    if (avatarsResponse.ok) {
+                        const avatarsData = await avatarsResponse.json();
+                        serverUser.ownedAvatars = avatarsData.owned_avatars;
+                        serverUser.selectedAvatar = avatarsData.selected_avatar;
+                        serverUser.coins = avatarsData.coins;
+                    }
+
+                    // Update localStorage with server data
+                    localStorage.setItem('user', JSON.stringify(serverUser));
+                    renderProfile(serverUser);
+                    updateTopBar(serverUser);
                 } catch (error) {
                     console.error('Failed to fetch profile from server:', error);
                     // Already rendered with local data, so no action needed

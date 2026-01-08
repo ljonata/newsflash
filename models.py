@@ -102,4 +102,19 @@ class GameUser(Base):
     highest_level: Mapped[int] = mapped_column(Integer, default=1)
     highest_level_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     avatars: Mapped[int] = mapped_column(Integer, default=0)
+    selected_avatar: Mapped[str] = mapped_column(String(100), default='avatar-default')
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationship to owned avatars
+    owned_avatars: Mapped[list["GameUserAvatar"]] = relationship("GameUserAvatar", back_populates="user", cascade="all, delete-orphan")
+
+
+# Game user avatars - tracks which avatars each player owns
+class GameUserAvatar(Base):
+    __tablename__ = "game_user_avatars"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("game_users.id"), nullable=False)
+    avatar_id: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g., 'erik-green', 'erik-smart'
+    purchased_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["GameUser"] = relationship("GameUser", back_populates="owned_avatars")

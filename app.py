@@ -6,7 +6,7 @@ import os
 from functools import wraps
 import jwt
 import bcrypt
-from models import Base, User, FormA, FormB, FormC, FormD, GameUser
+from models import Base, User, FormA, FormB, FormC, FormD, GameUser, GameUserAvatar
 from config import Config
 
 app = Flask(__name__)
@@ -44,6 +44,15 @@ def migrate_game_users_table():
                     print("Added avatars column to game_users")
                 except Exception as e:
                     print(f"Could not add avatars column: {e}")
+
+            # Add selected_avatar column if missing
+            if 'selected_avatar' not in columns:
+                try:
+                    conn.execute(text("ALTER TABLE game_users ADD COLUMN selected_avatar VARCHAR(100) DEFAULT 'avatar-default'"))
+                    conn.commit()
+                    print("Added selected_avatar column to game_users")
+                except Exception as e:
+                    print(f"Could not add selected_avatar column: {e}")
 
 migrate_game_users_table()
 
@@ -324,6 +333,11 @@ def game_profile():
         if not user:
             return jsonify({'error': 'User not found'}), 404
 
+        # Get owned avatars from database
+        owned_avatars = [ua.avatar_id for ua in user.owned_avatars]
+        if 'avatar-default' not in owned_avatars:
+            owned_avatars.insert(0, 'avatar-default')
+
         return jsonify({
             'user': {
                 'id': user.id,
@@ -331,7 +345,10 @@ def game_profile():
                 'username': user.username,
                 'coins': user.coins,
                 'highest_level': user.highest_level,
-                'highest_level_at': user.highest_level_at.isoformat() if user.highest_level_at else None
+                'highest_level_at': user.highest_level_at.isoformat() if user.highest_level_at else None,
+                'owned_avatars': owned_avatars,
+                'selected_avatar': user.selected_avatar or 'avatar-default',
+                'avatars_count': user.avatars
             }
         })
 
@@ -444,6 +461,133 @@ def game_leaderboard():
         return jsonify({
             'level_ranking': level_ranking,
             'avatar_ranking': avatar_ranking
+        })
+
+# Avatar prices - must match frontend
+AVATAR_PRICES = {
+    'avatar-default': 0,  # Free default avatar
+    'erik-green': 50,
+    'erik-smart': 100,
+    'erik-rocknroll': 150,
+    'erik-kidhappyman': 200,
+    'erik-fartman': 250,
+    'erik-monsterkey': 300,
+    'erik-sickman': 350,
+    'erik-richman': 500
+}
+
+# Game API: Get user's avatars
+@app.route('/games/01/api/user/avatars', methods=['GET'])
+@game_token_required
+def game_get_avatars():
+    with Session(db_engine) as db_session:
+        user = db_session.query(GameUser).filter(GameUser.id == g.game_user_id).first()
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Get list of owned avatar IDs
+        owned_avatars = [ua.avatar_id for ua in user.owned_avatars]
+
+        # Always include the default avatar
+        if 'avatar-default' not in owned_avatars:
+            owned_avatars.insert(0, 'avatar-default')
+
+        return jsonify({
+            'owned_avatars': owned_avatars,
+            'selected_avatar': user.selected_avatar or 'avatar-default',
+            'coins': user.coins
+        })
+
+# Game API: Buy an avatar
+@app.route('/games/01/api/user/avatars/buy', methods=['POST'])
+@game_token_required
+def game_buy_avatar():
+    data = request.get_json()
+    avatar_id = data.get('avatar_id', '').strip()
+
+    if not avatar_id:
+        return jsonify({'error': 'Avatar ID is required'}), 400
+
+    if avatar_id not in AVATAR_PRICES:
+        return jsonify({'error': 'Invalid avatar'}), 400
+
+    price = AVATAR_PRICES[avatar_id]
+
+    with Session(db_engine) as db_session:
+        user = db_session.query(GameUser).filter(GameUser.id == g.game_user_id).first()
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Check if already owned
+        existing = db_session.query(GameUserAvatar).filter(
+            GameUserAvatar.user_id == user.id,
+            GameUserAvatar.avatar_id == avatar_id
+        ).first()
+
+        if existing:
+            return jsonify({'error': 'You already own this avatar'}), 400
+
+        # Check if user has enough coins
+        if user.coins < price:
+            return jsonify({'error': f'Not enough coins. You need {price} coins but only have {user.coins}'}), 400
+
+        # Deduct coins and create avatar ownership
+        user.coins -= price
+        user.avatars += 1  # Increment avatar count for leaderboard
+
+        new_avatar = GameUserAvatar(
+            user_id=user.id,
+            avatar_id=avatar_id
+        )
+        db_session.add(new_avatar)
+        db_session.commit()
+
+        # Get updated list of owned avatars
+        owned_avatars = [ua.avatar_id for ua in user.owned_avatars]
+        if 'avatar-default' not in owned_avatars:
+            owned_avatars.insert(0, 'avatar-default')
+
+        return jsonify({
+            'message': f'Successfully purchased {avatar_id}!',
+            'coins': user.coins,
+            'owned_avatars': owned_avatars,
+            'avatars_count': user.avatars
+        })
+
+# Game API: Set selected avatar
+@app.route('/games/01/api/user/avatars/select', methods=['PUT'])
+@game_token_required
+def game_select_avatar():
+    data = request.get_json()
+    avatar_id = data.get('avatar_id', '').strip()
+
+    if not avatar_id:
+        return jsonify({'error': 'Avatar ID is required'}), 400
+
+    with Session(db_engine) as db_session:
+        user = db_session.query(GameUser).filter(GameUser.id == g.game_user_id).first()
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Check if user owns this avatar (or it's the default)
+        if avatar_id != 'avatar-default':
+            owned = db_session.query(GameUserAvatar).filter(
+                GameUserAvatar.user_id == user.id,
+                GameUserAvatar.avatar_id == avatar_id
+            ).first()
+
+            if not owned:
+                return jsonify({'error': 'You do not own this avatar'}), 400
+
+        user.selected_avatar = avatar_id
+        db_session.commit()
+
+        return jsonify({
+            'message': 'Avatar selected',
+            'selected_avatar': avatar_id
         })
 
 

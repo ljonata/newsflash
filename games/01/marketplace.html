@@ -225,7 +225,7 @@
     <script>
         const API_URL = '/games/01/api';
 
-        // Avatar data - filename and display name
+        // Avatar data - filename and display name (prices must match backend)
         const avatars = [
             { id: 'erik-green', name: 'Green Erik', price: 50 },
             { id: 'erik-smart', name: 'Smart Erik', price: 100 },
@@ -233,28 +233,21 @@
             { id: 'erik-kidhappyman', name: 'Happy Kid', price: 200 },
             { id: 'erik-fartman', name: 'Fart Man', price: 250 },
             { id: 'erik-monsterkey', name: 'Monster Key', price: 300 },
-            { id: 'erik-richman', name: 'Rich Man', price: 500 },
-            { id: 'erik-sickman', name: 'Sick Man', price: 350 }
+            { id: 'erik-sickman', name: 'Sick Man', price: 350 },
+            { id: 'erik-richman', name: 'Rich Man', price: 500 }
         ];
 
         let userCoins = 0;
-        let ownedAvatars = ['avatar-default']; // Default avatar is free for all new players
+        let ownedAvatars = ['avatar-default'];
         let selectedAvatar = 'avatar-default';
 
         function checkAuth() {
             const userStr = localStorage.getItem('user');
             if (!userStr) {
                 window.location.href = 'login.html';
-                return;
+                return null;
             }
-
-            const user = JSON.parse(userStr);
-            userCoins = user.coins || 0;
-            ownedAvatars = user.ownedAvatars || ['avatar-default'];
-            selectedAvatar = user.selectedAvatar || 'avatar-default';
-
-            document.getElementById('display-name').textContent = user.name;
-            document.getElementById('display-coins').textContent = `Coins: ${userCoins}`;
+            return JSON.parse(userStr);
         }
 
         function handleLogout() {
@@ -263,8 +256,8 @@
             window.location.href = 'login.html';
         }
 
-        function formatAvatarName(id) {
-            return id.replace('erik-', '').replace(/-/g, ' ');
+        function updateDisplay() {
+            document.getElementById('display-coins').textContent = `Coins: ${userCoins}`;
         }
 
         function renderAvatars() {
@@ -286,7 +279,7 @@
                     statusHtml = '<div class="avatar-status owned">Owned</div>';
                 }
 
-                const priceHtml = avatar.price === 0 ? 'Free' : `${avatar.price} coins`;
+                const priceHtml = `${avatar.price} coins`;
 
                 html += `
                     <div class="${cardClass}" onclick="handleAvatarClick('${avatar.id}')" data-id="${avatar.id}">
@@ -308,59 +301,165 @@
             const isOwned = ownedAvatars.includes(avatarId);
 
             if (isOwned) {
-                // Select this avatar
                 selectAvatar(avatarId);
             } else {
-                // Try to buy
                 buyAvatar(avatar);
             }
         }
 
-        function selectAvatar(avatarId) {
-            selectedAvatar = avatarId;
-
-            // Update local storage
-            const userStr = localStorage.getItem('user');
-            if (userStr) {
-                const user = JSON.parse(userStr);
-                user.selectedAvatar = avatarId;
-                localStorage.setItem('user', JSON.stringify(user));
+        async function selectAvatar(avatarId) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Please log in again');
+                window.location.href = 'login.html';
+                return;
             }
 
-            renderAvatars();
+            try {
+                const response = await fetch(`${API_URL}/user/avatars/select`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ avatar_id: avatarId })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    selectedAvatar = avatarId;
+
+                    // Update localStorage
+                    const userStr = localStorage.getItem('user');
+                    if (userStr) {
+                        const user = JSON.parse(userStr);
+                        user.selectedAvatar = avatarId;
+                        localStorage.setItem('user', JSON.stringify(user));
+                    }
+
+                    renderAvatars();
+                } else {
+                    alert(data.error || 'Failed to select avatar');
+                }
+            } catch (error) {
+                console.error('Select avatar error:', error);
+                alert('Server error. Please try again.');
+            }
         }
 
-        function buyAvatar(avatar) {
+        async function buyAvatar(avatar) {
             if (userCoins < avatar.price) {
                 alert(`Not enough coins! You need ${avatar.price} coins but only have ${userCoins}.`);
                 return;
             }
 
-            if (confirm(`Buy ${avatar.name} for ${avatar.price} coins?`)) {
-                userCoins -= avatar.price;
-                ownedAvatars.push(avatar.id);
+            if (!confirm(`Buy ${avatar.name} for ${avatar.price} coins?`)) {
+                return;
+            }
 
-                // Update local storage
-                const userStr = localStorage.getItem('user');
-                if (userStr) {
-                    const user = JSON.parse(userStr);
-                    user.coins = userCoins;
-                    user.ownedAvatars = ownedAvatars;
-                    localStorage.setItem('user', JSON.stringify(user));
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Please log in again');
+                window.location.href = 'login.html';
+                return;
+            }
 
-                    document.getElementById('display-coins').textContent = `Coins: ${userCoins}`;
+            try {
+                const response = await fetch(`${API_URL}/user/avatars/buy`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ avatar_id: avatar.id })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    userCoins = data.coins;
+                    ownedAvatars = data.owned_avatars;
+
+                    // Update localStorage
+                    const userStr = localStorage.getItem('user');
+                    if (userStr) {
+                        const user = JSON.parse(userStr);
+                        user.coins = userCoins;
+                        user.ownedAvatars = ownedAvatars;
+                        localStorage.setItem('user', JSON.stringify(user));
+                    }
+
+                    updateDisplay();
+                    renderAvatars();
+
+                    alert(`Successfully purchased ${avatar.name}!`);
+
+                    // Automatically select the newly bought avatar
+                    selectAvatar(avatar.id);
+                } else {
+                    alert(data.error || 'Failed to buy avatar');
                 }
-
-                // Select the newly bought avatar
-                selectAvatar(avatar.id);
+            } catch (error) {
+                console.error('Buy avatar error:', error);
+                alert('Server error. Please try again.');
             }
         }
 
-        // Initialize on page load
-        window.onload = function() {
-            checkAuth();
+        async function loadAvatarData() {
+            const user = checkAuth();
+            if (!user) return;
+
+            document.getElementById('display-name').textContent = user.name;
+
+            const token = localStorage.getItem('token');
+            if (token) {
+                try {
+                    const response = await fetch(`${API_URL}/user/avatars`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        userCoins = data.coins;
+                        ownedAvatars = data.owned_avatars;
+                        selectedAvatar = data.selected_avatar;
+
+                        // Update localStorage with server data
+                        const userStr = localStorage.getItem('user');
+                        if (userStr) {
+                            const localUser = JSON.parse(userStr);
+                            localUser.coins = userCoins;
+                            localUser.ownedAvatars = ownedAvatars;
+                            localUser.selectedAvatar = selectedAvatar;
+                            localStorage.setItem('user', JSON.stringify(localUser));
+                        }
+                    } else {
+                        // Fallback to localStorage
+                        userCoins = user.coins || 0;
+                        ownedAvatars = user.ownedAvatars || ['avatar-default'];
+                        selectedAvatar = user.selectedAvatar || 'avatar-default';
+                    }
+                } catch (error) {
+                    console.error('Failed to load avatar data:', error);
+                    userCoins = user.coins || 0;
+                    ownedAvatars = user.ownedAvatars || ['avatar-default'];
+                    selectedAvatar = user.selectedAvatar || 'avatar-default';
+                }
+            } else {
+                userCoins = user.coins || 0;
+                ownedAvatars = user.ownedAvatars || ['avatar-default'];
+                selectedAvatar = user.selectedAvatar || 'avatar-default';
+            }
+
+            updateDisplay();
             renderAvatars();
-        };
+        }
+
+        // Initialize on page load
+        window.onload = loadAvatarData;
     </script>
 </body>
 </html>
