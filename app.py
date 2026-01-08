@@ -355,7 +355,7 @@ def game_leaderboard():
         level_leaders = db_session.query(GameUser).order_by(
             GameUser.highest_level.desc(),
             GameUser.highest_level_at.asc()
-        ).limit(20).all()
+        ).limit(15).all()
 
         level_ranking = [{
             'rank': i + 1,
@@ -368,7 +368,7 @@ def game_leaderboard():
         avatar_leaders = db_session.query(GameUser).order_by(
             GameUser.avatars.desc(),
             GameUser.coins.desc()
-        ).limit(20).all()
+        ).limit(15).all()
 
         avatar_ranking = [{
             'rank': i + 1,
