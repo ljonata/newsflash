@@ -520,9 +520,9 @@ function checkWin() {
         winMessage.textContent = `You Win! +${coinsEarned} coins`;
         winMessage.style.display = 'block';
 
-        // Save progress if logged in
+        // Save progress if logged in (save the next level they've unlocked)
         if (typeof saveProgress === 'function') {
-            saveProgress(currentLevel, playerCoins);
+            saveProgress(currentLevel + 1, playerCoins);
         }
 
         // After 2 seconds, advance to next level
