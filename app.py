@@ -1,5 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, session, g, jsonify, send_from_directory
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, text, inspect
 from sqlalchemy.orm import Session
 import datetime
 import os
@@ -19,6 +19,33 @@ db_engine = create_engine(app.config["SQLALCHEMY_DATABASE_URI"], pool_pre_ping=T
 
 # Create all tables on startup (safe to run multiple times - only creates if not exists)
 Base.metadata.create_all(db_engine)
+
+# Migration: Add missing columns to game_users table
+def migrate_game_users_table():
+    inspector = inspect(db_engine)
+    if 'game_users' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('game_users')]
+
+        with db_engine.connect() as conn:
+            # Add highest_level_at column if missing
+            if 'highest_level_at' not in columns:
+                try:
+                    conn.execute(text('ALTER TABLE game_users ADD COLUMN highest_level_at TIMESTAMP'))
+                    conn.commit()
+                    print("Added highest_level_at column to game_users")
+                except Exception as e:
+                    print(f"Could not add highest_level_at column: {e}")
+
+            # Add avatars column if missing
+            if 'avatars' not in columns:
+                try:
+                    conn.execute(text('ALTER TABLE game_users ADD COLUMN avatars INTEGER DEFAULT 0'))
+                    conn.commit()
+                    print("Added avatars column to game_users")
+                except Exception as e:
+                    print(f"Could not add avatars column: {e}")
+
+migrate_game_users_table()
 
 # Helper function to get user from keyword
 def get_user_by_keyword(keyword):
