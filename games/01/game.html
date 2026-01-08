@@ -172,6 +172,51 @@
             font-family: Arial, sans-serif;
             font-size: 12px;
         }
+        #game-controls {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 300;
+        }
+        .game-btn {
+            padding: 10px 15px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .game-btn:hover {
+            transform: scale(1.05);
+        }
+        .game-btn:active {
+            transform: scale(0.95);
+        }
+        #restart-btn {
+            background-color: #e94560;
+            color: #fff;
+        }
+        #restart-btn:hover {
+            background-color: #c73e54;
+        }
+        #pause-btn {
+            background-color: #0f3460;
+            color: #fff;
+        }
+        #pause-btn:hover {
+            background-color: #1a4a7a;
+        }
+        #pause-btn.paused {
+            background-color: #4CAF50;
+        }
+        #pause-btn.paused:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -187,6 +232,10 @@
     </div>
     <div id="instructions">Use arrow keys to navigate the labyrinth. Reach the gold square!</div>
     <div id="level-display">Level: 1</div>
+    <div id="game-controls">
+        <button id="restart-btn" class="game-btn" onclick="restartLevel()">Restart Level</button>
+        <button id="pause-btn" class="game-btn" onclick="togglePause()">Pause</button>
+    </div>
     <div id="house-timer"></div>
     <div id="game-container">
         <div id="square"></div>

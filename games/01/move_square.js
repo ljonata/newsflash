@@ -11,6 +11,7 @@ const step = 20;
 const containerSize = 600;
 
 let gameOver = false;
+let gamePaused = false;
 let currentLevel = 1;
 let monsterInterval = null;
 let houseTimerInterval = null;
@@ -431,7 +432,7 @@ function checkWin() {
 
 // Move monsters
 function moveMonsters() {
-    if (gameOver) return;
+    if (gameOver || gamePaused) return;
 
     for (const monster of monsters) {
         // Get possible directions
@@ -484,7 +485,7 @@ function moveMonsters() {
 
 // Move player in a direction
 function movePlayer(direction) {
-    if (gameOver) return;
+    if (gameOver || gamePaused) return;
 
     let newX = playerX;
     let newY = playerY;
@@ -538,7 +539,7 @@ function movePlayer(direction) {
 
 // Handle keyboard input
 document.addEventListener('keydown', (e) => {
-    if (gameOver) return;
+    if (gameOver || gamePaused) return;
 
     let direction = null;
 
@@ -725,3 +726,82 @@ document.addEventListener('mouseup', () => {
         joystickDirectionDisplay.textContent = '';
     }
 });
+
+// Pause/Continue functionality
+function togglePause() {
+    if (gameOver) return;
+
+    const pauseBtn = document.getElementById('pause-btn');
+    gamePaused = !gamePaused;
+
+    if (gamePaused) {
+        // Pause the game
+        if (monsterInterval) {
+            clearInterval(monsterInterval);
+            monsterInterval = null;
+        }
+        if (houseTimerInterval) {
+            clearInterval(houseTimerInterval);
+            houseTimerInterval = null;
+        }
+        // Pause house cooldowns
+        for (const house of houses) {
+            if (house.cooldownInterval) {
+                clearInterval(house.cooldownInterval);
+                house.cooldownInterval = null;
+            }
+        }
+        pauseBtn.textContent = 'Continue';
+        pauseBtn.classList.add('paused');
+    } else {
+        // Resume the game
+        monsterInterval = setInterval(moveMonsters, 1000);
+
+        // Resume house stay timer if player was in house
+        if (playerInHouse && houseStayTimer > 0) {
+            houseTimerInterval = setInterval(() => {
+                houseStayTimer--;
+                updateHouseTimerDisplay();
+                if (houseStayTimer <= 0) {
+                    clearInterval(houseTimerInterval);
+                    houseTimerInterval = null;
+                    triggerLose();
+                }
+            }, 1000);
+        }
+
+        // Resume house cooldowns
+        for (const house of houses) {
+            if (house.cooldown > 0) {
+                house.cooldownInterval = setInterval(() => {
+                    house.cooldown--;
+                    if (house.cooldown <= 0) {
+                        house.cooldown = 0;
+                        house.element.classList.remove('cooldown');
+                        clearInterval(house.cooldownInterval);
+                        house.cooldownInterval = null;
+                    }
+                    updateHouseTimerDisplay();
+                }, 1000);
+            }
+        }
+
+        pauseBtn.textContent = 'Pause';
+        pauseBtn.classList.remove('paused');
+    }
+}
+
+// Restart level functionality
+function restartLevel() {
+    // Only allow restart if player is alive
+    if (gameOver) return;
+
+    // Reset pause state
+    gamePaused = false;
+    const pauseBtn = document.getElementById('pause-btn');
+    pauseBtn.textContent = 'Pause';
+    pauseBtn.classList.remove('paused');
+
+    // Restart the current level
+    startLevel();
+}
