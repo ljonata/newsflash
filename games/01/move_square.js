@@ -12,16 +12,28 @@ let containerSize = 600;
 let gridSize = 20;
 let step = 20;
 
+// Detect if device supports touch
+function isTouchDevice() {
+    return ('ontouchstart' in window) ||
+           (navigator.maxTouchPoints > 0) ||
+           (navigator.msMaxTouchPoints > 0) ||
+           window.matchMedia('(hover: none)').matches;
+}
+
 function calculateGameSize() {
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
+    const touchDevice = isTouchDevice();
 
     if (screenWidth <= 480) {
         // Phone
         containerSize = Math.min(screenWidth * 0.95, screenHeight * 0.5);
-    } else if (screenWidth <= 768) {
-        // Tablet
-        containerSize = Math.min(screenWidth * 0.85, screenHeight * 0.6);
+    } else if (screenWidth <= 1024 && touchDevice) {
+        // Tablet (touch device with medium screen)
+        containerSize = Math.min(screenWidth * 0.85, screenHeight * 0.7);
+    } else if (screenWidth <= 1024) {
+        // Small desktop
+        containerSize = Math.min(screenWidth * 0.8, 600);
     } else {
         // Desktop
         containerSize = 600;

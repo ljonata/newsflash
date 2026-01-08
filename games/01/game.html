@@ -235,13 +235,10 @@
             background-color: #45a049;
         }
 
-        /* Desktop - show instructions, hide joystick */
+        /* Desktop - show instructions, hide joystick (only for non-touch devices) */
         @media (min-width: 769px) {
             #instructions {
                 display: block;
-            }
-            #joystick-container, #joystick-direction {
-                display: none !important;
             }
             body {
                 justify-content: center;
@@ -249,29 +246,27 @@
             }
         }
 
-        /* Tablet (portrait) */
-        @media (max-width: 768px) and (min-width: 481px) {
-            :root {
-                --game-size: min(85vw, 85vh - 200px);
-                --cell-size: calc(var(--game-size) / 30);
+        /* Hide joystick only on devices that don't support touch */
+        @media (hover: hover) and (pointer: fine) {
+            #joystick-container, #joystick-direction {
+                display: none !important;
             }
-            body {
-                padding-top: 50px;
-                padding-bottom: 170px;
-            }
+        }
+
+        /* Show joystick on touch devices (tablets, phones) */
+        @media (hover: none) or (pointer: coarse) {
             #joystick-container {
                 display: block !important;
-                width: 100px;
-                height: 100px;
-                bottom: 20px;
-            }
-            #joystick-knob {
-                width: 40px;
-                height: 40px;
+                width: 120px;
+                height: 120px;
+                bottom: 30px;
             }
             #joystick-direction {
                 display: block !important;
-                bottom: 130px;
+                bottom: 160px;
+            }
+            body {
+                padding-bottom: 180px;
             }
             #game-controls {
                 position: fixed;
@@ -279,6 +274,17 @@
                 bottom: 20px;
                 right: 20px;
                 flex-direction: column;
+            }
+        }
+
+        /* Tablet (larger screens with touch) */
+        @media (max-width: 1024px) and (min-width: 481px) {
+            :root {
+                --game-size: min(85vw, 70vh);
+                --cell-size: calc(var(--game-size) / 30);
+            }
+            body {
+                padding-top: 50px;
             }
             .game-btn {
                 padding: 8px 12px;
