@@ -17,6 +17,9 @@ GAME_JWT_SECRET = os.getenv('GAME_JWT_SECRET', 'labyrinth-game-secret-key-change
 
 db_engine = create_engine(app.config["SQLALCHEMY_DATABASE_URI"], pool_pre_ping=True)
 
+# Create all tables on startup (safe to run multiple times - only creates if not exists)
+Base.metadata.create_all(db_engine)
+
 # Helper function to get user from keyword
 def get_user_by_keyword(keyword):
     with Session(db_engine) as db_session:
