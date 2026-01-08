@@ -254,24 +254,30 @@
         }
 
         /* Show joystick on touch devices (tablets, phones) */
-        @media (hover: none) or (pointer: coarse) {
+        @media (hover: none), (pointer: coarse) {
             #joystick-container {
                 display: block !important;
                 width: 120px;
                 height: 120px;
                 bottom: 30px;
+                left: 30px;
+                transform: none;
             }
             #joystick-direction {
                 display: block !important;
                 bottom: 160px;
+                left: 30px;
+                transform: none;
+                text-align: center;
+                width: 120px;
             }
             body {
                 padding-bottom: 180px;
             }
             #game-controls {
                 position: fixed;
-                top: auto;
-                bottom: 20px;
+                top: 120px;
+                bottom: auto;
                 right: 20px;
                 flex-direction: column;
             }
@@ -331,8 +337,8 @@
                 width: 100px;
                 height: 100px;
                 bottom: 15px;
-                left: 50%;
-                transform: translateX(-50%);
+                left: 15px;
+                transform: none;
             }
             #joystick-knob {
                 width: 40px;
@@ -341,12 +347,15 @@
             #joystick-direction {
                 display: block !important;
                 bottom: 125px;
+                left: 15px;
+                transform: none;
+                width: 100px;
             }
             #game-controls {
                 position: fixed;
-                top: auto;
-                bottom: 15px;
-                right: 15px;
+                top: 100px;
+                bottom: auto;
+                right: 10px;
                 left: auto;
                 flex-direction: column;
                 gap: 8px;
