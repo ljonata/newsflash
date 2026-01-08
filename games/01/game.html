@@ -214,6 +214,13 @@
         .game-btn:active {
             transform: scale(0.95);
         }
+        #home-btn {
+            background-color: #9c27b0;
+            color: #fff;
+        }
+        #home-btn:hover {
+            background-color: #7b1fa2;
+        }
         #restart-btn {
             background-color: #e94560;
             color: #fff;
@@ -395,6 +402,7 @@
     <div id="instructions">Use arrow keys to navigate the labyrinth. Reach the gold square!</div>
     <div id="level-display">Level: 1</div>
     <div id="game-controls">
+        <button id="home-btn" class="game-btn" onclick="goHome()">Home</button>
         <button id="restart-btn" class="game-btn" onclick="restartLevel()">Restart Level</button>
         <button id="pause-btn" class="game-btn" onclick="togglePause()">Pause</button>
     </div>
@@ -442,6 +450,15 @@
             localStorage.removeItem('user');
             localStorage.removeItem('token');
             initUserDisplay();
+        }
+
+        function goHome() {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                window.location.href = 'home.html';
+            } else {
+                window.location.href = 'login.html';
+            }
         }
 
         async function updateUserCoins(coins) {
