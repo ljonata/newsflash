@@ -173,6 +173,11 @@ def form_d_detail(record_id):
 
 # Serve game static files
 GAME_DIR = os.path.join(os.path.dirname(__file__), 'games', '01')
+GAME_IMG_DIR = os.path.join(os.path.dirname(__file__), 'games', 'img')
+
+@app.route('/games/img/<path:filename>')
+def serve_game_images(filename):
+    return send_from_directory(GAME_IMG_DIR, filename)
 
 @app.route('/games/01/')
 @app.route('/games/01/<path:filename>')

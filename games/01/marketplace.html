@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Labyrinth Game - Marketplace</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a2e;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+        }
+        #top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 300;
+        }
+        #user-info {
+            color: #fff;
+            font-size: 14px;
+        }
+        #user-info .username {
+            color: gold;
+            font-weight: bold;
+        }
+        #user-info .coins {
+            color: lime;
+            margin-left: 15px;
+        }
+        .nav-links a {
+            color: #e94560;
+            font-size: 14px;
+            text-decoration: none;
+            cursor: pointer;
+            margin-left: 15px;
+        }
+        .nav-links a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+        .container {
+            padding: 80px 20px 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: gold;
+            font-size: 32px;
+            margin-bottom: 10px;
+            text-align: center;
+            text-shadow: 2px 2px 4px #000;
+        }
+        .subtitle {
+            color: #aaa;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+        }
+        .avatar-card {
+            background-color: #16213e;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .avatar-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+        .avatar-card.owned {
+            border: 2px solid #4CAF50;
+        }
+        .avatar-card.selected {
+            border: 2px solid gold;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+        }
+        .avatar-image {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            border-radius: 8px;
+            background-color: #0f3460;
+        }
+        .avatar-name {
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+            text-transform: capitalize;
+        }
+        .avatar-price {
+            color: lime;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .avatar-status {
+            font-size: 11px;
+            margin-top: 5px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        .avatar-status.owned {
+            background-color: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+        .avatar-status.selected {
+            background-color: rgba(255, 215, 0, 0.2);
+            color: gold;
+        }
+        .back-btn {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        .back-btn:hover {
+            transform: scale(1.05);
+        }
+        .center-btn {
+            text-align: center;
+        }
+        .loading {
+            color: #fff;
+            text-align: center;
+            padding: 40px;
+        }
+
+        /* Tablet - 4 per row */
+        @media (max-width: 900px) {
+            .avatar-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 15px;
+            }
+        }
+
+        /* Small tablet - 3 per row */
+        @media (max-width: 700px) {
+            .avatar-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .avatar-name {
+                font-size: 12px;
+            }
+            .avatar-price {
+                font-size: 11px;
+            }
+        }
+
+        /* Phone - 2 per row */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 24px;
+            }
+            .container {
+                padding: 70px 10px 30px;
+            }
+            .avatar-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            .avatar-card {
+                padding: 10px;
+            }
+            .avatar-name {
+                font-size: 11px;
+            }
+            #top-bar {
+                padding: 8px 15px;
+            }
+            #user-info {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="top-bar">
+        <div id="user-info">
+            Welcome, <span class="username" id="display-name"></span>
+            <span class="coins" id="display-coins"></span>
+        </div>
+        <div class="nav-links">
+            <a href="home.html">Home</a>
+            <a id="logout-btn" onclick="handleLogout()">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Marketplace</h1>
+        <p class="subtitle">Choose your avatar to stand out in the game!</p>
+
+        <div id="avatar-grid" class="avatar-grid">
+            <div class="loading">Loading avatars...</div>
+        </div>
+
+        <div class="center-btn">
+            <a href="home.html" class="back-btn">Back to Home</a>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/games/01/api';
+
+        // Avatar data - filename and display name
+        const avatars = [
+            { id: 'erik-green', name: 'Green Erik', price: 0 },
+            { id: 'erik-smart', name: 'Smart Erik', price: 100 },
+            { id: 'erik-rocknroll', name: 'Rock n Roll', price: 150 },
+            { id: 'erik-kidhappyman', name: 'Happy Kid', price: 200 },
+            { id: 'erik-fartman', name: 'Fart Man', price: 250 },
+            { id: 'erik-monsterkey', name: 'Monster Key', price: 300 },
+            { id: 'erik-richman', name: 'Rich Man', price: 500 },
+            { id: 'erik-sickman', name: 'Sick Man', price: 350 }
+        ];
+
+        let userCoins = 0;
+        let ownedAvatars = ['erik-green']; // Default avatar is free
+        let selectedAvatar = 'erik-green';
+
+        function checkAuth() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const user = JSON.parse(userStr);
+            userCoins = user.coins || 0;
+            ownedAvatars = user.ownedAvatars || ['erik-green'];
+            selectedAvatar = user.selectedAvatar || 'erik-green';
+
+            document.getElementById('display-name').textContent = user.name;
+            document.getElementById('display-coins').textContent = `Coins: ${userCoins}`;
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+
+        function formatAvatarName(id) {
+            return id.replace('erik-', '').replace(/-/g, ' ');
+        }
+
+        function renderAvatars() {
+            const grid = document.getElementById('avatar-grid');
+
+            let html = '';
+            avatars.forEach(avatar => {
+                const isOwned = ownedAvatars.includes(avatar.id);
+                const isSelected = selectedAvatar === avatar.id;
+
+                let cardClass = 'avatar-card';
+                if (isOwned) cardClass += ' owned';
+                if (isSelected) cardClass += ' selected';
+
+                let statusHtml = '';
+                if (isSelected) {
+                    statusHtml = '<div class="avatar-status selected">Selected</div>';
+                } else if (isOwned) {
+                    statusHtml = '<div class="avatar-status owned">Owned</div>';
+                }
+
+                const priceHtml = avatar.price === 0 ? 'Free' : `${avatar.price} coins`;
+
+                html += `
+                    <div class="${cardClass}" onclick="handleAvatarClick('${avatar.id}')" data-id="${avatar.id}">
+                        <img src="/games/img/${avatar.id}.png" alt="${avatar.name}" class="avatar-image">
+                        <div class="avatar-name">${avatar.name}</div>
+                        <div class="avatar-price">${priceHtml}</div>
+                        ${statusHtml}
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
+        }
+
+        function handleAvatarClick(avatarId) {
+            const avatar = avatars.find(a => a.id === avatarId);
+            if (!avatar) return;
+
+            const isOwned = ownedAvatars.includes(avatarId);
+
+            if (isOwned) {
+                // Select this avatar
+                selectAvatar(avatarId);
+            } else {
+                // Try to buy
+                buyAvatar(avatar);
+            }
+        }
+
+        function selectAvatar(avatarId) {
+            selectedAvatar = avatarId;
+
+            // Update local storage
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                user.selectedAvatar = avatarId;
+                localStorage.setItem('user', JSON.stringify(user));
+            }
+
+            renderAvatars();
+        }
+
+        function buyAvatar(avatar) {
+            if (userCoins < avatar.price) {
+                alert(`Not enough coins! You need ${avatar.price} coins but only have ${userCoins}.`);
+                return;
+            }
+
+            if (confirm(`Buy ${avatar.name} for ${avatar.price} coins?`)) {
+                userCoins -= avatar.price;
+                ownedAvatars.push(avatar.id);
+
+                // Update local storage
+                const userStr = localStorage.getItem('user');
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    user.coins = userCoins;
+                    user.ownedAvatars = ownedAvatars;
+                    localStorage.setItem('user', JSON.stringify(user));
+
+                    document.getElementById('display-coins').textContent = `Coins: ${userCoins}`;
+                }
+
+                // Select the newly bought avatar
+                selectAvatar(avatar.id);
+            }
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            checkAuth();
+            renderAvatars();
+        };
+    </script>
+</body>
+</html>
