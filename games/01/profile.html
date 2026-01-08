@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Labyrinth Game - Profile</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a2e;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+        }
+        #top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 300;
+        }
+        #user-info {
+            color: #fff;
+            font-size: 14px;
+        }
+        #user-info .username {
+            color: gold;
+            font-weight: bold;
+        }
+        #user-info .coins {
+            color: lime;
+            margin-left: 15px;
+        }
+        .nav-links a {
+            color: #e94560;
+            font-size: 14px;
+            text-decoration: none;
+            cursor: pointer;
+            margin-left: 15px;
+        }
+        .nav-links a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+        .container {
+            padding: 80px 20px 40px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: gold;
+            font-size: 32px;
+            margin-bottom: 30px;
+            text-align: center;
+            text-shadow: 2px 2px 4px #000;
+        }
+        .profile-card {
+            background-color: #16213e;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #0f3460;
+        }
+        .main-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 4px solid gold;
+            object-fit: cover;
+            background-color: #0f3460;
+        }
+        .profile-name {
+            flex: 1;
+        }
+        .profile-name h2 {
+            color: #fff;
+            margin: 0 0 5px 0;
+            font-size: 24px;
+        }
+        .profile-name .username-display {
+            color: #888;
+            font-size: 14px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .stat-item {
+            background-color: #0f3460;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-value.coins {
+            color: lime;
+        }
+        .stat-value.level {
+            color: #4CAF50;
+        }
+        .stat-value.avatars {
+            color: #ff9800;
+        }
+        .stat-value.date {
+            color: #2196F3;
+            font-size: 16px;
+        }
+        .stat-label {
+            color: #aaa;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .section-title {
+            color: #fff;
+            font-size: 16px;
+            margin: 25px 0 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #0f3460;
+        }
+        .owned-avatars {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .owned-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            background-color: #0f3460;
+            border: 2px solid #333;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .owned-avatar:hover {
+            transform: scale(1.1);
+        }
+        .owned-avatar.selected {
+            border-color: gold;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        .no-avatars {
+            color: #888;
+            font-style: italic;
+            font-size: 14px;
+        }
+        .password-section {
+            margin-top: 30px;
+        }
+        .password-form {
+            display: none;
+        }
+        .password-form.show {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            color: #aaa;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background-color: #0f3460;
+            color: #fff;
+            font-size: 14px;
+        }
+        .form-group input:focus {
+            outline: 2px solid #e94560;
+        }
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        .btn:hover {
+            transform: scale(1.02);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #e94560, #c73e54);
+            color: #fff;
+        }
+        .btn-secondary {
+            background-color: #0f3460;
+            color: #fff;
+            margin-right: 10px;
+        }
+        .btn-change-password {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: #fff;
+            width: 100%;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn-group .btn {
+            flex: 1;
+        }
+        .message {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
+        }
+        .message.success {
+            background-color: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+            display: block;
+        }
+        .message.error {
+            background-color: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            display: block;
+        }
+        .back-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        .back-btn:hover {
+            transform: scale(1.05);
+        }
+        .center-btn {
+            text-align: center;
+        }
+        .loading {
+            color: #fff;
+            text-align: center;
+            padding: 40px;
+        }
+
+        /* Phone */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 24px;
+            }
+            .container {
+                padding: 70px 15px 30px;
+            }
+            .profile-card {
+                padding: 20px;
+            }
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .main-avatar {
+                width: 80px;
+                height: 80px;
+            }
+            .profile-name h2 {
+                font-size: 20px;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .stat-value {
+                font-size: 22px;
+            }
+            .stat-value.date {
+                font-size: 14px;
+            }
+            .owned-avatar {
+                width: 50px;
+                height: 50px;
+            }
+            #top-bar {
+                padding: 8px 15px;
+            }
+            #user-info {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="top-bar">
+        <div id="user-info">
+            Welcome, <span class="username" id="display-name"></span>
+            <span class="coins" id="display-coins"></span>
+        </div>
+        <div class="nav-links">
+            <a href="home.html">Home</a>
+            <a id="logout-btn" onclick="handleLogout()">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>My Profile</h1>
+
+        <div id="profile-content">
+            <div class="loading">Loading profile...</div>
+        </div>
+
+        <div class="center-btn">
+            <a href="home.html" class="back-btn">Back to Home</a>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/games/01/api';
+
+        let userData = null;
+
+        function checkAuth() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                window.location.href = 'login.html';
+                return null;
+            }
+            return JSON.parse(userStr);
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+
+        function updateTopBar(user) {
+            document.getElementById('display-name').textContent = user.name;
+            document.getElementById('display-coins').textContent = `Coins: ${user.coins || 0}`;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function getAvatarUrl(avatarId) {
+            return `/games/img/${avatarId}.png`;
+        }
+
+        function renderProfile(user) {
+            const ownedAvatars = user.ownedAvatars || ['avatar-default'];
+            const selectedAvatar = user.selectedAvatar || 'avatar-default';
+
+            let ownedAvatarsHtml = '';
+            if (ownedAvatars.length > 0) {
+                ownedAvatarsHtml = ownedAvatars.map(avatarId => `
+                    <img src="${getAvatarUrl(avatarId)}"
+                         alt="${avatarId}"
+                         class="owned-avatar ${avatarId === selectedAvatar ? 'selected' : ''}"
+                         onclick="selectAvatar('${avatarId}')"
+                         title="Click to select">
+                `).join('');
+            } else {
+                ownedAvatarsHtml = '<p class="no-avatars">No avatars yet. Visit the Marketplace to buy some!</p>';
+            }
+
+            const html = `
+                <div class="profile-card">
+                    <div class="profile-header">
+                        <img src="${getAvatarUrl(selectedAvatar)}" alt="Avatar" class="main-avatar" id="main-avatar">
+                        <div class="profile-name">
+                            <h2>${user.name}</h2>
+                            <div class="username-display">@${user.username}</div>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value coins">${user.coins || 0}</div>
+                            <div class="stat-label">Coins</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value level">${user.highest_level || 1}</div>
+                            <div class="stat-label">Highest Level</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value avatars">${ownedAvatars.length}</div>
+                            <div class="stat-label">Avatars Owned</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value date">${formatDate(user.highest_level_at)}</div>
+                            <div class="stat-label">Level Achieved</div>
+                        </div>
+                    </div>
+
+                    <h3 class="section-title">My Avatars (click to select)</h3>
+                    <div class="owned-avatars">
+                        ${ownedAvatarsHtml}
+                    </div>
+
+                    <div class="password-section">
+                        <h3 class="section-title">Security</h3>
+                        <div id="password-message" class="message"></div>
+
+                        <button class="btn btn-change-password" onclick="togglePasswordForm()" id="change-password-btn">
+                            Change Password
+                        </button>
+
+                        <div class="password-form" id="password-form">
+                            <div class="form-group">
+                                <label for="current-password">Current Password</label>
+                                <input type="password" id="current-password" placeholder="Enter current password">
+                            </div>
+                            <div class="form-group">
+                                <label for="new-password">New Password</label>
+                                <input type="password" id="new-password" placeholder="Enter new password (min 4 chars)">
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm-password">Confirm New Password</label>
+                                <input type="password" id="confirm-password" placeholder="Confirm new password">
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-secondary" onclick="togglePasswordForm()">Cancel</button>
+                                <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('profile-content').innerHTML = html;
+        }
+
+        function selectAvatar(avatarId) {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                user.selectedAvatar = avatarId;
+                localStorage.setItem('user', JSON.stringify(user));
+
+                // Update UI
+                document.querySelectorAll('.owned-avatar').forEach(img => {
+                    img.classList.remove('selected');
+                    if (img.src.includes(avatarId)) {
+                        img.classList.add('selected');
+                    }
+                });
+                document.getElementById('main-avatar').src = getAvatarUrl(avatarId);
+            }
+        }
+
+        function togglePasswordForm() {
+            const form = document.getElementById('password-form');
+            const btn = document.getElementById('change-password-btn');
+            form.classList.toggle('show');
+            btn.style.display = form.classList.contains('show') ? 'none' : 'block';
+
+            // Clear form
+            document.getElementById('current-password').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('confirm-password').value = '';
+            document.getElementById('password-message').className = 'message';
+        }
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('password-message');
+            msg.textContent = text;
+            msg.className = `message ${type}`;
+        }
+
+        async function changePassword() {
+            const currentPassword = document.getElementById('current-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+
+            // Validation
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                showMessage('All fields are required', 'error');
+                return;
+            }
+
+            if (newPassword.length < 4) {
+                showMessage('New password must be at least 4 characters', 'error');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showMessage('New passwords do not match', 'error');
+                return;
+            }
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showMessage('Please log in again', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/user/password`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('Password updated successfully!', 'success');
+                    setTimeout(() => {
+                        togglePasswordForm();
+                    }, 2000);
+                } else {
+                    showMessage(data.error || 'Failed to update password', 'error');
+                }
+            } catch (error) {
+                console.error('Password change error:', error);
+                showMessage('Server error. Please try again.', 'error');
+            }
+        }
+
+        async function loadProfile() {
+            const user = checkAuth();
+            if (!user) return;
+
+            updateTopBar(user);
+
+            // First render with local data immediately
+            renderProfile(user);
+
+            // Then try to get fresh data from server to update
+            const token = localStorage.getItem('token');
+            if (token) {
+                try {
+                    const response = await fetch(`${API_URL}/user/profile`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        // Merge server data with local data (local has avatars info)
+                        const mergedUser = {
+                            ...user,
+                            ...data.user,
+                            ownedAvatars: user.ownedAvatars || ['avatar-default'],
+                            selectedAvatar: user.selectedAvatar || 'avatar-default'
+                        };
+                        localStorage.setItem('user', JSON.stringify(mergedUser));
+                        renderProfile(mergedUser);
+                        updateTopBar(mergedUser);
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch profile from server:', error);
+                    // Already rendered with local data, so no action needed
+                }
+            }
+        }
+
+        // Initialize on page load
+        window.onload = loadProfile;
+    </script>
+</body>
+</html>

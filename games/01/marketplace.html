@@ -227,7 +227,7 @@
 
         // Avatar data - filename and display name
         const avatars = [
-            { id: 'erik-green', name: 'Green Erik', price: 0 },
+            { id: 'erik-green', name: 'Green Erik', price: 50 },
             { id: 'erik-smart', name: 'Smart Erik', price: 100 },
             { id: 'erik-rocknroll', name: 'Rock n Roll', price: 150 },
             { id: 'erik-kidhappyman', name: 'Happy Kid', price: 200 },
@@ -238,8 +238,8 @@
         ];
 
         let userCoins = 0;
-        let ownedAvatars = ['erik-green']; // Default avatar is free
-        let selectedAvatar = 'erik-green';
+        let ownedAvatars = ['avatar-default']; // Default avatar is free for all new players
+        let selectedAvatar = 'avatar-default';
 
         function checkAuth() {
             const userStr = localStorage.getItem('user');
@@ -250,8 +250,8 @@
 
             const user = JSON.parse(userStr);
             userCoins = user.coins || 0;
-            ownedAvatars = user.ownedAvatars || ['erik-green'];
-            selectedAvatar = user.selectedAvatar || 'erik-green';
+            ownedAvatars = user.ownedAvatars || ['avatar-default'];
+            selectedAvatar = user.selectedAvatar || 'avatar-default';
 
             document.getElementById('display-name').textContent = user.name;
             document.getElementById('display-coins').textContent = `Coins: ${userCoins}`;

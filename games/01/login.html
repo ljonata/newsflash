@@ -242,8 +242,13 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Store user info in localStorage
-                    localStorage.setItem('user', JSON.stringify(data.user));
+                    // Store user info in localStorage with default avatar settings
+                    const userData = {
+                        ...data.user,
+                        ownedAvatars: data.user.ownedAvatars || ['avatar-default'],
+                        selectedAvatar: data.user.selectedAvatar || 'avatar-default'
+                    };
+                    localStorage.setItem('user', JSON.stringify(userData));
                     localStorage.setItem('token', data.token);
                     showMessage('Login successful! Redirecting...', 'success');
                     setTimeout(() => {

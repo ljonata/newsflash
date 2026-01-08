@@ -330,7 +330,8 @@ def game_profile():
                 'name': user.name,
                 'username': user.username,
                 'coins': user.coins,
-                'highest_level': user.highest_level
+                'highest_level': user.highest_level,
+                'highest_level_at': user.highest_level_at.isoformat() if user.highest_level_at else None
             }
         })
 
@@ -351,6 +352,37 @@ def game_update_coins():
             db_session.commit()
 
         return jsonify({'message': 'Coins updated', 'coins': coins})
+
+# Game API: Change Password
+@app.route('/games/01/api/user/password', methods=['PUT'])
+@game_token_required
+def game_change_password():
+    data = request.get_json()
+    current_password = data.get('current_password', '')
+    new_password = data.get('new_password', '')
+
+    if not current_password or not new_password:
+        return jsonify({'error': 'Current and new password are required'}), 400
+
+    if len(new_password) < 4:
+        return jsonify({'error': 'New password must be at least 4 characters'}), 400
+
+    with Session(db_engine) as db_session:
+        user = db_session.query(GameUser).filter(GameUser.id == g.game_user_id).first()
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Verify current password
+        if not bcrypt.checkpw(current_password.encode('utf-8'), user.password.encode('utf-8')):
+            return jsonify({'error': 'Current password is incorrect'}), 401
+
+        # Hash and save new password
+        hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+        user.password = hashed.decode('utf-8')
+        db_session.commit()
+
+        return jsonify({'message': 'Password updated successfully'})
 
 # Game API: Update Progress
 @app.route('/games/01/api/user/progress', methods=['PUT'])
