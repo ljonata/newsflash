@@ -100,4 +100,6 @@ class GameUser(Base):
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     coins: Mapped[int] = mapped_column(Integer, default=0)
     highest_level: Mapped[int] = mapped_column(Integer, default=1)
+    highest_level_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    avatars: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

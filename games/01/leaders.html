@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Labyrinth Game - Leader Board</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a2e;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+        }
+        #top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 300;
+        }
+        #user-info {
+            color: #fff;
+            font-size: 14px;
+        }
+        #user-info .username {
+            color: gold;
+            font-weight: bold;
+        }
+        #user-info .coins {
+            color: lime;
+            margin-left: 15px;
+        }
+        .nav-links a {
+            color: #e94560;
+            font-size: 14px;
+            text-decoration: none;
+            cursor: pointer;
+            margin-left: 15px;
+        }
+        .nav-links a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+        .container {
+            padding: 80px 20px 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: gold;
+            font-size: 32px;
+            margin-bottom: 30px;
+            text-align: center;
+            text-shadow: 2px 2px 4px #000;
+        }
+        .rankings-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        @media (min-width: 768px) {
+            .rankings-container {
+                flex-direction: row;
+                gap: 20px;
+            }
+            .ranking-section {
+                flex: 1;
+            }
+        }
+        .ranking-section {
+            background-color: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .ranking-section h2 {
+            color: #fff;
+            font-size: 18px;
+            margin: 0 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #0f3460;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .ranking-section h2 .icon {
+            font-size: 24px;
+        }
+        .level-section h2 {
+            color: #4CAF50;
+        }
+        .avatar-section h2 {
+            color: #ff9800;
+        }
+        .ranking-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .ranking-table th {
+            text-align: left;
+            color: #aaa;
+            font-size: 12px;
+            font-weight: normal;
+            padding: 8px 5px;
+            border-bottom: 1px solid #0f3460;
+        }
+        .ranking-table td {
+            color: #fff;
+            font-size: 14px;
+            padding: 10px 5px;
+            border-bottom: 1px solid #0f3460;
+        }
+        .ranking-table tr:last-child td {
+            border-bottom: none;
+        }
+        .ranking-table .rank {
+            width: 35px;
+            font-weight: bold;
+        }
+        .ranking-table .rank-1 {
+            color: gold;
+        }
+        .ranking-table .rank-2 {
+            color: silver;
+        }
+        .ranking-table .rank-3 {
+            color: #cd7f32;
+        }
+        .ranking-table .name {
+            font-weight: bold;
+        }
+        .ranking-table .level {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .ranking-table .date {
+            color: #888;
+            font-size: 12px;
+        }
+        .ranking-table .avatars {
+            color: #ff9800;
+            font-weight: bold;
+        }
+        .ranking-table .coins {
+            color: lime;
+        }
+        .no-data {
+            color: #888;
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+        }
+        .loading {
+            color: #fff;
+            text-align: center;
+            padding: 40px;
+        }
+        .back-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        .back-btn:hover {
+            transform: scale(1.05);
+        }
+        .center-btn {
+            text-align: center;
+        }
+
+        /* Phone */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 24px;
+            }
+            .ranking-section h2 {
+                font-size: 16px;
+            }
+            .ranking-table th {
+                font-size: 11px;
+            }
+            .ranking-table td {
+                font-size: 12px;
+                padding: 8px 3px;
+            }
+            #top-bar {
+                padding: 8px 15px;
+            }
+            #user-info {
+                font-size: 12px;
+            }
+            .container {
+                padding: 70px 10px 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="top-bar">
+        <div id="user-info">
+            Welcome, <span class="username" id="display-name"></span>
+            <span class="coins" id="display-coins"></span>
+        </div>
+        <div class="nav-links">
+            <a href="home.html">Home</a>
+            <a id="logout-btn" onclick="handleLogout()">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Leader Board</h1>
+
+        <div class="rankings-container">
+            <!-- Level Ranking -->
+            <div class="ranking-section level-section">
+                <h2><span class="icon">🏆</span> Highest Level Achieved</h2>
+                <div id="level-ranking-content">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Avatar Ranking -->
+            <div class="ranking-section avatar-section">
+                <h2><span class="icon">👤</span> Most Avatars & Coins</h2>
+                <div id="avatar-ranking-content">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="center-btn">
+            <a href="home.html" class="back-btn">Back to Home</a>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/games/01/api';
+
+        // Check if user is logged in
+        function checkAuth() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const user = JSON.parse(userStr);
+            document.getElementById('display-name').textContent = user.name;
+            document.getElementById('display-coins').textContent = `Coins: ${user.coins || 0}`;
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+
+        function getRankClass(rank) {
+            if (rank === 1) return 'rank-1';
+            if (rank === 2) return 'rank-2';
+            if (rank === 3) return 'rank-3';
+            return '';
+        }
+
+        function renderLevelRanking(data) {
+            const container = document.getElementById('level-ranking-content');
+
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="no-data">No players yet</div>';
+                return;
+            }
+
+            let html = `
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Player</th>
+                            <th>Level</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            data.forEach(player => {
+                html += `
+                    <tr>
+                        <td class="rank ${getRankClass(player.rank)}">${player.rank}</td>
+                        <td class="name">${player.name}</td>
+                        <td class="level">${player.highest_level}</td>
+                        <td class="date">${player.achieved_at || '-'}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function renderAvatarRanking(data) {
+            const container = document.getElementById('avatar-ranking-content');
+
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="no-data">No players yet</div>';
+                return;
+            }
+
+            let html = `
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Player</th>
+                            <th>Avatars</th>
+                            <th>Coins</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            data.forEach(player => {
+                html += `
+                    <tr>
+                        <td class="rank ${getRankClass(player.rank)}">${player.rank}</td>
+                        <td class="name">${player.name}</td>
+                        <td class="avatars">${player.avatars}</td>
+                        <td class="coins">${player.coins}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch(`${API_URL}/leaderboard`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    renderLevelRanking(data.level_ranking);
+                    renderAvatarRanking(data.avatar_ranking);
+                } else {
+                    document.getElementById('level-ranking-content').innerHTML =
+                        '<div class="no-data">Failed to load rankings</div>';
+                    document.getElementById('avatar-ranking-content').innerHTML =
+                        '<div class="no-data">Failed to load rankings</div>';
+                }
+            } catch (error) {
+                console.error('Failed to load leaderboard:', error);
+                document.getElementById('level-ranking-content').innerHTML =
+                    '<div class="no-data">Failed to load rankings</div>';
+                document.getElementById('avatar-ranking-content').innerHTML =
+                    '<div class="no-data">Failed to load rankings</div>';
+            }
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            checkAuth();
+            loadLeaderboard();
+        };
+    </script>
+</body>
+</html>

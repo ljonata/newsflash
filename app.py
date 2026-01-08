@@ -334,7 +334,10 @@ def game_update_progress():
         if not user:
             return jsonify({'error': 'User not found'}), 404
 
-        user.highest_level = max(user.highest_level, level)
+        # Update highest level and track when it was achieved
+        if level > user.highest_level:
+            user.highest_level = level
+            user.highest_level_at = datetime.datetime.utcnow()
         user.coins = coins
         db_session.commit()
 
@@ -348,19 +351,36 @@ def game_update_progress():
 @app.route('/games/01/api/leaderboard', methods=['GET'])
 def game_leaderboard():
     with Session(db_engine) as db_session:
-        users = db_session.query(GameUser).order_by(
+        # Ranking 1: Highest level achieved, tie-break by earliest date
+        level_leaders = db_session.query(GameUser).order_by(
             GameUser.highest_level.desc(),
-            GameUser.coins.desc()
-        ).limit(10).all()
+            GameUser.highest_level_at.asc()
+        ).limit(20).all()
 
-        leaderboard = [{
+        level_ranking = [{
+            'rank': i + 1,
             'name': u.name,
-            'username': u.username,
-            'coins': u.coins,
-            'highest_level': u.highest_level
-        } for u in users]
+            'highest_level': u.highest_level,
+            'achieved_at': u.highest_level_at.strftime('%Y-%m-%d') if u.highest_level_at else None
+        } for i, u in enumerate(level_leaders)]
 
-        return jsonify({'leaderboard': leaderboard})
+        # Ranking 2: Most avatars, tie-break by coins
+        avatar_leaders = db_session.query(GameUser).order_by(
+            GameUser.avatars.desc(),
+            GameUser.coins.desc()
+        ).limit(20).all()
+
+        avatar_ranking = [{
+            'rank': i + 1,
+            'name': u.name,
+            'avatars': u.avatars,
+            'coins': u.coins
+        } for i, u in enumerate(avatar_leaders)]
+
+        return jsonify({
+            'level_ranking': level_ranking,
+            'avatar_ranking': avatar_ranking
+        })
 
 
 if __name__ == "__main__":
