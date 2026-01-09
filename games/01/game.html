@@ -120,7 +120,7 @@
             background-color: #000;
             z-index: 5;
         }
-        /* Angry eyes for monsters - angled down towards center */
+        /* Angry eyes for monsters - two red eyes */
         .monster::before {
             content: '';
             position: absolute;
@@ -130,7 +130,6 @@
             top: 25%;
             left: 15%;
             box-shadow: calc(var(--cell-size) * 0.45) 0 0 #ff0000;
-            clip-path: polygon(0 50%, 100% 0, 100% 100%, 0 100%); /* Left eye angled down */
         }
         /* Angry frown for monsters */
         .monster::after {
