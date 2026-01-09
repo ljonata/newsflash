@@ -154,8 +154,9 @@ const housePositions = [
 // House data
 const houses = [];
 
-// Monster data: { x, y, element, direction }
+// Monster data: { x, y, element, direction, isSmart }
 const monsters = [];
+let smartMonster = null;
 
 // All possible spawn positions for monsters (open path cells, excluding start and goal areas)
 const possibleSpawnPositions = [];
@@ -240,6 +241,7 @@ function clearMonsters() {
         monster.element.remove();
     }
     monsters.length = 0;
+    smartMonster = null;
 }
 
 // Reset houses for new level
@@ -267,6 +269,7 @@ function createMonsters() {
     const monsterCount = currentLevel * 2; // Level 1: 2, Level 2: 4, Level 3: 6, etc.
     const spawnPositions = getRandomSpawnPositions(monsterCount);
 
+    // Create regular monsters
     for (const pos of spawnPositions) {
         const monsterEl = document.createElement('div');
         monsterEl.className = 'monster';
@@ -280,9 +283,29 @@ function createMonsters() {
             x: pos.x,
             y: pos.y,
             element: monsterEl,
-            direction: Math.floor(Math.random() * 4) // 0=up, 1=down, 2=left, 3=right
+            direction: Math.floor(Math.random() * 4), // 0=up, 1=down, 2=left, 3=right
+            isSmart: false
         });
     }
+
+    // Create smart monster at goal position
+    const smartMonsterEl = document.createElement('div');
+    smartMonsterEl.className = 'monster smart-monster';
+    smartMonsterEl.style.left = goalX * gridSize + 'px';
+    smartMonsterEl.style.top = goalY * gridSize + 'px';
+    smartMonsterEl.style.width = gridSize + 'px';
+    smartMonsterEl.style.height = gridSize + 'px';
+    smartMonsterEl.style.backgroundColor = '#808080'; // Gray color
+    container.appendChild(smartMonsterEl);
+
+    smartMonster = {
+        x: goalX,
+        y: goalY,
+        element: smartMonsterEl,
+        direction: 0,
+        isSmart: true
+    };
+    monsters.push(smartMonster);
 }
 
 // Player starting position
@@ -546,30 +569,66 @@ function moveMonsters() {
             { dx: 1, dy: 0 }   // right
         ];
 
-        // Try current direction first
-        let dir = directions[monster.direction];
-        let newX = monster.x + dir.dx;
-        let newY = monster.y + dir.dy;
+        let newX, newY;
 
-        // If can't move in current direction, pick a new random direction
-        if (!canMonsterMove(newX, newY)) {
-            // Find all valid directions
-            const validDirs = [];
+        if (monster.isSmart) {
+            // Smart monster: move towards player using Euclidean distance
+            let bestDirection = -1;
+            let bestDistance = Infinity;
+
             for (let i = 0; i < 4; i++) {
                 const d = directions[i];
-                if (canMonsterMove(monster.x + d.dx, monster.y + d.dy)) {
-                    validDirs.push(i);
+                const testX = monster.x + d.dx;
+                const testY = monster.y + d.dy;
+
+                if (canMonsterMove(testX, testY)) {
+                    // Calculate Euclidean distance to player
+                    const distance = Math.sqrt(
+                        Math.pow(testX - playerX, 2) + Math.pow(testY - playerY, 2)
+                    );
+
+                    if (distance < bestDistance) {
+                        bestDistance = distance;
+                        bestDirection = i;
+                    }
                 }
             }
 
-            if (validDirs.length > 0) {
-                monster.direction = validDirs[Math.floor(Math.random() * validDirs.length)];
-                dir = directions[monster.direction];
+            if (bestDirection !== -1) {
+                const dir = directions[bestDirection];
                 newX = monster.x + dir.dx;
                 newY = monster.y + dir.dy;
             } else {
                 // No valid moves, stay in place
                 continue;
+            }
+        } else {
+            // Regular monster: random movement
+            // Try current direction first
+            let dir = directions[monster.direction];
+            newX = monster.x + dir.dx;
+            newY = monster.y + dir.dy;
+
+            // If can't move in current direction, pick a new random direction
+            if (!canMonsterMove(newX, newY)) {
+                // Find all valid directions
+                const validDirs = [];
+                for (let i = 0; i < 4; i++) {
+                    const d = directions[i];
+                    if (canMonsterMove(monster.x + d.dx, monster.y + d.dy)) {
+                        validDirs.push(i);
+                    }
+                }
+
+                if (validDirs.length > 0) {
+                    monster.direction = validDirs[Math.floor(Math.random() * validDirs.length)];
+                    dir = directions[monster.direction];
+                    newX = monster.x + dir.dx;
+                    newY = monster.y + dir.dy;
+                } else {
+                    // No valid moves, stay in place
+                    continue;
+                }
             }
         }
 
