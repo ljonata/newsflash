@@ -217,14 +217,16 @@ const maze3 = [
 // Current maze (will switch between maze1 and maze2)
 let maze = maze1;
 
-// Select maze based on current level
+// Select maze based on current level (cycles through 3 mazes)
 function selectMaze() {
-    if (currentLevel % 2 === 1) {
-        // Odd level - use maze1
-        maze = maze1;
+    const mazeIndex = (currentLevel - 1) % 3; // 0, 1, 2, 0, 1, 2, ...
+
+    if (mazeIndex === 0) {
+        maze = maze1; // Level 1, 4, 7, 10, ...
+    } else if (mazeIndex === 1) {
+        maze = maze2; // Level 2, 5, 8, 11, ...
     } else {
-        // Even level - use maze2
-        maze = maze2;
+        maze = maze3; // Level 3, 6, 9, 12, ...
     }
 }
 
