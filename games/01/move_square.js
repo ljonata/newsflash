@@ -397,8 +397,8 @@ function createMonsters() {
     let topRightY = 1;
     // Scan from top-right corner to find first available position
     let found = false;
-    for (let y = 1; y < gridHeight - 1 && !found; y++) {
-        for (let x = gridWidth - 2; x > 0 && !found; x--) {
+    for (let y = 1; y < maze.length - 1 && !found; y++) {
+        for (let x = maze[0].length - 2; x > 0 && !found; x--) {
             if (maze[y][x] === 0) {
                 topRightX = x;
                 topRightY = y;
