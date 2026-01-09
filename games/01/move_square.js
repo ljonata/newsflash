@@ -264,7 +264,7 @@ function resetHouses() {
 
 // Create monsters based on current level
 function createMonsters() {
-    const monsterCount = currentLevel * 3; // Level 1: 3, Level 2: 6, Level 3: 9, etc.
+    const monsterCount = currentLevel * 2; // Level 1: 2, Level 2: 4, Level 3: 6, etc.
     const spawnPositions = getRandomSpawnPositions(monsterCount);
 
     for (const pos of spawnPositions) {
