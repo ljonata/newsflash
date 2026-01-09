@@ -351,7 +351,7 @@ function resetHouses() {
 
 // Create monsters based on current level
 function createMonsters() {
-    const monsterCount = currentLevel * 3; // Level 1: 3, Level 2: 6, Level 3: 9, etc.
+    const monsterCount = currentLevel * 2; // Level 1: 2, Level 2: 4, Level 3: 6, etc.
     const spawnPositions = getRandomSpawnPositions(monsterCount);
 
     // Create regular monsters
@@ -373,7 +373,7 @@ function createMonsters() {
         });
     }
 
-    // Create smart monster at goal position
+    // Create first smart monster at goal position (bottom-right)
     const smartMonsterEl = document.createElement('div');
     smartMonsterEl.className = 'monster smart-monster';
     smartMonsterEl.style.left = goalX * gridSize + 'px';
@@ -391,6 +391,40 @@ function createMonsters() {
         isSmart: true
     };
     monsters.push(smartMonster);
+
+    // Find top-right available position for second smart monster
+    let topRightX = 28;
+    let topRightY = 1;
+    // Scan from top-right corner to find first available position
+    let found = false;
+    for (let y = 1; y < gridHeight - 1 && !found; y++) {
+        for (let x = gridWidth - 2; x > 0 && !found; x--) {
+            if (maze[y][x] === 0) {
+                topRightX = x;
+                topRightY = y;
+                found = true;
+            }
+        }
+    }
+
+    // Create second smart monster at top-right position
+    const smartMonsterEl2 = document.createElement('div');
+    smartMonsterEl2.className = 'monster smart-monster';
+    smartMonsterEl2.style.left = topRightX * gridSize + 'px';
+    smartMonsterEl2.style.top = topRightY * gridSize + 'px';
+    smartMonsterEl2.style.width = gridSize + 'px';
+    smartMonsterEl2.style.height = gridSize + 'px';
+    smartMonsterEl2.style.backgroundColor = '#808080'; // Gray color
+    container.appendChild(smartMonsterEl2);
+
+    const smartMonster2 = {
+        x: topRightX,
+        y: topRightY,
+        element: smartMonsterEl2,
+        direction: 0,
+        isSmart: true
+    };
+    monsters.push(smartMonster2);
 }
 
 // Player starting position
