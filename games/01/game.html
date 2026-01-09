@@ -40,6 +40,31 @@
             background-color: #e94560;
             z-index: 10;
         }
+        /* 8-bit pixelated eyes */
+        #square::before {
+            content: '';
+            position: absolute;
+            width: 20%;
+            height: 20%;
+            background-color: #000;
+            top: 30%;
+            left: 20%;
+            box-shadow: calc(var(--cell-size) * 0.4) 0 0 #000;
+        }
+        /* 8-bit pixelated smile */
+        #square::after {
+            content: '';
+            position: absolute;
+            width: 10%;
+            height: 10%;
+            background-color: #000;
+            top: 65%;
+            left: 25%;
+            box-shadow:
+                calc(var(--cell-size) * 0.1) 0 0 #000,
+                calc(var(--cell-size) * 0.2) 0 0 #000,
+                calc(var(--cell-size) * 0.3) 0 0 #000;
+        }
         .wall {
             position: absolute;
             background-color: #333;
