@@ -6,7 +6,7 @@ import os
 from functools import wraps
 import jwt
 import bcrypt
-from models import Base, User, FormA, FormB, FormC, FormD, GameUser, GameUserAvatar
+from models import Base, User, FormA, FormB, FormC, FormD, GameUser, GameUserAvatar, Avatar
 from config import Config
 
 app = Flask(__name__)
@@ -463,18 +463,41 @@ def game_leaderboard():
             'avatar_ranking': avatar_ranking
         })
 
-# Avatar prices - must match frontend
-AVATAR_PRICES = {
-    'avatar-default': 0,  # Free default avatar
-    'erik-green': 50,
-    'erik-smart': 100,
-    'erik-rocknroll': 150,
-    'erik-kidhappyman': 200,
-    'erik-fartman': 250,
-    'erik-monsterkey': 300,
-    'erik-sickman': 350,
-    'erik-richman': 500
-}
+# Helper function to get avatar prices from database
+def get_avatar_price(db_session, avatar_id):
+    """Get avatar price from database, return 0 for default avatar"""
+    if avatar_id == 'avatar-default':
+        return 0
+    avatar = db_session.query(Avatar).filter(Avatar.avatar_id == avatar_id, Avatar.active == True).first()
+    return avatar.price if avatar else None
+
+# Game API: Get all available avatars (for marketplace)
+@app.route('/games/01/api/avatars', methods=['GET'])
+def game_get_all_avatars():
+    """Get list of all available avatars with their details"""
+    with Session(db_engine) as db_session:
+        avatars = db_session.query(Avatar).filter(Avatar.active == True).all()
+
+        avatar_list = [{
+            'avatar_id': avatar.avatar_id,
+            'name': avatar.name,
+            'price': avatar.price,
+            'creator_name': avatar.creator_name,
+            'image_path': avatar.image_path,
+            'number_of_users': avatar.number_of_users
+        } for avatar in avatars]
+
+        # Always include default avatar
+        avatar_list.insert(0, {
+            'avatar_id': 'avatar-default',
+            'name': 'Default Avatar',
+            'price': 0,
+            'creator_name': None,
+            'image_path': 'img/avatars/public/avatar-default.png',
+            'number_of_users': 0
+        })
+
+        return jsonify({'avatars': avatar_list})
 
 # Game API: Get user's avatars
 @app.route('/games/01/api/user/avatars', methods=['GET'])
@@ -509,12 +532,12 @@ def game_buy_avatar():
     if not avatar_id:
         return jsonify({'error': 'Avatar ID is required'}), 400
 
-    if avatar_id not in AVATAR_PRICES:
-        return jsonify({'error': 'Invalid avatar'}), 400
-
-    price = AVATAR_PRICES[avatar_id]
-
     with Session(db_engine) as db_session:
+        # Get avatar price from database
+        price = get_avatar_price(db_session, avatar_id)
+        if price is None:
+            return jsonify({'error': 'Invalid avatar'}), 400
+
         user = db_session.query(GameUser).filter(GameUser.id == g.game_user_id).first()
 
         if not user:
@@ -542,6 +565,13 @@ def game_buy_avatar():
             avatar_id=avatar_id
         )
         db_session.add(new_avatar)
+
+        # Update avatar's number_of_users count if not default
+        if avatar_id != 'avatar-default':
+            avatar = db_session.query(Avatar).filter(Avatar.avatar_id == avatar_id).first()
+            if avatar:
+                avatar.number_of_users += 1
+
         db_session.commit()
 
         # Get updated list of owned avatars

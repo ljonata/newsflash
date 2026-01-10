@@ -225,18 +225,8 @@
     <script>
         const API_URL = '/games/01/api';
 
-        // Avatar data - filename and display name (prices must match backend)
-        const avatars = [
-            { id: 'erik-green', name: 'Green Erik', price: 50 },
-            { id: 'erik-smart', name: 'Smart Erik', price: 100 },
-            { id: 'erik-rocknroll', name: 'Rock n Roll', price: 150 },
-            { id: 'erik-kidhappyman', name: 'Happy Kid', price: 200 },
-            { id: 'erik-fartman', name: 'Fart Man', price: 250 },
-            { id: 'erik-monsterkey', name: 'Monster Key', price: 300 },
-            { id: 'erik-sickman', name: 'Sick Man', price: 350 },
-            { id: 'erik-richman', name: 'Rich Man', price: 500 }
-        ];
-
+        // Avatar data will be fetched from API
+        let avatars = [];
         let userCoins = 0;
         let ownedAvatars = ['avatar-default'];
         let selectedAvatar = 'avatar-default';
@@ -260,6 +250,27 @@
             document.getElementById('display-coins').textContent = `Coins: ${userCoins}`;
         }
 
+        async function loadAvatars() {
+            try {
+                const response = await fetch(`${API_URL}/avatars`);
+                const data = await response.json();
+                if (response.ok) {
+                    avatars = data.avatars.map(a => ({
+                        id: a.avatar_id,
+                        name: a.name,
+                        price: a.price,
+                        image_path: a.image_path,
+                        creator_name: a.creator_name,
+                        number_of_users: a.number_of_users
+                    }));
+                }
+            } catch (error) {
+                console.error('Error loading avatars:', error);
+                // Fallback to empty array if fetch fails
+                avatars = [];
+            }
+        }
+
         function renderAvatars() {
             const grid = document.getElementById('avatar-grid');
 
@@ -280,10 +291,11 @@
                 }
 
                 const priceHtml = `${avatar.price} coins`;
+                const imgPath = avatar.image_path || `/games/img/${avatar.id}.png`;
 
                 html += `
                     <div class="${cardClass}" onclick="handleAvatarClick('${avatar.id}')" data-id="${avatar.id}">
-                        <img src="/games/img/${avatar.id}.png" alt="${avatar.name}" class="avatar-image">
+                        <img src="/${imgPath}" alt="${avatar.name}" class="avatar-image">
                         <div class="avatar-name">${avatar.name}</div>
                         <div class="avatar-price">${priceHtml}</div>
                         ${statusHtml}
@@ -459,7 +471,10 @@
         }
 
         // Initialize on page load
-        window.onload = loadAvatarData;
+        window.onload = async function() {
+            await loadAvatars();  // Load avatar catalog first
+            await loadAvatarData();  // Then load user data
+        };
     </script>
 </body>
 </html>

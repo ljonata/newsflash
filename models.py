@@ -91,10 +91,25 @@ class FormD(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="forms_d")
 
+# Avatar catalog - defines all available avatars
+class Avatar(Base):
+    __tablename__ = "avatars"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    avatar_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)  # e.g., 'erik-green'
+    name: Mapped[str] = mapped_column(String(255), nullable=False)  # Display name
+    price: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    creator_name: Mapped[str] = mapped_column(String(255), nullable=True)  # Creator/author name
+    image_path: Mapped[str] = mapped_column(String(500), nullable=False)  # Path to image file
+    number_of_users: Mapped[int] = mapped_column(Integer, default=0)  # Count of users who own this avatar
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_update: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[str] = mapped_column(String(100), nullable=True)
+
 # Game user model for Labyrinth Game
 class GameUser(Base):
     __tablename__ = "game_users"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     username: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -104,6 +119,9 @@ class GameUser(Base):
     avatars: Mapped[int] = mapped_column(Integer, default=0)
     selected_avatar: Mapped[str] = mapped_column(String(100), default='avatar-default')
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_update: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[str] = mapped_column(String(100), nullable=True)
 
     # Relationship to owned avatars
     owned_avatars: Mapped[list["GameUserAvatar"]] = relationship("GameUserAvatar", back_populates="user", cascade="all, delete-orphan")
@@ -112,9 +130,12 @@ class GameUser(Base):
 # Game user avatars - tracks which avatars each player owns
 class GameUserAvatar(Base):
     __tablename__ = "game_user_avatars"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("game_users.id"), nullable=False)
-    avatar_id: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g., 'erik-green', 'erik-smart'
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("game_users.id"), nullable=False)
+    avatar_id: Mapped[str] = mapped_column(String(100), nullable=False)  # References Avatar.avatar_id
     purchased_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_update: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[str] = mapped_column(String(100), nullable=True)
 
     user: Mapped["GameUser"] = relationship("GameUser", back_populates="owned_avatars")
