@@ -474,9 +474,13 @@ def get_avatar_price(db_session, avatar_id):
 # Game API: Get all available avatars (for marketplace)
 @app.route('/games/01/api/avatars', methods=['GET'])
 def game_get_all_avatars():
-    """Get list of all available avatars with their details"""
+    """Get list of all available avatars with their details - only public avatars"""
     with Session(db_engine) as db_session:
-        avatars = db_session.query(Avatar).filter(Avatar.active == True).all()
+        # Only get avatars from the public folder (filter by image_path)
+        avatars = db_session.query(Avatar).filter(
+            Avatar.active == True,
+            Avatar.image_path.like('%/public/%')
+        ).all()
 
         avatar_list = [{
             'avatar_id': avatar.avatar_id,
@@ -487,7 +491,7 @@ def game_get_all_avatars():
             'number_of_users': avatar.number_of_users
         } for avatar in avatars]
 
-        # Always include default avatar
+        # Always include default avatar at the beginning
         avatar_list.insert(0, {
             'avatar_id': 'avatar-default',
             'name': 'Default Avatar',
