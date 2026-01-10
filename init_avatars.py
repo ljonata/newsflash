@@ -17,7 +17,7 @@ def main():
             'name': 'Default Avatar',
             'price': 0,
             'creator_name': 'System',
-            'image_path': 'img/avatars/public/avatar-default.png',
+            'image_path': 'games/img/avatars/public/avatar-default.png',
             'is_public': True,
             'status': 'active'
         },
@@ -26,7 +26,7 @@ def main():
             'name': 'Green Erik',
             'price': 50,
             'creator_name': None,
-            'image_path': 'img/avatars/public/erik-green.png',
+            'image_path': 'games/img/avatars/public/erik-green.png',
             'is_public': True,
             'status': 'active'
         },
@@ -35,7 +35,7 @@ def main():
             'name': 'Smart Erik',
             'price': 100,
             'creator_name': None,
-            'image_path': 'img/avatars/public/erik-smart.png',
+            'image_path': 'games/img/avatars/public/erik-smart.png',
             'is_public': True,
             'status': 'active'
         },
@@ -44,7 +44,7 @@ def main():
             'name': 'Rock n Roll Erik',
             'price': 150,
             'creator_name': None,
-            'image_path': 'img/avatars/public/erik-rocknroll.png',
+            'image_path': 'games/img/avatars/public/erik-rocknroll.png',
             'is_public': True,
             'status': 'active'
         },
@@ -53,7 +53,7 @@ def main():
             'name': 'Happy Kid Erik',
             'price': 200,
             'creator_name': None,
-            'image_path': 'img/avatars/public/erik-kidhappyman.png',
+            'image_path': 'games/img/avatars/public/erik-kidhappyman.png',
             'is_public': True,
             'status': 'active'
         },
@@ -62,7 +62,7 @@ def main():
             'name': 'Fart Man Erik',
             'price': 250,
             'creator_name': None,
-            'image_path': 'img/avatars/public/erik-fartman.png',
+            'image_path': 'games/img/avatars/public/erik-fartman.png',
             'is_public': True,
             'status': 'active'
         },
@@ -71,7 +71,7 @@ def main():
             'name': 'Monster Key Erik',
             'price': 300,
             'creator_name': None,
-            'image_path': 'img/avatars/public/erik-monsterkey.png',
+            'image_path': 'games/img/avatars/public/erik-monsterkey.png',
             'is_public': True,
             'status': 'active'
         },
@@ -80,7 +80,7 @@ def main():
             'name': 'Sick Man Erik',
             'price': 350,
             'creator_name': None,
-            'image_path': 'img/avatars/public/erik-sickman.png',
+            'image_path': 'games/img/avatars/public/erik-sickman.png',
             'is_public': True,
             'status': 'active'
         },
@@ -89,7 +89,7 @@ def main():
             'name': 'Rich Man Erik',
             'price': 500,
             'creator_name': None,
-            'image_path': 'img/avatars/public/erik-richman.png',
+            'image_path': 'games/img/avatars/public/erik-richman.png',
             'is_public': True,
             'status': 'active'
         }
