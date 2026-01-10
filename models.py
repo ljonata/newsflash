@@ -99,7 +99,8 @@ class Avatar(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)  # Display name
     price: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     creator_name: Mapped[str] = mapped_column(String(255), nullable=True)  # Creator/author name
-    image_path: Mapped[str] = mapped_column(String(500), nullable=False)  # Path to image file
+    image_path: Mapped[str] = mapped_column(String(500), nullable=False)  # Path to image file (can be in public or users folder)
+    is_public: Mapped[bool] = mapped_column(Boolean, default=True)  # True = shown in marketplace, False = private/hidden
     number_of_users: Mapped[int] = mapped_column(Integer, default=0)  # Count of users who own this avatar
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_update: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

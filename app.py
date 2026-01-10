@@ -476,10 +476,10 @@ def get_avatar_price(db_session, avatar_id):
 def game_get_all_avatars():
     """Get list of all available avatars with their details - only public avatars"""
     with Session(db_engine) as db_session:
-        # Only get avatars from the public folder (filter by image_path)
+        # Only get public avatars (regardless of folder location)
         avatars = db_session.query(Avatar).filter(
             Avatar.active == True,
-            Avatar.image_path.like('%/public/%')
+            Avatar.is_public == True
         ).all()
 
         avatar_list = [{
@@ -488,6 +488,7 @@ def game_get_all_avatars():
             'price': avatar.price,
             'creator_name': avatar.creator_name,
             'image_path': avatar.image_path,
+            'is_public': avatar.is_public,
             'number_of_users': avatar.number_of_users
         } for avatar in avatars]
 
@@ -498,6 +499,7 @@ def game_get_all_avatars():
             'price': 0,
             'creator_name': None,
             'image_path': 'img/avatars/public/avatar-default.png',
+            'is_public': True,
             'number_of_users': 0
         })
 

@@ -9,6 +9,8 @@ def main():
     engine = create_engine(Config.SQLALCHEMY_DATABASE_URI, pool_pre_ping=True)
 
     # Default avatars with their metadata
+    # Note: All avatars in /public folder are public by default
+    # Avatars in /users folder can be public or private based on is_public flag
     default_avatars = [
         {
             'avatar_id': 'avatar-default',
@@ -16,6 +18,7 @@ def main():
             'price': 0,
             'creator_name': 'System',
             'image_path': 'img/avatars/public/avatar-default.png',
+            'is_public': True,
             'status': 'active'
         },
         {
@@ -24,6 +27,7 @@ def main():
             'price': 50,
             'creator_name': None,
             'image_path': 'img/avatars/public/erik-green.png',
+            'is_public': True,
             'status': 'active'
         },
         {
@@ -32,6 +36,7 @@ def main():
             'price': 100,
             'creator_name': None,
             'image_path': 'img/avatars/public/erik-smart.png',
+            'is_public': True,
             'status': 'active'
         },
         {
@@ -40,6 +45,7 @@ def main():
             'price': 150,
             'creator_name': None,
             'image_path': 'img/avatars/public/erik-rocknroll.png',
+            'is_public': True,
             'status': 'active'
         },
         {
@@ -48,6 +54,7 @@ def main():
             'price': 200,
             'creator_name': None,
             'image_path': 'img/avatars/public/erik-kidhappyman.png',
+            'is_public': True,
             'status': 'active'
         },
         {
@@ -56,6 +63,7 @@ def main():
             'price': 250,
             'creator_name': None,
             'image_path': 'img/avatars/public/erik-fartman.png',
+            'is_public': True,
             'status': 'active'
         },
         {
@@ -64,6 +72,7 @@ def main():
             'price': 300,
             'creator_name': None,
             'image_path': 'img/avatars/public/erik-monsterkey.png',
+            'is_public': True,
             'status': 'active'
         },
         {
@@ -72,6 +81,7 @@ def main():
             'price': 350,
             'creator_name': None,
             'image_path': 'img/avatars/public/erik-sickman.png',
+            'is_public': True,
             'status': 'active'
         },
         {
@@ -80,6 +90,7 @@ def main():
             'price': 500,
             'creator_name': None,
             'image_path': 'img/avatars/public/erik-richman.png',
+            'is_public': True,
             'status': 'active'
         }
     ]
@@ -101,6 +112,7 @@ def main():
                 price=avatar_data['price'],
                 creator_name=avatar_data['creator_name'],
                 image_path=avatar_data['image_path'],
+                is_public=avatar_data.get('is_public', True),
                 number_of_users=0,
                 active=True,
                 status=avatar_data.get('status', 'active')
