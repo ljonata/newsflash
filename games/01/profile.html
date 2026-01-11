@@ -344,6 +344,7 @@
         const API_URL = '/games/01/api';
 
         let userData = null;
+        let avatarCatalog = {}; // Map of avatar_id -> image_path
 
         function checkAuth() {
             const userStr = localStorage.getItem('user');
@@ -376,7 +377,31 @@
         }
 
         function getAvatarUrl(avatarId) {
-            return `/games/img/${avatarId}.png`;
+            // Look up image path from catalog, fallback to default path
+            if (avatarCatalog[avatarId]) {
+                return `/${avatarCatalog[avatarId]}`;
+            }
+            // Fallback for default avatar
+            if (avatarId === 'avatar-default') {
+                return '/games/img/avatars/public/avatar-default.png';
+            }
+            // Legacy fallback
+            return `/games/img/avatars/public/${avatarId}.png`;
+        }
+
+        async function loadAvatarCatalog() {
+            try {
+                const response = await fetch(`${API_URL}/avatars`);
+                if (response.ok) {
+                    const data = await response.json();
+                    // Build lookup map of avatar_id -> image_path
+                    data.avatars.forEach(avatar => {
+                        avatarCatalog[avatar.avatar_id] = avatar.image_path;
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading avatar catalog:', error);
+            }
         }
 
         function renderProfile(user) {
@@ -589,6 +614,9 @@
             if (!user) return;
 
             updateTopBar(user);
+
+            // Load avatar catalog first to get correct image paths
+            await loadAvatarCatalog();
 
             // First render with local data immediately
             renderProfile(user);
