@@ -129,7 +129,7 @@ def main():
             ).first()
 
             if existing:
-                print(f"⊘ Skipped (already exists): {avatar_data['name']} ({avatar_data['avatar_id']})")
+                print(f"[SKIP] Already exists: {avatar_data['name']} ({avatar_data['avatar_id']})")
                 skipped_count += 1
                 continue
 
@@ -146,13 +146,13 @@ def main():
                 status='active'
             )
             session.add(avatar)
-            print(f"✓ Added: {avatar_data['name']} ({avatar_data['avatar_id']}) - {'PUBLIC' if avatar_data['is_public'] else 'PRIVATE'}")
+            print(f"[ADD] {avatar_data['name']} ({avatar_data['avatar_id']}) - {'PUBLIC' if avatar_data['is_public'] else 'PRIVATE'}")
             added_count += 1
 
         session.commit()
 
         print(f"\n{'='*60}")
-        print(f"✅ Complete!")
+        print(f"Complete!")
         print(f"   Added: {added_count}")
         print(f"   Skipped: {skipped_count}")
         print(f"   Total: {len(avatars_to_add)}")
