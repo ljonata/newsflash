@@ -348,7 +348,7 @@ def game_profile():
                 'highest_level_at': user.highest_level_at.isoformat() if user.highest_level_at else None,
                 'owned_avatars': owned_avatars,
                 'selected_avatar': user.selected_avatar or 'avatar-default',
-                'avatars_count': user.avatars
+                'avatars_count': len(owned_avatars)
             }
         })
 
@@ -431,6 +431,8 @@ def game_update_progress():
 # Game API: Leaderboard
 @app.route('/games/01/api/leaderboard', methods=['GET'])
 def game_leaderboard():
+    from sqlalchemy import func
+
     with Session(db_engine) as db_session:
         # Ranking 1: Highest level achieved, tie-break by earliest date
         level_leaders = db_session.query(GameUser).order_by(
@@ -445,18 +447,25 @@ def game_leaderboard():
             'achieved_at': u.highest_level_at.strftime('%Y-%m-%d') if u.highest_level_at else None
         } for i, u in enumerate(level_leaders)]
 
-        # Ranking 2: Most avatars, tie-break by coins
-        avatar_leaders = db_session.query(GameUser).order_by(
-            GameUser.avatars.desc(),
+        # Ranking 2: Most avatars (count from game_user_avatars), tie-break by coins
+        avatar_counts = db_session.query(
+            GameUser.id,
+            GameUser.name,
+            GameUser.coins,
+            func.count(GameUserAvatar.id).label('avatar_count')
+        ).outerjoin(GameUserAvatar, GameUser.id == GameUserAvatar.user_id).group_by(
+            GameUser.id
+        ).order_by(
+            func.count(GameUserAvatar.id).desc(),
             GameUser.coins.desc()
         ).limit(15).all()
 
         avatar_ranking = [{
             'rank': i + 1,
-            'name': u.name,
-            'avatars': u.avatars,
-            'coins': u.coins
-        } for i, u in enumerate(avatar_leaders)]
+            'name': row.name,
+            'avatars': row.avatar_count,
+            'coins': row.coins
+        } for i, row in enumerate(avatar_counts)]
 
         return jsonify({
             'level_ranking': level_ranking,
@@ -565,7 +574,6 @@ def game_buy_avatar():
 
         # Deduct coins and create avatar ownership
         user.coins -= price
-        user.avatars += 1  # Increment avatar count for leaderboard
 
         new_avatar = GameUserAvatar(
             user_id=user.id,
@@ -590,7 +598,7 @@ def game_buy_avatar():
             'message': f'Successfully purchased {avatar_id}!',
             'coins': user.coins,
             'owned_avatars': owned_avatars,
-            'avatars_count': user.avatars
+            'avatars_count': len(owned_avatars)
         })
 
 # Game API: Set selected avatar
