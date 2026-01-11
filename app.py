@@ -474,13 +474,13 @@ def get_avatar_price(db_session, avatar_id):
 # Game API: Get all available avatars (for marketplace)
 @app.route('/games/01/api/avatars', methods=['GET'])
 def game_get_all_avatars():
-    """Get list of all available avatars with their details - only public avatars"""
+    """Get list of all available avatars with their details - only public avatars from database"""
     with Session(db_engine) as db_session:
-        # Only get public avatars (regardless of folder location)
+        # Only get public avatars from database
         avatars = db_session.query(Avatar).filter(
             Avatar.active == True,
             Avatar.is_public == True
-        ).all()
+        ).order_by(Avatar.price.asc()).all()
 
         avatar_list = [{
             'avatar_id': avatar.avatar_id,
@@ -492,16 +492,17 @@ def game_get_all_avatars():
             'number_of_users': avatar.number_of_users
         } for avatar in avatars]
 
-        # Always include default avatar at the beginning
-        avatar_list.insert(0, {
-            'avatar_id': 'avatar-default',
-            'name': 'Default Avatar',
-            'price': 0,
-            'creator_name': None,
-            'image_path': 'img/avatars/public/avatar-default.png',
-            'is_public': True,
-            'number_of_users': 0
-        })
+        # Add default avatar at beginning if not already in list
+        if not any(a['avatar_id'] == 'avatar-default' for a in avatar_list):
+            avatar_list.insert(0, {
+                'avatar_id': 'avatar-default',
+                'name': 'Default Avatar',
+                'price': 0,
+                'creator_name': None,
+                'image_path': 'games/img/avatars/public/avatar-default.png',
+                'is_public': True,
+                'number_of_users': 0
+            })
 
         return jsonify({'avatars': avatar_list})
 
