@@ -282,7 +282,7 @@ def game_register():
         db_session.add(user)
         db_session.commit()
 
-        return jsonify({'message': 'User registered successfully', 'userId': user.id}), 201
+        return jsonify({'message': 'User registered successfully', 'userId': str(user.id)}), 201
 
 # Game API: Login
 @app.route('/games/01/api/login', methods=['POST'])
@@ -306,7 +306,7 @@ def game_login():
 
         # Generate JWT token (7 days expiry)
         token = jwt.encode({
-            'id': user.id,
+            'id': str(user.id),
             'username': user.username,
             'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
         }, GAME_JWT_SECRET, algorithm='HS256')
@@ -315,7 +315,7 @@ def game_login():
             'message': 'Login successful',
             'token': token,
             'user': {
-                'id': user.id,
+                'id': str(user.id),
                 'name': user.name,
                 'username': user.username,
                 'coins': user.coins,
@@ -340,7 +340,7 @@ def game_profile():
 
         return jsonify({
             'user': {
-                'id': user.id,
+                'id': str(user.id),
                 'name': user.name,
                 'username': user.username,
                 'coins': user.coins,
