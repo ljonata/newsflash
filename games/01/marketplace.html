@@ -111,6 +111,11 @@
             font-size: 12px;
             margin-top: 5px;
         }
+        .avatar-owners {
+            color: #888;
+            font-size: 10px;
+            margin-top: 3px;
+        }
         .avatar-status {
             font-size: 11px;
             margin-top: 5px;
@@ -292,12 +297,15 @@
 
                 const priceHtml = `${avatar.price} coins`;
                 const imgPath = avatar.image_path || `games/img/${avatar.id}.png`;
+                const ownerCount = avatar.number_of_users || 0;
+                const ownersText = ownerCount === 1 ? '1 owner' : `${ownerCount} owners`;
 
                 html += `
                     <div class="${cardClass}" onclick="handleAvatarClick('${avatar.id}')" data-id="${avatar.id}">
                         <img src="/${imgPath}" alt="${avatar.name}" class="avatar-image">
                         <div class="avatar-name">${avatar.name}</div>
                         <div class="avatar-price">${priceHtml}</div>
+                        <div class="avatar-owners">${ownersText}</div>
                         ${statusHtml}
                     </div>
                 `;
