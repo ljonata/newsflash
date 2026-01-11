@@ -2,12 +2,18 @@
 Migration script to convert game_users.id from INTEGER to UUID.
 Also recreates game_user_avatars table with proper UUID foreign key.
 
-Run this on Render shell:
-    python migrate_game_users_to_uuid.py
+Run from repo root:
+    python scripts/migrate_game_users_to_uuid.py
 
 WARNING: This will preserve user data but reset avatar ownership.
 """
+import sys
 import uuid
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from sqlalchemy import create_engine, text, inspect
 from config import Config
 

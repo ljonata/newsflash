@@ -22,11 +22,11 @@ pip install -r requirements.txt
 flask --app app run --debug
 
 # Initialize database
-python init_db.py
-python init_db.py --create-user --email user@example.com --keyword secretword123
+python scripts/init_db.py
+python scripts/init_db.py --create-user --email user@example.com --keyword secretword123
 
 # Populate avatars from image files
-python games/01/populate_avatars.py
+python scripts/populate_avatars_from_images.py
 
 # Production (Render.com)
 gunicorn app:app --workers 3 --threads 2 --bind 0.0.0.0:$PORT --timeout 120

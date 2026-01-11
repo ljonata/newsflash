@@ -1,7 +1,15 @@
 """
 Migration script to add new columns to game tables and create avatars table.
-Run this after deploying the new code to add missing columns.
+
+Run from repo root:
+    python scripts/migrate_game_tables.py
 """
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from sqlalchemy import create_engine, text, inspect
 from config import Config
 

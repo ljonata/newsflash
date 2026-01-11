@@ -1,4 +1,15 @@
-"""Initialize avatars table with default avatars."""
+"""
+Initialize avatars table with default avatars.
+
+Run from repo root:
+    python scripts/init_avatars.py
+"""
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from config import Config

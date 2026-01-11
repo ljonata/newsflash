@@ -2,9 +2,15 @@
 Reset and repopulate avatars table on production.
 This clears all avatars and repopulates from scratch.
 
-Run on Render shell:
-    python reset_avatars.py
+Run from repo root:
+    python scripts/reset_avatars.py
 """
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 from config import Config
