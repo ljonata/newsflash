@@ -665,8 +665,8 @@ function checkWin() {
             clearInterval(houseTimerInterval);
         }
 
-        // Award coins based on level (level * 10 coins)
-        const coinsEarned = currentLevel * 10;
+        // Award coins based on level (1 coin for level 1, 2 for level 2, etc.)
+        const coinsEarned = currentLevel;
         playerCoins += coinsEarned;
         winMessage.textContent = `You Win! +${coinsEarned} coins`;
         winMessage.style.display = 'block';
