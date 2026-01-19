@@ -1124,10 +1124,12 @@ function restartLevel() {
 }
 
 // Bomb system functions
-const bombStatusDisplay = document.getElementById('bomb-status');
-const bombBtn = document.getElementById('bomb-btn');
-
 function updateBombStatus() {
+    const bombStatusDisplay = document.getElementById('bomb-status');
+    const bombBtn = document.getElementById('bomb-btn');
+
+    if (!bombStatusDisplay || !bombBtn) return; // Safety check
+
     if (bombActive && bombCountdown > 0) {
         bombStatusDisplay.textContent = `Bomb: ${bombCountdown}s`;
         bombBtn.disabled = true;
