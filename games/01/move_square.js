@@ -104,6 +104,19 @@ let monsterInterval = null;
 let houseTimerInterval = null;
 let playerCoins = 0;
 
+// Bomb system
+const BOMB_FUSE_TIME = 5; // seconds before explosion
+const EXPLOSION_DURATION = 1000; // milliseconds the explosion lasts
+const EXPLOSION_RADIUS = 8; // pixels of damage radius (constrained by walls)
+let bombActive = false; // whether a bomb is currently placed
+let bombUsed = false; // whether the player has used their bomb this life/level
+let bombElement = null;
+let bombX = 0;
+let bombY = 0;
+let bombCountdown = 0;
+let bombCountdownInterval = null;
+let explosionCells = []; // track explosion elements for cleanup
+
 // House system
 const HOUSE_MAX_STAY = 30; // seconds player can stay in house
 const HOUSE_COOLDOWN = 40; // seconds before house can be used again
@@ -471,6 +484,11 @@ function startLevel() {
     createMonsters();
     updateLevelDisplay();
 
+    // Reset bomb for new level (player gets a fresh bomb each level)
+    if (typeof resetBomb === 'function') {
+        resetBomb();
+    }
+
     // Clear existing interval and start new one
     if (monsterInterval) {
         clearInterval(monsterInterval);
@@ -650,6 +668,11 @@ function triggerLose() {
     }
     if (houseTimerInterval) {
         clearInterval(houseTimerInterval);
+    }
+    // Stop bomb countdown if active
+    if (bombCountdownInterval) {
+        clearInterval(bombCountdownInterval);
+        bombCountdownInterval = null;
     }
     loseMessage.style.display = 'block';
 }
@@ -846,6 +869,10 @@ document.addEventListener('keydown', (e) => {
         case 'ArrowRight':
             direction = 'right';
             break;
+        case ' ': // Spacebar to spawn bomb
+            e.preventDefault();
+            spawnBomb();
+            return;
         default:
             return;
     }
@@ -1093,5 +1120,207 @@ function restartLevel() {
     pauseBtn.classList.remove('paused');
 
     // Restart the current level
+    startLevel();
+}
+
+// Bomb system functions
+const bombStatusDisplay = document.getElementById('bomb-status');
+const bombBtn = document.getElementById('bomb-btn');
+
+function updateBombStatus() {
+    if (bombActive && bombCountdown > 0) {
+        bombStatusDisplay.textContent = `Bomb: ${bombCountdown}s`;
+        bombBtn.disabled = true;
+    } else if (bombUsed) {
+        bombStatusDisplay.textContent = 'Bomb: Used';
+        bombBtn.disabled = true;
+    } else {
+        bombStatusDisplay.textContent = 'Bomb: Ready';
+        bombBtn.disabled = false;
+    }
+}
+
+function spawnBomb() {
+    if (gameOver || gamePaused || bombActive || bombUsed) return;
+
+    // Place bomb at player's current position
+    bombX = playerX;
+    bombY = playerY;
+    bombActive = true;
+    bombUsed = true;
+    bombCountdown = BOMB_FUSE_TIME;
+
+    // Create bomb element
+    bombElement = document.createElement('div');
+    bombElement.className = 'bomb';
+    bombElement.style.left = bombX * gridSize + 'px';
+    bombElement.style.top = bombY * gridSize + 'px';
+    bombElement.style.width = gridSize + 'px';
+    bombElement.style.height = gridSize + 'px';
+
+    // Add countdown display inside bomb
+    const countdownEl = document.createElement('div');
+    countdownEl.className = 'bomb-countdown';
+    countdownEl.textContent = bombCountdown;
+    bombElement.appendChild(countdownEl);
+
+    container.appendChild(bombElement);
+    updateBombStatus();
+
+    // Start countdown
+    bombCountdownInterval = setInterval(() => {
+        if (gamePaused) return; // Don't count down while paused
+
+        bombCountdown--;
+        if (bombElement) {
+            const countdownEl = bombElement.querySelector('.bomb-countdown');
+            if (countdownEl) countdownEl.textContent = bombCountdown;
+        }
+        updateBombStatus();
+
+        if (bombCountdown <= 0) {
+            clearInterval(bombCountdownInterval);
+            bombCountdownInterval = null;
+            triggerExplosion();
+        }
+    }, 1000);
+}
+
+// Calculate explosion area (flood fill constrained by walls, limited to 8 grid cells distance)
+function calculateExplosionArea(startX, startY) {
+    const explosionArea = [];
+    const visited = new Set();
+    const queue = [{ x: startX, y: startY, distance: 0 }];
+    const maxDistance = EXPLOSION_RADIUS; // 8 cells
+
+    while (queue.length > 0) {
+        const { x, y, distance } = queue.shift();
+        const key = `${x},${y}`;
+
+        if (visited.has(key)) continue;
+        if (x < 0 || x >= 30 || y < 0 || y >= 30) continue;
+        if (maze[y][x] === 1) continue; // Wall blocks explosion
+        if (distance > maxDistance) continue;
+
+        visited.add(key);
+        explosionArea.push({ x, y });
+
+        // Add adjacent cells (4-directional spread)
+        if (distance < maxDistance) {
+            queue.push({ x: x + 1, y, distance: distance + 1 });
+            queue.push({ x: x - 1, y, distance: distance + 1 });
+            queue.push({ x, y: y + 1, distance: distance + 1 });
+            queue.push({ x, y: y - 1, distance: distance + 1 });
+        }
+    }
+
+    return explosionArea;
+}
+
+function triggerExplosion() {
+    // Remove bomb element
+    if (bombElement) {
+        bombElement.remove();
+        bombElement = null;
+    }
+
+    // Calculate explosion area
+    const explosionArea = calculateExplosionArea(bombX, bombY);
+
+    // Create visual explosion effects
+    for (const cell of explosionArea) {
+        const explosionEl = document.createElement('div');
+        explosionEl.className = 'explosion-cell';
+        explosionEl.style.left = cell.x * gridSize + 'px';
+        explosionEl.style.top = cell.y * gridSize + 'px';
+        explosionEl.style.width = gridSize + 'px';
+        explosionEl.style.height = gridSize + 'px';
+        container.appendChild(explosionEl);
+        explosionCells.push(explosionEl);
+    }
+
+    // Check for monster kills
+    const monstersToRemove = [];
+    for (let i = 0; i < monsters.length; i++) {
+        const monster = monsters[i];
+        for (const cell of explosionArea) {
+            if (monster.x === cell.x && monster.y === cell.y) {
+                monstersToRemove.push(i);
+                break;
+            }
+        }
+    }
+
+    // Remove killed monsters (in reverse order to maintain indices)
+    for (let i = monstersToRemove.length - 1; i >= 0; i--) {
+        const idx = monstersToRemove[i];
+        monsters[idx].element.remove();
+        if (monsters[idx] === smartMonster) {
+            smartMonster = null;
+        }
+        monsters.splice(idx, 1);
+    }
+
+    // Check if player is in explosion area
+    let playerKilled = false;
+    for (const cell of explosionArea) {
+        if (playerX === cell.x && playerY === cell.y) {
+            playerKilled = true;
+            break;
+        }
+    }
+
+    // After explosion duration, clean up and check player death
+    setTimeout(() => {
+        // Remove explosion visuals
+        for (const el of explosionCells) {
+            el.remove();
+        }
+        explosionCells = [];
+        bombActive = false;
+        updateBombStatus();
+
+        // Kill player if they were in the explosion
+        if (playerKilled && !gameOver) {
+            triggerLose();
+        }
+    }, EXPLOSION_DURATION);
+}
+
+function resetBomb() {
+    // Clear any active bomb
+    if (bombCountdownInterval) {
+        clearInterval(bombCountdownInterval);
+        bombCountdownInterval = null;
+    }
+    if (bombElement) {
+        bombElement.remove();
+        bombElement = null;
+    }
+    // Clear any explosion effects
+    for (const el of explosionCells) {
+        el.remove();
+    }
+    explosionCells = [];
+
+    bombActive = false;
+    bombUsed = false;
+    bombX = 0;
+    bombY = 0;
+    bombCountdown = 0;
+    updateBombStatus();
+}
+
+// Restart game after death (resets bomb availability)
+function restartAfterDeath() {
+    if (!gameOver) return;
+
+    // Reset pause state
+    gamePaused = false;
+    const pauseBtn = document.getElementById('pause-btn');
+    pauseBtn.textContent = 'Pause';
+    pauseBtn.classList.remove('paused');
+
+    // Restart the current level (bomb will be reset in startLevel)
     startLevel();
 }
