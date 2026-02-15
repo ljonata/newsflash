@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Defense</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #1a1a2e;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 300;
+        }
+        #user-info {
+            color: #fff;
+            font-size: 14px;
+        }
+        #user-info .username { color: gold; font-weight: bold; }
+        #user-info .coins { color: lime; margin-left: 15px; }
+        .nav-links { display: flex; gap: 15px; }
+        .nav-links a {
+            color: #e94560;
+            font-size: 14px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .nav-links a:hover { color: #fff; text-decoration: underline; }
+
+        #game-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 60px;
+            gap: 15px;
+        }
+        h1 {
+            color: gold;
+            font-size: 28px;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #status-bar {
+            display: flex;
+            gap: 25px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        #status-bar .plants-info { color: #4CAF50; }
+        #status-bar .wave-info { color: #ff9800; }
+        #status-bar .kills-info { color: #e94560; }
+
+        #game-container {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            border: 3px solid #555;
+            background-color: #2d5016;
+        }
+        .cell {
+            width: 60px;
+            height: 60px;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+        .cell:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        /* Alternating row colors for garden feel */
+        .cell.row-even {
+            background-color: #336b1c;
+        }
+        .cell.row-odd {
+            background-color: #2d5016;
+        }
+        /* Right edge highlight (zombie spawn lane) */
+        .cell.col-9 {
+            background-color: rgba(100, 0, 0, 0.3);
+        }
+
+        /* Plant styling */
+        .plant {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 40% 40%, #66bb6a, #2e7d32);
+            border-radius: 50%;
+            z-index: 5;
+        }
+        .plant::before {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: #000;
+            border-radius: 50%;
+            top: 15px;
+            left: 10px;
+            box-shadow: 18px 0 0 #000;
+        }
+        .plant::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 8px;
+            background-color: #1b5e20;
+            border-radius: 0 0 10px 10px;
+            bottom: 10px;
+            left: 15px;
+        }
+
+        /* Zombie styling */
+        .zombie {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 40% 40%, #8e44ad, #4a0e6b);
+            border-radius: 8px;
+            z-index: 6;
+            transition: left 0.3s, top 0.3s;
+        }
+        .zombie::before {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #ff0000;
+            border-radius: 50%;
+            top: 12px;
+            left: 8px;
+            box-shadow: 18px 0 0 #ff0000;
+        }
+        .zombie::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 6px;
+            background-color: #ff0000;
+            border-radius: 3px;
+            bottom: 12px;
+            left: 13px;
+        }
+
+        /* Projectile styling */
+        .projectile {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle, #ffff00, #ff9800);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 7;
+            box-shadow: 0 0 6px #ffff00;
+        }
+
+        #message-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #message-overlay.active { display: flex; }
+        #message-text {
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            margin-bottom: 20px;
+        }
+        #message-sub {
+            font-size: 20px;
+            color: #ccc;
+            margin-bottom: 30px;
+        }
+        #retry-btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: #fff;
+            transition: transform 0.2s;
+        }
+        #retry-btn:hover { transform: scale(1.05); }
+
+        /* Responsive */
+        @media (max-width: 700px) {
+            .cell {
+                width: 36px;
+                height: 36px;
+            }
+            .plant {
+                top: 3px; left: 3px;
+                width: 30px; height: 30px;
+            }
+            .plant::before {
+                width: 7px; height: 7px;
+                top: 8px; left: 5px;
+                box-shadow: 11px 0 0 #000;
+            }
+            .plant::after {
+                width: 12px; height: 5px;
+                bottom: 5px; left: 9px;
+            }
+            .zombie {
+                top: 3px; left: 3px;
+                width: 30px; height: 30px;
+            }
+            .zombie::before {
+                width: 6px; height: 6px;
+                top: 7px; left: 4px;
+                box-shadow: 11px 0 0 #ff0000;
+            }
+            .zombie::after {
+                width: 14px; height: 4px;
+                bottom: 7px; left: 8px;
+            }
+            .projectile {
+                width: 8px; height: 8px;
+            }
+            h1 { font-size: 22px; }
+            #status-bar { font-size: 13px; gap: 15px; }
+            #message-text { font-size: 32px; }
+            #message-sub { font-size: 16px; }
+        }
+        @media (max-width: 420px) {
+            .cell {
+                width: 28px;
+                height: 28px;
+            }
+            .plant {
+                top: 2px; left: 2px;
+                width: 24px; height: 24px;
+            }
+            .plant::before {
+                width: 5px; height: 5px;
+                top: 6px; left: 4px;
+                box-shadow: 9px 0 0 #000;
+            }
+            .plant::after {
+                width: 10px; height: 4px;
+                bottom: 4px; left: 7px;
+            }
+            .zombie {
+                top: 2px; left: 2px;
+                width: 24px; height: 24px;
+            }
+            .zombie::before {
+                width: 5px; height: 5px;
+                top: 5px; left: 3px;
+                box-shadow: 9px 0 0 #ff0000;
+            }
+            .zombie::after {
+                width: 12px; height: 3px;
+                bottom: 5px; left: 6px;
+            }
+            .projectile {
+                width: 6px; height: 6px;
+            }
+            h1 { font-size: 18px; }
+            #status-bar { font-size: 11px; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="top-bar">
+        <div id="user-info">
+            <span id="guest-notice">Playing as Guest - <a href="/games/01/login.html" style="color: #e94560;">Login to save</a></span>
+            <span id="logged-user" style="display: none;">
+                Welcome, <span class="username" id="display-name"></span>
+                <span class="coins" id="display-coins"></span>
+            </span>
+        </div>
+        <div class="nav-links">
+            <a href="/games/01/home.html">Home</a>
+            <a id="auth-link" href="/games/01/login.html">Login</a>
+        </div>
+    </div>
+
+    <div id="game-wrapper">
+        <h1>Plant Defense</h1>
+        <div id="status-bar">
+            <span class="plants-info">Plants: <span id="plants-count">3/3</span></span>
+            <span class="wave-info">Wave: <span id="wave-count">1</span></span>
+            <span class="kills-info">Kills: <span id="kills-count">0</span></span>
+        </div>
+        <div id="game-container"></div>
+    </div>
+
+    <div id="message-overlay">
+        <div id="message-text"></div>
+        <div id="message-sub"></div>
+        <button id="retry-btn" onclick="restartGame()">Play Again</button>
+    </div>
+
+    <script>
+        // ========== AUTH ==========
+        const API_URL = '/games/01/api';
+
+        function initUserDisplay() {
+            const userStr = localStorage.getItem('user');
+            const authLink = document.getElementById('auth-link');
+            const guestNotice = document.getElementById('guest-notice');
+            const loggedUser = document.getElementById('logged-user');
+
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                guestNotice.style.display = 'none';
+                loggedUser.style.display = 'inline';
+                document.getElementById('display-name').textContent = user.name;
+                document.getElementById('display-coins').textContent = `Coins: ${user.coins || 0}`;
+                authLink.textContent = 'Logout';
+                authLink.href = '#';
+                authLink.onclick = handleLogout;
+            } else {
+                guestNotice.style.display = 'inline';
+                loggedUser.style.display = 'none';
+                authLink.textContent = 'Login';
+                authLink.href = '/games/01/login.html';
+                authLink.onclick = null;
+            }
+        }
+
+        function handleLogout(e) {
+            e.preventDefault();
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            initUserDisplay();
+        }
+
+        // ========== GAME STATE ==========
+        const ROWS = 5;
+        const COLS = 10;
+        const MAX_PLANTS = 3;
+        const PLANT_SHOOT_INTERVAL = 3000; // ms
+        const ZOMBIE_MOVE_INTERVAL = 4000; // ms
+        const PROJECTILE_MOVE_INTERVAL = 400; // ms
+        const ZOMBIE_SPAWN_INTERVAL = 5000; // ms (initial, speeds up)
+
+        let gameOver = false;
+        let plants = []; // { row, col, element, shootInterval }
+        let zombies = []; // { row, col, element, hp }
+        let projectiles = []; // { row, col, element }
+        let kills = 0;
+        let wave = 1;
+        let zombiesSpawned = 0;
+        let zombiesPerWave = 5;
+
+        let zombieMoveTimer = null;
+        let projectileMoveTimer = null;
+        let zombieSpawnTimer = null;
+
+        const grid = []; // 2D array of cell elements
+        const container = document.getElementById('game-container');
+
+        // ========== GRID SETUP ==========
+        function buildGrid() {
+            container.innerHTML = '';
+            grid.length = 0;
+
+            for (let r = 0; r < ROWS; r++) {
+                grid[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = `cell ${r % 2 === 0 ? 'row-even' : 'row-odd'} col-${c}`;
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    cell.addEventListener('click', () => handleCellClick(r, c));
+                    container.appendChild(cell);
+                    grid[r][c] = cell;
+                }
+            }
+        }
+
+        // ========== PLANT LOGIC ==========
+        function handleCellClick(row, col) {
+            if (gameOver) return;
+            if (col === COLS - 1) return; // Can't plant on zombie spawn column
+            if (plants.length >= MAX_PLANTS) return;
+
+            // Check if cell already has a plant
+            if (plants.some(p => p.row === row && p.col === col)) return;
+
+            // Check if cell has a zombie
+            if (zombies.some(z => z.row === row && z.col === col)) return;
+
+            placePlant(row, col);
+        }
+
+        function placePlant(row, col) {
+            const plantEl = document.createElement('div');
+            plantEl.className = 'plant';
+            grid[row][col].appendChild(plantEl);
+
+            const shootInterval = setInterval(() => {
+                if (gameOver) return;
+                shootProjectile(row, col);
+            }, PLANT_SHOOT_INTERVAL);
+
+            const plant = { row, col, element: plantEl, shootInterval };
+            plants.push(plant);
+            updateStatus();
+        }
+
+        function removePlant(plant) {
+            clearInterval(plant.shootInterval);
+            plant.element.remove();
+            plants = plants.filter(p => p !== plant);
+            updateStatus();
+        }
+
+        // ========== PROJECTILE LOGIC ==========
+        function shootProjectile(fromRow, fromCol) {
+            // Only shoot if there's a zombie in the same row to the right
+            const hasTarget = zombies.some(z => z.row === fromRow && z.col > fromCol);
+            if (!hasTarget) return;
+
+            const projEl = document.createElement('div');
+            projEl.className = 'projectile';
+            grid[fromRow][fromCol].appendChild(projEl);
+
+            projectiles.push({ row: fromRow, col: fromCol, element: projEl });
+        }
+
+        function moveProjectiles() {
+            if (gameOver) return;
+
+            const toRemove = [];
+
+            for (const proj of projectiles) {
+                // Remove from current cell
+                proj.element.remove();
+
+                proj.col += 1;
+
+                // Off the grid
+                if (proj.col >= COLS) {
+                    toRemove.push(proj);
+                    continue;
+                }
+
+                // Check zombie collision at new position
+                const hitZombie = zombies.find(z => z.row === proj.row && z.col === proj.col);
+                if (hitZombie) {
+                    hitZombie.hp -= 1;
+                    toRemove.push(proj);
+
+                    if (hitZombie.hp <= 0) {
+                        killZombie(hitZombie);
+                    }
+                    continue;
+                }
+
+                // Place in new cell
+                grid[proj.row][proj.col].appendChild(proj.element);
+            }
+
+            for (const p of toRemove) {
+                p.element.remove();
+                projectiles = projectiles.filter(x => x !== p);
+            }
+        }
+
+        // ========== ZOMBIE LOGIC ==========
+        function spawnZombie() {
+            if (gameOver) return;
+
+            // Check if wave is complete
+            if (zombiesSpawned >= zombiesPerWave) {
+                // Check if all zombies are dead
+                if (zombies.length === 0) {
+                    nextWave();
+                }
+                return;
+            }
+
+            const row = Math.floor(Math.random() * ROWS);
+
+            const zombieEl = document.createElement('div');
+            zombieEl.className = 'zombie';
+            grid[row][COLS - 1].appendChild(zombieEl);
+
+            zombies.push({ row, col: COLS - 1, element: zombieEl, hp: 1 });
+            zombiesSpawned++;
+        }
+
+        function moveZombies() {
+            if (gameOver) return;
+
+            for (const zombie of [...zombies]) {
+                // Remove from current cell
+                zombie.element.remove();
+
+                zombie.col -= 1;
+
+                // Reached left edge - game over
+                if (zombie.col < 0) {
+                    triggerLose();
+                    return;
+                }
+
+                // Check plant collision
+                const hitPlant = plants.find(p => p.row === zombie.row && p.col === zombie.col);
+                if (hitPlant) {
+                    removePlant(hitPlant);
+                    // Zombie stays in this cell after eating plant
+                }
+
+                // Place in new cell
+                grid[zombie.row][zombie.col].appendChild(zombie.element);
+            }
+        }
+
+        function killZombie(zombie) {
+            zombie.element.remove();
+            zombies = zombies.filter(z => z !== zombie);
+            kills++;
+            updateStatus();
+
+            // Check wave completion
+            if (zombiesSpawned >= zombiesPerWave && zombies.length === 0) {
+                nextWave();
+            }
+        }
+
+        // ========== WAVES ==========
+        function nextWave() {
+            wave++;
+            zombiesSpawned = 0;
+            zombiesPerWave = 5 + (wave - 1) * 2; // Increase zombies each wave
+            updateStatus();
+
+            // Speed up zombie spawning slightly each wave
+            clearInterval(zombieSpawnTimer);
+            const spawnDelay = Math.max(1500, ZOMBIE_SPAWN_INTERVAL - (wave - 1) * 300);
+            zombieSpawnTimer = setInterval(spawnZombie, spawnDelay);
+        }
+
+        // ========== GAME FLOW ==========
+        function updateStatus() {
+            document.getElementById('plants-count').textContent = `${MAX_PLANTS - plants.length}/${MAX_PLANTS}`;
+            document.getElementById('wave-count').textContent = wave;
+            document.getElementById('kills-count').textContent = kills;
+        }
+
+        function triggerLose() {
+            gameOver = true;
+            clearAllTimers();
+
+            const msgText = document.getElementById('message-text');
+            const msgSub = document.getElementById('message-sub');
+            msgText.style.color = '#e94560';
+            msgText.textContent = 'Game Over!';
+            msgSub.textContent = `You survived ${wave > 1 ? wave - 1 + ' waves' : 'wave 1'} and got ${kills} kills.`;
+            document.getElementById('message-overlay').classList.add('active');
+        }
+
+        function clearAllTimers() {
+            if (zombieMoveTimer) clearInterval(zombieMoveTimer);
+            if (projectileMoveTimer) clearInterval(projectileMoveTimer);
+            if (zombieSpawnTimer) clearInterval(zombieSpawnTimer);
+            for (const plant of plants) {
+                clearInterval(plant.shootInterval);
+            }
+        }
+
+        function restartGame() {
+            // Clear state
+            clearAllTimers();
+            for (const p of plants) p.element.remove();
+            for (const z of zombies) z.element.remove();
+            for (const pr of projectiles) pr.element.remove();
+
+            plants = [];
+            zombies = [];
+            projectiles = [];
+            kills = 0;
+            wave = 1;
+            zombiesSpawned = 0;
+            zombiesPerWave = 5;
+            gameOver = false;
+
+            document.getElementById('message-overlay').classList.remove('active');
+            buildGrid();
+            updateStatus();
+            startTimers();
+        }
+
+        function startTimers() {
+            zombieMoveTimer = setInterval(moveZombies, ZOMBIE_MOVE_INTERVAL);
+            projectileMoveTimer = setInterval(moveProjectiles, PROJECTILE_MOVE_INTERVAL);
+            zombieSpawnTimer = setInterval(spawnZombie, ZOMBIE_SPAWN_INTERVAL);
+
+            // Spawn first zombie after a short delay
+            setTimeout(spawnZombie, 2000);
+        }
+
+        // ========== INIT ==========
+        initUserDisplay();
+        buildGrid();
+        updateStatus();
+        startTimers();
+    </script>
+</body>
+</html>
