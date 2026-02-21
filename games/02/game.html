@@ -45,8 +45,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding-top: 60px;
-            gap: 15px;
+            padding-top: 55px;
+            gap: 10px;
         }
         h1 {
             color: gold;
@@ -60,10 +60,100 @@
             font-size: 16px;
             font-weight: bold;
         }
-        #status-bar .plants-info { color: #4CAF50; }
         #status-bar .wave-info { color: #ff9800; }
         #status-bar .kills-info { color: #e94560; }
 
+        #game-area {
+            display: flex;
+            gap: 0;
+        }
+
+        /* ===== PLANT PANEL (left side) ===== */
+        #plant-panel {
+            display: flex;
+            flex-direction: column;
+            background-color: #16213e;
+            border: 3px solid #555;
+            border-right: none;
+            width: 80px;
+        }
+        #sun-display {
+            text-align: center;
+            padding: 8px 4px;
+            background-color: #1a1a2e;
+            border-bottom: 2px solid #555;
+        }
+        #sun-icon {
+            font-size: 24px;
+            display: block;
+        }
+        #sun-count {
+            color: #ffdd00;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .plant-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 6px 4px;
+            cursor: pointer;
+            border-bottom: 1px solid #333;
+            transition: background-color 0.15s;
+            position: relative;
+        }
+        .plant-option:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .plant-option.selected {
+            background-color: rgba(76, 175, 80, 0.3);
+            box-shadow: inset 0 0 0 2px #4CAF50;
+        }
+        .plant-option.disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .plant-option .plant-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            margin-bottom: 3px;
+            position: relative;
+        }
+        .plant-option .plant-name {
+            color: #ccc;
+            font-size: 9px;
+            text-align: center;
+        }
+        .plant-option .plant-cost {
+            color: #ffdd00;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        /* Plant preview shapes in panel */
+        .preview-peashooter {
+            background: radial-gradient(circle at 40% 40%, #66bb6a, #2e7d32);
+            border-radius: 50%;
+        }
+        .preview-sunflower {
+            background: radial-gradient(circle at 40% 40%, #ffee58, #f9a825);
+            border-radius: 50%;
+        }
+        .preview-wallnut {
+            background: radial-gradient(circle at 40% 40%, #a1887f, #6d4c41);
+            border-radius: 12px;
+        }
+        .preview-snowpea {
+            background: radial-gradient(circle at 40% 40%, #81d4fa, #0288d1);
+            border-radius: 50%;
+        }
+        .preview-repeater {
+            background: radial-gradient(circle at 40% 40%, #c62828, #7f0000);
+            border-radius: 50%;
+        }
+
+        /* ===== GAME GRID ===== */
         #game-container {
             display: grid;
             grid-template-columns: repeat(10, 1fr);
@@ -82,52 +172,137 @@
         .cell:hover {
             background-color: rgba(255, 255, 255, 0.1);
         }
-        /* Alternating row colors for garden feel */
-        .cell.row-even {
-            background-color: #336b1c;
-        }
-        .cell.row-odd {
-            background-color: #2d5016;
-        }
-        /* Right edge highlight (zombie spawn lane) */
-        .cell.col-9 {
-            background-color: rgba(100, 0, 0, 0.3);
-        }
+        .cell.row-even { background-color: #336b1c; }
+        .cell.row-odd { background-color: #2d5016; }
+        .cell.col-9 { background-color: rgba(100, 0, 0, 0.3); }
 
-        /* Plant styling */
+        /* ===== PLANT STYLES (in grid) ===== */
         .plant {
             position: absolute;
             top: 5px;
             left: 5px;
             width: 50px;
             height: 50px;
-            background: radial-gradient(circle at 40% 40%, #66bb6a, #2e7d32);
-            border-radius: 50%;
             z-index: 5;
         }
-        .plant::before {
+        /* Peashooter - green circle, black eyes */
+        .plant-peashooter {
+            background: radial-gradient(circle at 40% 40%, #66bb6a, #2e7d32);
+            border-radius: 50%;
+        }
+        .plant-peashooter::before {
             content: '';
             position: absolute;
-            width: 12px;
-            height: 12px;
+            width: 10px; height: 10px;
             background-color: #000;
             border-radius: 50%;
-            top: 15px;
-            left: 10px;
-            box-shadow: 18px 0 0 #000;
+            top: 12px; left: 8px;
+            box-shadow: 16px 0 0 #000;
         }
-        .plant::after {
+        .plant-peashooter::after {
             content: '';
             position: absolute;
-            width: 20px;
-            height: 8px;
+            width: 16px; height: 10px;
             background-color: #1b5e20;
-            border-radius: 0 0 10px 10px;
-            bottom: 10px;
-            left: 15px;
+            border-radius: 0 8px 8px 0;
+            top: 20px; right: -4px;
         }
 
-        /* Zombie styling */
+        /* Sunflower - yellow circle, happy face, generates suns */
+        .plant-sunflower {
+            background: radial-gradient(circle at 40% 40%, #ffee58, #f9a825);
+            border-radius: 50%;
+        }
+        .plant-sunflower::before {
+            content: '';
+            position: absolute;
+            width: 8px; height: 8px;
+            background-color: #5d4037;
+            border-radius: 50%;
+            top: 14px; left: 10px;
+            box-shadow: 14px 0 0 #5d4037;
+        }
+        .plant-sunflower::after {
+            content: '';
+            position: absolute;
+            width: 16px; height: 8px;
+            border: 3px solid #5d4037;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            bottom: 12px; left: 14px;
+            background: transparent;
+        }
+
+        /* Wall-nut - brown square, tough face */
+        .plant-wallnut {
+            background: radial-gradient(circle at 40% 40%, #a1887f, #6d4c41);
+            border-radius: 12px;
+        }
+        .plant-wallnut::before {
+            content: '';
+            position: absolute;
+            width: 8px; height: 12px;
+            background-color: #3e2723;
+            border-radius: 50%;
+            top: 12px; left: 10px;
+            box-shadow: 16px 0 0 #3e2723;
+        }
+        .plant-wallnut::after {
+            content: '';
+            position: absolute;
+            width: 20px; height: 6px;
+            background-color: #3e2723;
+            border-radius: 3px;
+            bottom: 10px; left: 15px;
+        }
+
+        /* Snow Pea - blue circle, slows zombies */
+        .plant-snowpea {
+            background: radial-gradient(circle at 40% 40%, #81d4fa, #0288d1);
+            border-radius: 50%;
+        }
+        .plant-snowpea::before {
+            content: '';
+            position: absolute;
+            width: 10px; height: 10px;
+            background-color: #01579b;
+            border-radius: 50%;
+            top: 12px; left: 8px;
+            box-shadow: 16px 0 0 #01579b;
+        }
+        .plant-snowpea::after {
+            content: '';
+            position: absolute;
+            width: 16px; height: 10px;
+            background-color: #0277bd;
+            border-radius: 0 8px 8px 0;
+            top: 20px; right: -4px;
+        }
+
+        /* Repeater - red/dark circle, shoots twice */
+        .plant-repeater {
+            background: radial-gradient(circle at 40% 40%, #ef5350, #b71c1c);
+            border-radius: 50%;
+        }
+        .plant-repeater::before {
+            content: '';
+            position: absolute;
+            width: 10px; height: 10px;
+            background-color: #000;
+            border-radius: 50%;
+            top: 12px; left: 8px;
+            box-shadow: 16px 0 0 #000;
+        }
+        .plant-repeater::after {
+            content: '';
+            position: absolute;
+            width: 20px; height: 10px;
+            background-color: #7f0000;
+            border-radius: 0 8px 8px 0;
+            top: 18px; right: -8px;
+        }
+
+        /* ===== ZOMBIE ===== */
         .zombie {
             position: absolute;
             top: 5px;
@@ -137,51 +312,78 @@
             background: radial-gradient(circle at 40% 40%, #8e44ad, #4a0e6b);
             border-radius: 8px;
             z-index: 6;
-            transition: left 0.3s, top 0.3s;
         }
         .zombie::before {
             content: '';
             position: absolute;
-            width: 10px;
-            height: 10px;
+            width: 10px; height: 10px;
             background-color: #ff0000;
             border-radius: 50%;
-            top: 12px;
-            left: 8px;
+            top: 12px; left: 8px;
             box-shadow: 18px 0 0 #ff0000;
         }
         .zombie::after {
             content: '';
             position: absolute;
-            width: 24px;
-            height: 6px;
+            width: 24px; height: 6px;
             background-color: #ff0000;
             border-radius: 3px;
-            bottom: 12px;
-            left: 13px;
+            bottom: 12px; left: 13px;
+        }
+        .zombie.slowed {
+            opacity: 0.7;
+            box-shadow: 0 0 8px #81d4fa;
         }
 
-        /* Projectile styling */
+        /* ===== PROJECTILE ===== */
         .projectile {
             position: absolute;
             width: 12px;
             height: 12px;
-            background: radial-gradient(circle, #ffff00, #ff9800);
             border-radius: 50%;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 7;
-            box-shadow: 0 0 6px #ffff00;
+        }
+        .proj-normal {
+            background: radial-gradient(circle, #66bb6a, #2e7d32);
+            box-shadow: 0 0 6px #66bb6a;
+        }
+        .proj-ice {
+            background: radial-gradient(circle, #81d4fa, #0288d1);
+            box-shadow: 0 0 6px #81d4fa;
+        }
+        .proj-fire {
+            background: radial-gradient(circle, #ef5350, #b71c1c);
+            box-shadow: 0 0 6px #ef5350;
         }
 
+        /* ===== SUN DROP ===== */
+        .sun-drop {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: radial-gradient(circle at 40% 40%, #ffee58, #f9a825);
+            border-radius: 50%;
+            z-index: 8;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            box-shadow: 0 0 10px #ffdd00;
+            animation: sun-pulse 0.8s infinite alternate;
+        }
+        @keyframes sun-pulse {
+            0% { box-shadow: 0 0 6px #ffdd00; transform: translate(-50%, -50%) scale(1); }
+            100% { box-shadow: 0 0 14px #ffdd00; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        /* ===== OVERLAY ===== */
         #message-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background-color: rgba(0, 0, 0, 0.7);
             z-index: 200;
             justify-content: center;
@@ -213,24 +415,50 @@
         }
         #retry-btn:hover { transform: scale(1.05); }
 
-        /* Responsive */
-        @media (max-width: 700px) {
-            .cell {
-                width: 36px;
-                height: 36px;
-            }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 780px) {
+            #plant-panel { width: 60px; }
+            .plant-option .plant-preview { width: 32px; height: 32px; }
+            .plant-option .plant-name { font-size: 8px; }
+            .plant-option .plant-cost { font-size: 9px; }
+            #sun-icon { font-size: 18px; }
+            #sun-count { font-size: 13px; }
+            .cell { width: 36px; height: 36px; }
             .plant {
                 top: 3px; left: 3px;
                 width: 30px; height: 30px;
             }
-            .plant::before {
-                width: 7px; height: 7px;
+            .plant-peashooter::before, .plant-snowpea::before, .plant-repeater::before {
+                width: 6px; height: 6px;
                 top: 8px; left: 5px;
-                box-shadow: 11px 0 0 #000;
+                box-shadow: 10px 0 0 inherit;
             }
-            .plant::after {
-                width: 12px; height: 5px;
-                bottom: 5px; left: 9px;
+            .plant-peashooter::after, .plant-snowpea::after {
+                width: 10px; height: 6px;
+                top: 12px; right: -2px;
+            }
+            .plant-repeater::after {
+                width: 12px; height: 6px;
+                top: 11px; right: -4px;
+            }
+            .plant-sunflower::before {
+                width: 5px; height: 5px;
+                top: 9px; left: 6px;
+                box-shadow: 9px 0 0 #5d4037;
+            }
+            .plant-sunflower::after {
+                width: 10px; height: 5px;
+                border-width: 2px;
+                bottom: 7px; left: 8px;
+            }
+            .plant-wallnut::before {
+                width: 5px; height: 8px;
+                top: 7px; left: 6px;
+                box-shadow: 10px 0 0 #3e2723;
+            }
+            .plant-wallnut::after {
+                width: 12px; height: 4px;
+                bottom: 6px; left: 9px;
             }
             .zombie {
                 top: 3px; left: 3px;
@@ -245,31 +473,58 @@
                 width: 14px; height: 4px;
                 bottom: 7px; left: 8px;
             }
-            .projectile {
-                width: 8px; height: 8px;
-            }
+            .projectile { width: 8px; height: 8px; }
+            .sun-drop { width: 18px; height: 18px; }
             h1 { font-size: 22px; }
             #status-bar { font-size: 13px; gap: 15px; }
             #message-text { font-size: 32px; }
             #message-sub { font-size: 16px; }
         }
-        @media (max-width: 420px) {
-            .cell {
-                width: 28px;
-                height: 28px;
-            }
+        @media (max-width: 480px) {
+            #plant-panel { width: 48px; }
+            .plant-option { padding: 4px 2px; }
+            .plant-option .plant-preview { width: 26px; height: 26px; }
+            .plant-option .plant-name { font-size: 7px; }
+            .plant-option .plant-cost { font-size: 8px; }
+            #sun-icon { font-size: 14px; }
+            #sun-count { font-size: 11px; }
+            #sun-display { padding: 5px 2px; }
+            .cell { width: 28px; height: 28px; }
             .plant {
                 top: 2px; left: 2px;
                 width: 24px; height: 24px;
             }
-            .plant::before {
+            .plant-peashooter::before, .plant-snowpea::before, .plant-repeater::before {
                 width: 5px; height: 5px;
                 top: 6px; left: 4px;
-                box-shadow: 9px 0 0 #000;
+                box-shadow: 8px 0 0 inherit;
             }
-            .plant::after {
-                width: 10px; height: 4px;
-                bottom: 4px; left: 7px;
+            .plant-peashooter::after, .plant-snowpea::after {
+                width: 8px; height: 5px;
+                top: 10px; right: -2px;
+            }
+            .plant-repeater::after {
+                width: 10px; height: 5px;
+                top: 9px; right: -3px;
+            }
+            .plant-sunflower::before {
+                width: 4px; height: 4px;
+                top: 7px; left: 5px;
+                box-shadow: 7px 0 0 #5d4037;
+            }
+            .plant-sunflower::after {
+                width: 8px; height: 4px;
+                border-width: 2px;
+                bottom: 5px; left: 6px;
+            }
+            .plant-wallnut::before {
+                width: 4px; height: 6px;
+                top: 5px; left: 5px;
+                box-shadow: 8px 0 0 #3e2723;
+            }
+            .plant-wallnut::after {
+                width: 10px; height: 3px;
+                bottom: 5px; left: 7px;
             }
             .zombie {
                 top: 2px; left: 2px;
@@ -284,9 +539,8 @@
                 width: 12px; height: 3px;
                 bottom: 5px; left: 6px;
             }
-            .projectile {
-                width: 6px; height: 6px;
-            }
+            .projectile { width: 6px; height: 6px; }
+            .sun-drop { width: 14px; height: 14px; }
             h1 { font-size: 18px; }
             #status-bar { font-size: 11px; gap: 10px; }
         }
@@ -310,11 +564,19 @@
     <div id="game-wrapper">
         <h1>Plant Defense</h1>
         <div id="status-bar">
-            <span class="plants-info">Plants: <span id="plants-count">3/3</span></span>
             <span class="wave-info">Wave: <span id="wave-count">1</span></span>
             <span class="kills-info">Kills: <span id="kills-count">0</span></span>
         </div>
-        <div id="game-container"></div>
+        <div id="game-area">
+            <div id="plant-panel">
+                <div id="sun-display">
+                    <span id="sun-icon">&#9728;</span>
+                    <span id="sun-count">50</span>
+                </div>
+                <!-- Plant options populated by JS -->
+            </div>
+            <div id="game-container"></div>
+        </div>
     </div>
 
     <div id="message-overlay">
@@ -358,19 +620,85 @@
             initUserDisplay();
         }
 
+        // ========== PLANT TYPES ==========
+        const PLANT_TYPES = [
+            {
+                id: 'peashooter',
+                name: 'Peashooter',
+                cost: 100,
+                hp: 1,
+                shootInterval: 3000,
+                damage: 1,
+                projectileClass: 'proj-normal',
+                previewClass: 'preview-peashooter',
+                plantClass: 'plant-peashooter',
+                special: null
+            },
+            {
+                id: 'sunflower',
+                name: 'Sunflower',
+                cost: 50,
+                hp: 1,
+                shootInterval: null, // doesn't shoot
+                damage: 0,
+                projectileClass: null,
+                previewClass: 'preview-sunflower',
+                plantClass: 'plant-sunflower',
+                special: 'sun_producer' // produces 25 suns every 10s
+            },
+            {
+                id: 'wallnut',
+                name: 'Wall-nut',
+                cost: 50,
+                hp: 5,
+                shootInterval: null, // doesn't shoot
+                damage: 0,
+                projectileClass: null,
+                previewClass: 'preview-wallnut',
+                plantClass: 'plant-wallnut',
+                special: null
+            },
+            {
+                id: 'snowpea',
+                name: 'Snow Pea',
+                cost: 175,
+                hp: 1,
+                shootInterval: 3000,
+                damage: 1,
+                projectileClass: 'proj-ice',
+                previewClass: 'preview-snowpea',
+                plantClass: 'plant-snowpea',
+                special: 'slow' // slows zombies
+            },
+            {
+                id: 'repeater',
+                name: 'Repeater',
+                cost: 200,
+                hp: 1,
+                shootInterval: 3000,
+                damage: 1,
+                projectileClass: 'proj-fire',
+                previewClass: 'preview-repeater',
+                plantClass: 'plant-repeater',
+                special: 'double_shot' // shoots twice per interval
+            }
+        ];
+
         // ========== GAME STATE ==========
         const ROWS = 5;
         const COLS = 10;
-        const MAX_PLANTS = 3;
-        const PLANT_SHOOT_INTERVAL = 3000; // ms
-        const ZOMBIE_MOVE_INTERVAL = 4000; // ms
-        const PROJECTILE_MOVE_INTERVAL = 400; // ms
-        const ZOMBIE_SPAWN_INTERVAL = 5000; // ms (initial, speeds up)
+        const ZOMBIE_MOVE_INTERVAL = 4000;
+        const ZOMBIE_SLOW_MOVE_INTERVAL = 6000; // slowed zombies
+        const PROJECTILE_MOVE_INTERVAL = 400;
+        const ZOMBIE_SPAWN_INTERVAL = 5000;
+        const SUN_PRODUCE_INTERVAL = 10000;
 
         let gameOver = false;
-        let plants = []; // { row, col, element, shootInterval }
-        let zombies = []; // { row, col, element, hp }
-        let projectiles = []; // { row, col, element }
+        let suns = 50;
+        let selectedPlantType = null; // index into PLANT_TYPES
+        let plants = []; // { row, col, element, type, hp, shootInterval, sunInterval }
+        let zombies = []; // { row, col, element, hp, slowed, slowTimer, moveCounter }
+        let projectiles = []; // { row, col, element, damage, special }
         let kills = 0;
         let wave = 1;
         let zombiesSpawned = 0;
@@ -380,8 +708,54 @@
         let projectileMoveTimer = null;
         let zombieSpawnTimer = null;
 
-        const grid = []; // 2D array of cell elements
+        const grid = [];
         const container = document.getElementById('game-container');
+        const plantPanel = document.getElementById('plant-panel');
+
+        // ========== PLANT PANEL ==========
+        function buildPlantPanel() {
+            // Remove existing options (keep sun display)
+            plantPanel.querySelectorAll('.plant-option').forEach(el => el.remove());
+
+            for (let i = 0; i < PLANT_TYPES.length; i++) {
+                const type = PLANT_TYPES[i];
+                const option = document.createElement('div');
+                option.className = 'plant-option';
+                option.dataset.index = i;
+                option.innerHTML = `
+                    <div class="plant-preview ${type.previewClass}"></div>
+                    <div class="plant-name">${type.name}</div>
+                    <div class="plant-cost">${type.cost}</div>
+                `;
+                option.addEventListener('click', () => selectPlantType(i));
+                plantPanel.appendChild(option);
+            }
+            updatePlantPanel();
+        }
+
+        function selectPlantType(index) {
+            if (gameOver) return;
+            const type = PLANT_TYPES[index];
+            if (suns < type.cost) return;
+
+            if (selectedPlantType === index) {
+                selectedPlantType = null; // deselect
+            } else {
+                selectedPlantType = index;
+            }
+            updatePlantPanel();
+        }
+
+        function updatePlantPanel() {
+            document.getElementById('sun-count').textContent = suns;
+            const options = plantPanel.querySelectorAll('.plant-option');
+            options.forEach(option => {
+                const idx = parseInt(option.dataset.index);
+                const type = PLANT_TYPES[idx];
+                option.classList.toggle('selected', selectedPlantType === idx);
+                option.classList.toggle('disabled', suns < type.cost);
+            });
+        }
 
         // ========== GRID SETUP ==========
         function buildGrid() {
@@ -405,8 +779,11 @@
         // ========== PLANT LOGIC ==========
         function handleCellClick(row, col) {
             if (gameOver) return;
-            if (col === COLS - 1) return; // Can't plant on zombie spawn column
-            if (plants.length >= MAX_PLANTS) return;
+            if (selectedPlantType === null) return;
+            if (col >= COLS - 1) return; // Can't plant on last column
+
+            const type = PLANT_TYPES[selectedPlantType];
+            if (suns < type.cost) return;
 
             // Check if cell already has a plant
             if (plants.some(p => p.row === row && p.col === col)) return;
@@ -414,42 +791,100 @@
             // Check if cell has a zombie
             if (zombies.some(z => z.row === row && z.col === col)) return;
 
-            placePlant(row, col);
+            placePlant(row, col, type);
+            suns -= type.cost;
+            selectedPlantType = null; // deselect after planting
+            updatePlantPanel();
         }
 
-        function placePlant(row, col) {
+        function placePlant(row, col, type) {
             const plantEl = document.createElement('div');
-            plantEl.className = 'plant';
+            plantEl.className = `plant ${type.plantClass}`;
             grid[row][col].appendChild(plantEl);
 
-            const shootInterval = setInterval(() => {
-                if (gameOver) return;
-                shootProjectile(row, col);
-            }, PLANT_SHOOT_INTERVAL);
+            const plant = {
+                row, col, element: plantEl,
+                type: type,
+                hp: type.hp,
+                shootInterval: null,
+                sunInterval: null
+            };
 
-            const plant = { row, col, element: plantEl, shootInterval };
+            // Set up shooting for shooter plants
+            if (type.shootInterval) {
+                plant.shootInterval = setInterval(() => {
+                    if (gameOver) return;
+                    shootProjectile(row, col, type);
+                }, type.shootInterval);
+            }
+
+            // Set up sun production for sunflowers
+            if (type.special === 'sun_producer') {
+                plant.sunInterval = setInterval(() => {
+                    if (gameOver) return;
+                    dropSun(row, col);
+                }, SUN_PRODUCE_INTERVAL);
+            }
+
             plants.push(plant);
-            updateStatus();
         }
 
         function removePlant(plant) {
-            clearInterval(plant.shootInterval);
+            if (plant.shootInterval) clearInterval(plant.shootInterval);
+            if (plant.sunInterval) clearInterval(plant.sunInterval);
             plant.element.remove();
             plants = plants.filter(p => p !== plant);
-            updateStatus();
+        }
+
+        // ========== SUN LOGIC ==========
+        function dropSun(row, col) {
+            if (!grid[row] || !grid[row][col]) return;
+
+            const sunEl = document.createElement('div');
+            sunEl.className = 'sun-drop';
+            grid[row][col].appendChild(sunEl);
+
+            // Click to collect
+            sunEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                suns += 25;
+                sunEl.remove();
+                updatePlantPanel();
+            });
+
+            // Auto-disappear after 8 seconds
+            setTimeout(() => {
+                if (sunEl.parentNode) sunEl.remove();
+            }, 8000);
         }
 
         // ========== PROJECTILE LOGIC ==========
-        function shootProjectile(fromRow, fromCol) {
+        function shootProjectile(fromRow, fromCol, type) {
             // Only shoot if there's a zombie in the same row to the right
             const hasTarget = zombies.some(z => z.row === fromRow && z.col > fromCol);
             if (!hasTarget) return;
 
+            createProjectile(fromRow, fromCol, type);
+
+            // Double shot for repeater
+            if (type.special === 'double_shot') {
+                setTimeout(() => {
+                    if (!gameOver) createProjectile(fromRow, fromCol, type);
+                }, 200);
+            }
+        }
+
+        function createProjectile(fromRow, fromCol, type) {
             const projEl = document.createElement('div');
-            projEl.className = 'projectile';
+            projEl.className = `projectile ${type.projectileClass}`;
             grid[fromRow][fromCol].appendChild(projEl);
 
-            projectiles.push({ row: fromRow, col: fromCol, element: projEl });
+            projectiles.push({
+                row: fromRow, col: fromCol,
+                element: projEl,
+                damage: type.damage,
+                special: type.special
+            });
         }
 
         function moveProjectiles() {
@@ -458,22 +893,31 @@
             const toRemove = [];
 
             for (const proj of projectiles) {
-                // Remove from current cell
                 proj.element.remove();
-
                 proj.col += 1;
 
-                // Off the grid
                 if (proj.col >= COLS) {
                     toRemove.push(proj);
                     continue;
                 }
 
-                // Check zombie collision at new position
+                // Check zombie collision
                 const hitZombie = zombies.find(z => z.row === proj.row && z.col === proj.col);
                 if (hitZombie) {
-                    hitZombie.hp -= 1;
+                    hitZombie.hp -= proj.damage;
                     toRemove.push(proj);
+
+                    // Apply slow effect from snow pea
+                    if (proj.special === 'slow' && !hitZombie.slowed) {
+                        hitZombie.slowed = true;
+                        hitZombie.element.classList.add('slowed');
+                        // Slow lasts 4 seconds
+                        if (hitZombie.slowTimer) clearTimeout(hitZombie.slowTimer);
+                        hitZombie.slowTimer = setTimeout(() => {
+                            hitZombie.slowed = false;
+                            hitZombie.element.classList.remove('slowed');
+                        }, 4000);
+                    }
 
                     if (hitZombie.hp <= 0) {
                         killZombie(hitZombie);
@@ -481,7 +925,6 @@
                     continue;
                 }
 
-                // Place in new cell
                 grid[proj.row][proj.col].appendChild(proj.element);
             }
 
@@ -495,22 +938,25 @@
         function spawnZombie() {
             if (gameOver) return;
 
-            // Check if wave is complete
             if (zombiesSpawned >= zombiesPerWave) {
-                // Check if all zombies are dead
-                if (zombies.length === 0) {
-                    nextWave();
-                }
+                if (zombies.length === 0) nextWave();
                 return;
             }
 
             const row = Math.floor(Math.random() * ROWS);
-
             const zombieEl = document.createElement('div');
             zombieEl.className = 'zombie';
             grid[row][COLS - 1].appendChild(zombieEl);
 
-            zombies.push({ row, col: COLS - 1, element: zombieEl, hp: 1 });
+            // HP scales with wave
+            const hp = 1 + Math.floor((wave - 1) / 2);
+
+            zombies.push({
+                row, col: COLS - 1, element: zombieEl,
+                hp: hp,
+                slowed: false, slowTimer: null,
+                moveCounter: 0
+            });
             zombiesSpawned++;
         }
 
@@ -518,12 +964,16 @@
             if (gameOver) return;
 
             for (const zombie of [...zombies]) {
-                // Remove from current cell
-                zombie.element.remove();
+                // Slowed zombies move every other tick
+                if (zombie.slowed) {
+                    zombie.moveCounter++;
+                    if (zombie.moveCounter % 2 !== 0) continue; // skip this tick
+                }
 
+                zombie.element.remove();
                 zombie.col -= 1;
 
-                // Reached left edge - game over
+                // Reached left edge
                 if (zombie.col < 0) {
                     triggerLose();
                     return;
@@ -532,22 +982,24 @@
                 // Check plant collision
                 const hitPlant = plants.find(p => p.row === zombie.row && p.col === zombie.col);
                 if (hitPlant) {
-                    removePlant(hitPlant);
-                    // Zombie stays in this cell after eating plant
+                    hitPlant.hp -= 1;
+                    if (hitPlant.hp <= 0) {
+                        removePlant(hitPlant);
+                    }
+                    // Zombie stays in cell after eating
                 }
 
-                // Place in new cell
                 grid[zombie.row][zombie.col].appendChild(zombie.element);
             }
         }
 
         function killZombie(zombie) {
+            if (zombie.slowTimer) clearTimeout(zombie.slowTimer);
             zombie.element.remove();
             zombies = zombies.filter(z => z !== zombie);
             kills++;
             updateStatus();
 
-            // Check wave completion
             if (zombiesSpawned >= zombiesPerWave && zombies.length === 0) {
                 nextWave();
             }
@@ -557,10 +1009,13 @@
         function nextWave() {
             wave++;
             zombiesSpawned = 0;
-            zombiesPerWave = 5 + (wave - 1) * 2; // Increase zombies each wave
+            zombiesPerWave = 5 + (wave - 1) * 2;
+
+            // Bonus suns each wave
+            suns += 25;
+            updatePlantPanel();
             updateStatus();
 
-            // Speed up zombie spawning slightly each wave
             clearInterval(zombieSpawnTimer);
             const spawnDelay = Math.max(1500, ZOMBIE_SPAWN_INTERVAL - (wave - 1) * 300);
             zombieSpawnTimer = setInterval(spawnZombie, spawnDelay);
@@ -568,7 +1023,6 @@
 
         // ========== GAME FLOW ==========
         function updateStatus() {
-            document.getElementById('plants-count').textContent = `${MAX_PLANTS - plants.length}/${MAX_PLANTS}`;
             document.getElementById('wave-count').textContent = wave;
             document.getElementById('kills-count').textContent = kills;
         }
@@ -590,12 +1044,15 @@
             if (projectileMoveTimer) clearInterval(projectileMoveTimer);
             if (zombieSpawnTimer) clearInterval(zombieSpawnTimer);
             for (const plant of plants) {
-                clearInterval(plant.shootInterval);
+                if (plant.shootInterval) clearInterval(plant.shootInterval);
+                if (plant.sunInterval) clearInterval(plant.sunInterval);
+            }
+            for (const zombie of zombies) {
+                if (zombie.slowTimer) clearTimeout(zombie.slowTimer);
             }
         }
 
         function restartGame() {
-            // Clear state
             clearAllTimers();
             for (const p of plants) p.element.remove();
             for (const z of zombies) z.element.remove();
@@ -606,12 +1063,15 @@
             projectiles = [];
             kills = 0;
             wave = 1;
+            suns = 50;
             zombiesSpawned = 0;
             zombiesPerWave = 5;
             gameOver = false;
+            selectedPlantType = null;
 
             document.getElementById('message-overlay').classList.remove('active');
             buildGrid();
+            buildPlantPanel();
             updateStatus();
             startTimers();
         }
@@ -620,14 +1080,13 @@
             zombieMoveTimer = setInterval(moveZombies, ZOMBIE_MOVE_INTERVAL);
             projectileMoveTimer = setInterval(moveProjectiles, PROJECTILE_MOVE_INTERVAL);
             zombieSpawnTimer = setInterval(spawnZombie, ZOMBIE_SPAWN_INTERVAL);
-
-            // Spawn first zombie after a short delay
             setTimeout(spawnZombie, 2000);
         }
 
         // ========== INIT ==========
         initUserDisplay();
         buildGrid();
+        buildPlantPanel();
         updateStatus();
         startTimers();
     </script>
