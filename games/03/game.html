@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlogCraft</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #1a1a2e;
+            font-family: Arial, sans-serif;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Bar */
+        #top-bar {
+            position: fixed; top: 0; left: 0; right: 0;
+            background-color: rgba(0,0,0,0.85);
+            padding: 8px 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 300;
+        }
+        #user-info { color: #fff; font-size: 13px; }
+        #user-info .username { color: gold; font-weight: bold; }
+        #user-info .coins { color: lime; margin-left: 12px; }
+        #user-info .followers { color: #e94560; margin-left: 12px; }
+        .top-links a {
+            color: #aaa; font-size: 13px; text-decoration: none; margin-left: 12px; cursor: pointer;
+        }
+        .top-links a:hover { color: #fff; }
+
+        /* Rank Badge */
+        #rank-badge {
+            position: fixed; top: 38px; left: 0; right: 0;
+            background: linear-gradient(90deg, #16213e, #1a1a2e);
+            padding: 4px 15px;
+            font-size: 12px; color: #aaa;
+            display: flex; align-items: center; gap: 10px;
+            z-index: 299;
+        }
+        #rank-badge .rank-name { color: gold; font-weight: bold; }
+        #rank-progress-bar {
+            flex: 1; height: 6px; background: #333; border-radius: 3px; overflow: hidden; max-width: 200px;
+        }
+        #rank-progress-fill { height: 100%; background: linear-gradient(90deg, #e94560, gold); width: 0%; transition: width 0.5s; }
+
+        /* Tab Navigation */
+        #tab-bar {
+            position: fixed; top: 62px; left: 0; right: 0;
+            background-color: #16213e;
+            display: flex;
+            z-index: 298;
+            border-bottom: 2px solid #333;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            flex: 1; padding: 10px 5px; border: none; background: none;
+            color: #888; font-size: 13px; font-weight: bold; cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s; white-space: nowrap; min-width: 60px;
+        }
+        .tab-btn:hover { color: #ccc; background: rgba(255,255,255,0.05); }
+        .tab-btn.active { color: gold; border-bottom-color: gold; }
+
+        /* Main Content */
+        #game-content {
+            margin-top: 98px;
+            padding: 10px;
+            flex: 1;
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Section Headers */
+        .section-title {
+            color: gold; font-size: 18px; margin-bottom: 12px; text-align: center;
+        }
+
+        /* ===== MINE TAB ===== */
+        #mine-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .mine-node {
+            aspect-ratio: 1;
+            border-radius: 10px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.2s;
+            position: relative;
+            border: 2px solid rgba(255,255,255,0.1);
+            min-height: 80px;
+        }
+        .mine-node:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(255,255,255,0.2); }
+        .mine-node:active { transform: scale(0.95); }
+        .mine-node.depleted { opacity: 0.3; cursor: default; pointer-events: none; }
+        .mine-node .node-icon { font-size: 28px; }
+        .mine-node .node-name { font-size: 11px; margin-top: 4px; color: rgba(255,255,255,0.8); }
+        .mine-node .respawn-bar {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 4px;
+            background: #333; border-radius: 0 0 8px 8px; overflow: hidden;
+        }
+        .mine-node .respawn-fill { height: 100%; width: 0%; background: lime; transition: width 0.1s linear; }
+        @keyframes mine-pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .mine-node.pop { animation: mine-pop 0.2s ease; }
+
+        /* Inventory Bar */
+        #inventory-bar {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            justify-content: center;
+            margin-bottom: 15px;
+            padding: 8px;
+            background: #16213e;
+            border-radius: 8px;
+        }
+        .inv-item {
+            display: flex; align-items: center; gap: 3px;
+            background: rgba(255,255,255,0.08);
+            padding: 4px 8px; border-radius: 5px; font-size: 12px;
+        }
+        .inv-item .inv-icon { font-size: 14px; }
+        .inv-item .inv-count { color: lime; font-weight: bold; }
+
+        /* ===== CRAFT TAB ===== */
+        .craft-list { max-width: 500px; margin: 0 auto; }
+        .craft-card {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #333;
+        }
+        .craft-card.locked { opacity: 0.4; }
+        .craft-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 6px;
+        }
+        .craft-name { font-weight: bold; font-size: 14px; color: #fff; }
+        .craft-type { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+        .craft-type.blog { background: #2196F3; }
+        .craft-type.equipment { background: #ff9800; }
+        .craft-materials { font-size: 12px; color: #aaa; margin-bottom: 8px; }
+        .craft-materials .has { color: lime; }
+        .craft-materials .missing { color: #e94560; }
+        .craft-effect { font-size: 11px; color: #9c27b0; margin-bottom: 8px; }
+        .craft-btn {
+            padding: 6px 16px; border: none; border-radius: 6px;
+            font-size: 13px; font-weight: bold; cursor: pointer;
+            background: linear-gradient(135deg, #4CAF50, #45a049); color: #fff;
+            transition: transform 0.1s;
+        }
+        .craft-btn:hover { transform: scale(1.05); }
+        .craft-btn:disabled { background: #555; cursor: default; transform: none; }
+
+        /* ===== WRITE TAB ===== */
+        .write-area { max-width: 500px; margin: 0 auto; }
+        .draft-card {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .draft-info .draft-name { font-weight: bold; font-size: 14px; }
+        .draft-info .draft-reward { font-size: 12px; color: #aaa; margin-top: 2px; }
+        .publish-btn {
+            padding: 8px 16px; border: none; border-radius: 6px;
+            font-size: 13px; font-weight: bold; cursor: pointer;
+            background: linear-gradient(135deg, #2196F3, #1976D2); color: #fff;
+        }
+        .publish-btn:hover { transform: scale(1.05); }
+        .publish-btn:disabled { background: #555; cursor: default; }
+        #writing-progress {
+            max-width: 500px; margin: 10px auto;
+            background: #16213e; border-radius: 10px; padding: 12px;
+            display: none;
+        }
+        #writing-progress .wp-label { font-size: 13px; margin-bottom: 6px; text-align: center; }
+        #writing-progress .wp-bar { height: 10px; background: #333; border-radius: 5px; overflow: hidden; }
+        #writing-progress .wp-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #2196F3, #4CAF50); transition: width 0.1s linear; }
+        .no-drafts { text-align: center; color: #666; padding: 40px 0; font-size: 14px; }
+
+        /* ===== MARKET TAB ===== */
+        .market-area { max-width: 500px; margin: 0 auto; }
+        .market-row {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            display: flex; align-items: center; gap: 10px;
+            border: 1px solid #333;
+        }
+        .market-icon { font-size: 22px; width: 30px; text-align: center; }
+        .market-name { flex: 1; font-size: 13px; font-weight: bold; }
+        .market-price { color: gold; font-size: 13px; min-width: 50px; text-align: center; }
+        .market-stock { color: #aaa; font-size: 12px; min-width: 40px; text-align: center; }
+        .market-btn {
+            padding: 4px 10px; border: none; border-radius: 5px;
+            font-size: 12px; font-weight: bold; cursor: pointer; color: #fff;
+        }
+        .market-btn.buy { background: #4CAF50; }
+        .market-btn.sell { background: #e94560; }
+        .market-btn:disabled { background: #555; cursor: default; }
+
+        /* ===== UPGRADES TAB ===== */
+        .upgrades-area { max-width: 500px; margin: 0 auto; }
+        .upgrade-card {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .upgrade-info .upgrade-name { font-weight: bold; font-size: 14px; }
+        .upgrade-info .upgrade-desc { font-size: 12px; color: #aaa; margin-top: 2px; }
+        .upgrade-info .upgrade-level { font-size: 11px; color: #9c27b0; margin-top: 2px; }
+        .upgrade-btn {
+            padding: 8px 14px; border: none; border-radius: 6px;
+            font-size: 12px; font-weight: bold; cursor: pointer;
+            background: linear-gradient(135deg, #ff9800, #f57c00); color: #fff;
+            white-space: nowrap;
+        }
+        .upgrade-btn:disabled { background: #555; cursor: default; }
+        .upgrade-btn.maxed { background: #4CAF50; }
+
+        /* ===== STATS TAB ===== */
+        .stats-area { max-width: 500px; margin: 0 auto; }
+        .stat-row {
+            display: flex; justify-content: space-between;
+            padding: 10px 12px;
+            background: #16213e;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .stat-label { color: #aaa; }
+        .stat-value { color: gold; font-weight: bold; }
+
+        /* Equipment display */
+        #equipment-display {
+            max-width: 500px; margin: 0 auto 10px;
+            background: #16213e; border-radius: 8px; padding: 8px 12px;
+            font-size: 12px; color: #aaa; text-align: center;
+        }
+        #equipment-display span { color: #ff9800; margin: 0 6px; }
+
+        /* Notifications */
+        .notif {
+            position: fixed; top: 105px; right: 10px;
+            background: rgba(0,0,0,0.9); color: #fff;
+            padding: 8px 14px; border-radius: 8px;
+            font-size: 13px; z-index: 400;
+            animation: notifSlide 0.3s ease;
+            border-left: 3px solid gold;
+        }
+        @keyframes notifSlide {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .tab-btn { font-size: 11px; padding: 8px 3px; }
+            .mine-node { min-height: 65px; }
+            .mine-node .node-icon { font-size: 22px; }
+            .mine-node .node-name { font-size: 10px; }
+            #inventory-bar { gap: 4px; }
+            .inv-item { font-size: 11px; padding: 3px 6px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div id="top-bar">
+    <div id="user-info">
+        <span class="username" id="display-name"></span>
+        <span class="coins" id="display-coins"></span>
+        <span class="followers" id="display-followers"></span>
+    </div>
+    <div class="top-links">
+        <a href="/games/01/home.html">Home</a>
+        <a onclick="handleLogout()">Logout</a>
+    </div>
+</div>
+
+<!-- Rank Badge -->
+<div id="rank-badge">
+    Rank: <span class="rank-name" id="rank-name">Newbie</span>
+    <div id="rank-progress-bar"><div id="rank-progress-fill"></div></div>
+    <span id="rank-next"></span>
+</div>
+
+<!-- Tab Navigation -->
+<div id="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('mine')">Mine</button>
+    <button class="tab-btn" onclick="switchTab('craft')">Craft</button>
+    <button class="tab-btn" onclick="switchTab('write')">Write</button>
+    <button class="tab-btn" onclick="switchTab('market')">Market</button>
+    <button class="tab-btn" onclick="switchTab('upgrades')">Upgrades</button>
+    <button class="tab-btn" onclick="switchTab('stats')">Stats</button>
+</div>
+
+<!-- Game Content -->
+<div id="game-content">
+
+    <!-- MINE TAB -->
+    <div id="tab-mine" class="tab-panel active">
+        <div id="inventory-bar"></div>
+        <div class="section-title">Mine Resources</div>
+        <div id="mine-grid"></div>
+    </div>
+
+    <!-- CRAFT TAB -->
+    <div id="tab-craft" class="tab-panel">
+        <div id="inventory-bar-craft"></div>
+        <div class="section-title">Craft Items</div>
+        <div id="equipment-display"></div>
+        <div class="craft-list" id="craft-list"></div>
+    </div>
+
+    <!-- WRITE TAB -->
+    <div id="tab-write" class="tab-panel">
+        <div class="section-title">Write & Publish</div>
+        <div id="writing-progress">
+            <div class="wp-label" id="wp-label">Writing...</div>
+            <div class="wp-bar"><div class="wp-fill" id="wp-fill"></div></div>
+        </div>
+        <div class="write-area" id="draft-list"></div>
+    </div>
+
+    <!-- MARKET TAB -->
+    <div id="tab-market" class="tab-panel">
+        <div class="section-title">Resource Market</div>
+        <div class="market-area" id="market-list"></div>
+    </div>
+
+    <!-- UPGRADES TAB -->
+    <div id="tab-upgrades" class="tab-panel">
+        <div class="section-title">Upgrades</div>
+        <div class="upgrades-area" id="upgrades-list"></div>
+    </div>
+
+    <!-- STATS TAB -->
+    <div id="tab-stats" class="tab-panel">
+        <div class="section-title">Statistics</div>
+        <div class="stats-area" id="stats-list"></div>
+    </div>
+
+</div>
+
+<script>
+// ============================================
+// AUTH
+// ============================================
+const API_URL = '/games/01/api';
+let currentUser = null;
+let authToken = null;
+
+function checkAuth() {
+    const userStr = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+    if (!userStr || !token) {
+        window.location.href = '/games/01/login.html';
+        return;
+    }
+    currentUser = JSON.parse(userStr);
+    authToken = token;
+    document.getElementById('display-name').textContent = currentUser.name;
+    updateCoinsDisplay();
+}
+
+function handleLogout() {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    window.location.href = '/games/01/login.html';
+}
+
+function updateCoinsDisplay() {
+    document.getElementById('display-coins').textContent = `Coins: ${currentUser.coins || 0}`;
+}
+
+// ============================================
+// GAME DATA
+// ============================================
+const RESOURCES = [
+    { id: 'stone', name: 'Stone', icon: '🪨', color: '#808080', respawn: 3000 },
+    { id: 'wood', name: 'Wood', icon: '🪵', color: '#8B4513', respawn: 3000 },
+    { id: 'iron', name: 'Iron', icon: '⛓️', color: '#C0C0C0', respawn: 5000 },
+    { id: 'gold', name: 'Gold', icon: '🥇', color: '#FFD700', respawn: 8000 },
+    { id: 'crystal', name: 'Crystal', icon: '💎', color: '#00CED1', respawn: 12000 },
+    { id: 'paper', name: 'Paper', icon: '📄', color: '#F5F5DC', respawn: 4000 },
+    { id: 'ink', name: 'Ink', icon: '🖋️', color: '#800080', respawn: 4000 },
+];
+
+const RANKS = [
+    { name: 'Newbie', followers: 0, color: '#aaa' },
+    { name: 'Hobbyist', followers: 50, color: '#4CAF50' },
+    { name: 'Writer', followers: 200, color: '#2196F3' },
+    { name: 'Journalist', followers: 500, color: '#9c27b0' },
+    { name: 'Columnist', followers: 1500, color: '#ff9800' },
+    { name: 'Editor', followers: 4000, color: '#e91e63' },
+    { name: 'Influencer', followers: 10000, color: '#00BCD4' },
+    { name: 'Viral Star', followers: 25000, color: '#FF5722' },
+    { name: 'Media Mogul', followers: 75000, color: '#F44336' },
+    { name: 'Legend', followers: 200000, color: 'gold' },
+];
+
+const RECIPES = [
+    {
+        id: 'basic_post', name: 'Basic Blog Post', type: 'blog',
+        materials: { paper: 2, ink: 1 },
+        minFollowers: 5, maxFollowers: 15, coinsReward: 2,
+        writeTime: 5000, rankReq: 0,
+    },
+    {
+        id: 'photo_post', name: 'Photo Blog Post', type: 'blog',
+        materials: { paper: 3, ink: 2, crystal: 1 },
+        minFollowers: 20, maxFollowers: 40, coinsReward: 5,
+        writeTime: 8000, rankReq: 1,
+    },
+    {
+        id: 'video_post', name: 'Video Blog Post', type: 'blog',
+        materials: { paper: 5, ink: 3, crystal: 2, gold: 1 },
+        minFollowers: 50, maxFollowers: 100, coinsReward: 12,
+        writeTime: 12000, rankReq: 4,
+    },
+    {
+        id: 'wooden_desk', name: 'Wooden Desk', type: 'equipment',
+        materials: { wood: 10, stone: 5 },
+        effect: '+10% writing speed', effectKey: 'writeSpeed', effectValue: 0.10,
+        rankReq: 2,
+    },
+    {
+        id: 'iron_pickaxe', name: 'Iron Pickaxe', type: 'equipment',
+        materials: { iron: 8, wood: 3 },
+        effect: '+25% mining speed', effectKey: 'mineSpeed', effectValue: 0.25,
+        rankReq: 3,
+    },
+    {
+        id: 'gold_pen', name: 'Gold Pen', type: 'equipment',
+        materials: { gold: 5, crystal: 2 },
+        effect: '+20% blog quality', effectKey: 'blogQuality', effectValue: 0.20,
+        rankReq: 5,
+    },
+    {
+        id: 'crystal_lamp', name: 'Crystal Lamp', type: 'equipment',
+        materials: { crystal: 8, gold: 3 },
+        effect: '+15% all production', effectKey: 'allProduction', effectValue: 0.15,
+        rankReq: 6,
+    },
+    {
+        id: 'server_rack', name: 'Server Rack', type: 'equipment',
+        materials: { iron: 15, crystal: 10, gold: 5 },
+        effect: 'Auto-publish 1 post/min', effectKey: 'autoPublish', effectValue: 1,
+        rankReq: 7,
+    },
+];
+
+const UPGRADES = [
+    { id: 'mine_speed', name: 'Mining Speed', desc: '+10% mining speed', cost: 100, max: 5, perLevel: 0.10 },
+    { id: 'write_speed', name: 'Writing Speed', desc: '+10% writing speed', cost: 150, max: 5, perLevel: 0.10 },
+    { id: 'auto_mine', name: 'Auto-Mine', desc: 'Mine 1 random resource every 30s', cost: 500, max: 1, perLevel: 1 },
+    { id: 'lucky_strike', name: 'Lucky Strike', desc: '10% chance double resources', cost: 300, max: 1, perLevel: 0.10 },
+    { id: 'blog_boost', name: 'Blog Boost', desc: '+25% followers from posts', cost: 400, max: 1, perLevel: 0.25 },
+];
+
+// ============================================
+// GAME STATE
+// ============================================
+let state = {
+    resources: {},
+    equipment: {},
+    drafts: [],
+    followers: 0,
+    upgrades: {},
+    stats: {
+        totalMined: 0,
+        totalCrafted: 0,
+        totalPublished: 0,
+        totalFollowers: 0,
+        playStarted: Date.now(),
+    },
+    marketPrices: {},
+};
+
+// Initialize resource counts
+RESOURCES.forEach(r => { state.resources[r.id] = 0; });
+UPGRADES.forEach(u => { state.upgrades[u.id] = 0; });
+
+// ============================================
+// SAVE / LOAD
+// ============================================
+function saveState() {
+    localStorage.setItem('blogcraft_state', JSON.stringify(state));
+}
+
+function loadState() {
+    const saved = localStorage.getItem('blogcraft_state');
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        // Merge carefully to preserve new fields
+        if (parsed.resources) state.resources = { ...state.resources, ...parsed.resources };
+        if (parsed.equipment) state.equipment = parsed.equipment;
+        if (parsed.drafts) state.drafts = parsed.drafts;
+        if (parsed.followers !== undefined) state.followers = parsed.followers;
+        if (parsed.upgrades) state.upgrades = { ...state.upgrades, ...parsed.upgrades };
+        if (parsed.stats) state.stats = { ...state.stats, ...parsed.stats };
+        if (parsed.marketPrices) state.marketPrices = parsed.marketPrices;
+    }
+}
+
+// ============================================
+// RANK SYSTEM
+// ============================================
+function getCurrentRank() {
+    let rank = RANKS[0];
+    for (let i = RANKS.length - 1; i >= 0; i--) {
+        if (state.followers >= RANKS[i].followers) {
+            rank = RANKS[i];
+            break;
+        }
+    }
+    return rank;
+}
+
+function getRankIndex() {
+    for (let i = RANKS.length - 1; i >= 0; i--) {
+        if (state.followers >= RANKS[i].followers) return i;
+    }
+    return 0;
+}
+
+function updateRankDisplay() {
+    const rank = getCurrentRank();
+    const idx = getRankIndex();
+    const nameEl = document.getElementById('rank-name');
+    nameEl.textContent = rank.name;
+    nameEl.style.color = rank.color;
+
+    const nextEl = document.getElementById('rank-next');
+    const fillEl = document.getElementById('rank-progress-fill');
+
+    if (idx < RANKS.length - 1) {
+        const next = RANKS[idx + 1];
+        const prev = RANKS[idx].followers;
+        const progress = ((state.followers - prev) / (next.followers - prev)) * 100;
+        fillEl.style.width = Math.min(progress, 100) + '%';
+        nextEl.textContent = `${state.followers} / ${next.followers}`;
+    } else {
+        fillEl.style.width = '100%';
+        nextEl.textContent = `${state.followers} followers`;
+    }
+
+    document.getElementById('display-followers').textContent = `Followers: ${state.followers}`;
+}
+
+// ============================================
+// BONUSES
+// ============================================
+function getMineSpeedMultiplier() {
+    let mult = 1;
+    if (state.equipment.iron_pickaxe) mult += 0.25;
+    if (state.equipment.crystal_lamp) mult += 0.15;
+    mult += (state.upgrades.mine_speed || 0) * 0.10;
+    if (getRankIndex() >= 9) mult *= 2; // Legend doubles
+    return mult;
+}
+
+function getWriteSpeedMultiplier() {
+    let mult = 1;
+    if (state.equipment.wooden_desk) mult += 0.10;
+    if (state.equipment.crystal_lamp) mult += 0.15;
+    mult += (state.upgrades.write_speed || 0) * 0.10;
+    if (getRankIndex() >= 9) mult *= 2;
+    return mult;
+}
+
+function getBlogQualityMultiplier() {
+    let mult = 1;
+    if (state.equipment.gold_pen) mult += 0.20;
+    if (state.upgrades.blog_boost) mult += 0.25;
+    if (getRankIndex() >= 9) mult *= 2;
+    return mult;
+}
+
+// ============================================
+// MINE TAB
+// ============================================
+let mineNodes = [];
+
+function initMineGrid() {
+    const grid = document.getElementById('mine-grid');
+    grid.innerHTML = '';
+    mineNodes = [];
+
+    // Create 12 nodes: distribute resources with some duplicates
+    const nodeResources = [];
+    RESOURCES.forEach(r => nodeResources.push(r));
+    // Fill remaining slots with common resources
+    nodeResources.push(RESOURCES[0]); // extra stone
+    nodeResources.push(RESOURCES[1]); // extra wood
+    nodeResources.push(RESOURCES[5]); // extra paper
+    nodeResources.push(RESOURCES[6]); // extra ink
+    nodeResources.push(RESOURCES[2]); // extra iron
+
+    for (let i = 0; i < 12; i++) {
+        const res = nodeResources[i];
+        const node = document.createElement('div');
+        node.className = 'mine-node';
+        node.style.background = `linear-gradient(135deg, ${res.color}33, ${res.color}11)`;
+        node.style.borderColor = res.color + '44';
+        node.innerHTML = `
+            <div class="node-icon">${res.icon}</div>
+            <div class="node-name">${res.name}</div>
+            <div class="respawn-bar"><div class="respawn-fill"></div></div>
+        `;
+        node.dataset.resourceId = res.id;
+        node.dataset.index = i;
+        node.addEventListener('click', () => mineNode(i));
+        grid.appendChild(node);
+
+        mineNodes.push({
+            el: node,
+            resource: res,
+            depleted: false,
+            respawnTimer: null,
+            respawnStart: 0,
+        });
+    }
+}
+
+function mineNode(index) {
+    const node = mineNodes[index];
+    if (node.depleted) return;
+
+    // Mine the resource
+    let amount = 1;
+    if (state.upgrades.lucky_strike && Math.random() < 0.10) {
+        amount = 2;
+        showNotif('Lucky Strike! Double ' + node.resource.name + '!');
+    }
+    state.resources[node.resource.id] += amount;
+    state.stats.totalMined += amount;
+
+    // Visual feedback
+    node.el.classList.add('pop');
+    setTimeout(() => node.el.classList.remove('pop'), 200);
+
+    // Deplete node
+    node.depleted = true;
+    node.el.classList.add('depleted');
+
+    // Respawn timer with mining speed bonus
+    const respawnTime = node.resource.respawn / getMineSpeedMultiplier();
+    node.respawnStart = Date.now();
+
+    const fill = node.el.querySelector('.respawn-fill');
+    const tickInterval = setInterval(() => {
+        const elapsed = Date.now() - node.respawnStart;
+        const pct = Math.min((elapsed / respawnTime) * 100, 100);
+        fill.style.width = pct + '%';
+    }, 100);
+
+    node.respawnTimer = setTimeout(() => {
+        clearInterval(tickInterval);
+        node.depleted = false;
+        node.el.classList.remove('depleted');
+        fill.style.width = '0%';
+    }, respawnTime);
+
+    updateInventoryDisplays();
+    saveState();
+}
+
+function updateInventoryDisplays() {
+    // Mine tab inventory
+    const bar = document.getElementById('inventory-bar');
+    bar.innerHTML = RESOURCES.map(r =>
+        `<div class="inv-item"><span class="inv-icon">${r.icon}</span> <span class="inv-count">${state.resources[r.id]}</span></div>`
+    ).join('');
+
+    // Craft tab inventory (clone)
+    const bar2 = document.getElementById('inventory-bar-craft');
+    if (bar2) bar2.innerHTML = bar.innerHTML;
+}
+
+// Auto-mine
+let autoMineInterval = null;
+function startAutoMine() {
+    if (autoMineInterval) clearInterval(autoMineInterval);
+    if (state.upgrades.auto_mine) {
+        autoMineInterval = setInterval(() => {
+            // Pick a random non-depleted node
+            const available = mineNodes.filter(n => !n.depleted);
+            if (available.length > 0) {
+                const pick = available[Math.floor(Math.random() * available.length)];
+                mineNode(parseInt(pick.el.dataset.index));
+                showNotif('Auto-mined ' + pick.resource.name);
+            }
+        }, 30000);
+    }
+}
+
+// ============================================
+// CRAFT TAB
+// ============================================
+function renderCraftList() {
+    const list = document.getElementById('craft-list');
+    const rankIdx = getRankIndex();
+    list.innerHTML = '';
+
+    RECIPES.forEach(recipe => {
+        const locked = rankIdx < recipe.rankReq;
+        const card = document.createElement('div');
+        card.className = 'craft-card' + (locked ? ' locked' : '');
+
+        // Check if already equipped (for equipment)
+        const equipped = recipe.type === 'equipment' && state.equipment[recipe.id];
+
+        // Materials check
+        let canCraft = !locked && !equipped;
+        let matsHtml = '';
+        for (const [resId, amount] of Object.entries(recipe.materials)) {
+            const have = state.resources[resId] || 0;
+            const enough = have >= amount;
+            if (!enough) canCraft = false;
+            const res = RESOURCES.find(r => r.id === resId);
+            matsHtml += `<span class="${enough ? 'has' : 'missing'}">${res.icon} ${have}/${amount}</span> `;
+        }
+
+        let btnText = 'Craft';
+        if (locked) btnText = `Rank: ${RANKS[recipe.rankReq].name}`;
+        else if (equipped) btnText = 'Equipped ✓';
+
+        card.innerHTML = `
+            <div class="craft-header">
+                <span class="craft-name">${recipe.name}</span>
+                <span class="craft-type ${recipe.type}">${recipe.type === 'blog' ? 'Blog Post' : 'Equipment'}</span>
+            </div>
+            <div class="craft-materials">${matsHtml}</div>
+            ${recipe.effect ? `<div class="craft-effect">${recipe.effect}</div>` : ''}
+            ${recipe.type === 'blog' ? `<div class="craft-effect">Earns ${recipe.minFollowers}-${recipe.maxFollowers} followers + ${recipe.coinsReward} coins</div>` : ''}
+            <button class="craft-btn" ${(!canCraft || equipped) ? 'disabled' : ''} onclick="craftItem('${recipe.id}')">${btnText}</button>
+        `;
+        list.appendChild(card);
+    });
+
+    // Equipment display
+    const eqDisplay = document.getElementById('equipment-display');
+    const equipped = Object.keys(state.equipment).filter(k => state.equipment[k]);
+    if (equipped.length > 0) {
+        eqDisplay.innerHTML = 'Equipped: ' + equipped.map(id => {
+            const r = RECIPES.find(x => x.id === id);
+            return `<span>${r ? r.name : id}</span>`;
+        }).join('');
+    } else {
+        eqDisplay.innerHTML = 'No equipment yet';
+    }
+}
+
+function craftItem(recipeId) {
+    const recipe = RECIPES.find(r => r.id === recipeId);
+    if (!recipe) return;
+
+    // Deduct materials
+    for (const [resId, amount] of Object.entries(recipe.materials)) {
+        if ((state.resources[resId] || 0) < amount) return;
+    }
+    for (const [resId, amount] of Object.entries(recipe.materials)) {
+        state.resources[resId] -= amount;
+    }
+
+    state.stats.totalCrafted++;
+
+    if (recipe.type === 'blog') {
+        // Add to drafts
+        state.drafts.push({
+            id: recipe.id,
+            name: recipe.name,
+            minFollowers: recipe.minFollowers,
+            maxFollowers: recipe.maxFollowers,
+            coinsReward: recipe.coinsReward,
+            writeTime: recipe.writeTime,
+        });
+        showNotif('Crafted ' + recipe.name + '! Go to Write tab.');
+    } else if (recipe.type === 'equipment') {
+        state.equipment[recipe.id] = true;
+        showNotif('Equipped ' + recipe.name + '!');
+        if (recipe.effectKey === 'autoPublish') startAutoPublish();
+    }
+
+    updateInventoryDisplays();
+    renderCraftList();
+    renderDraftList();
+    saveState();
+}
+
+// ============================================
+// WRITE TAB
+// ============================================
+let isWriting = false;
+
+function renderDraftList() {
+    const list = document.getElementById('draft-list');
+    if (state.drafts.length === 0) {
+        list.innerHTML = '<div class="no-drafts">No drafts available. Craft blog posts in the Craft tab!</div>';
+        return;
+    }
+    list.innerHTML = '';
+    state.drafts.forEach((draft, i) => {
+        const card = document.createElement('div');
+        card.className = 'draft-card';
+        card.innerHTML = `
+            <div class="draft-info">
+                <div class="draft-name">${draft.name}</div>
+                <div class="draft-reward">${draft.minFollowers}-${draft.maxFollowers} followers, ${draft.coinsReward} coins</div>
+            </div>
+            <button class="publish-btn" ${isWriting ? 'disabled' : ''} onclick="publishDraft(${i})">Publish</button>
+        `;
+        list.appendChild(card);
+    });
+}
+
+function publishDraft(index) {
+    if (isWriting || index >= state.drafts.length) return;
+    isWriting = true;
+
+    const draft = state.drafts[index];
+    const writeTime = draft.writeTime / getWriteSpeedMultiplier();
+
+    // Show progress
+    const progressEl = document.getElementById('writing-progress');
+    const labelEl = document.getElementById('wp-label');
+    const fillEl = document.getElementById('wp-fill');
+    progressEl.style.display = 'block';
+    labelEl.textContent = `Writing "${draft.name}"...`;
+    fillEl.style.width = '0%';
+
+    const startTime = Date.now();
+    const progressInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const pct = Math.min((elapsed / writeTime) * 100, 100);
+        fillEl.style.width = pct + '%';
+    }, 100);
+
+    setTimeout(() => {
+        clearInterval(progressInterval);
+        fillEl.style.width = '100%';
+
+        // Calculate rewards
+        const qualityMult = getBlogQualityMultiplier();
+        const baseFollowers = draft.minFollowers + Math.floor(Math.random() * (draft.maxFollowers - draft.minFollowers + 1));
+        const followers = Math.floor(baseFollowers * qualityMult);
+        const coins = Math.floor(draft.coinsReward * qualityMult);
+
+        state.followers += followers;
+        state.stats.totalPublished++;
+        state.stats.totalFollowers += followers;
+
+        // Remove draft
+        state.drafts.splice(index, 1);
+
+        // Update coins via API
+        currentUser.coins = (currentUser.coins || 0) + coins;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+        syncCoins(coins);
+
+        labelEl.textContent = `Published! +${followers} followers, +${coins} coins`;
+        setTimeout(() => {
+            progressEl.style.display = 'none';
+            isWriting = false;
+            renderDraftList();
+        }, 1500);
+
+        updateCoinsDisplay();
+        updateRankDisplay();
+        saveState();
+
+        showNotif(`+${followers} followers, +${coins} coins!`);
+    }, writeTime);
+
+    renderDraftList();
+}
+
+// Auto-publish (from Server Rack)
+let autoPublishInterval = null;
+function startAutoPublish() {
+    if (autoPublishInterval) clearInterval(autoPublishInterval);
+    if (state.equipment.server_rack) {
+        autoPublishInterval = setInterval(() => {
+            if (!isWriting && state.drafts.length > 0) {
+                publishDraft(0);
+            }
+        }, 60000);
+    }
+}
+
+function syncCoins(amount) {
+    fetch(API_URL + '/user/coins', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken,
+        },
+        body: JSON.stringify({ coins: currentUser.coins }),
+    }).catch(() => {});
+}
+
+// ============================================
+// MARKET TAB
+// ============================================
+const BASE_PRICES = {
+    stone: 2, wood: 2, iron: 5, gold: 12, crystal: 20, paper: 3, ink: 3,
+};
+
+function initMarketPrices() {
+    RESOURCES.forEach(r => {
+        if (!state.marketPrices[r.id]) {
+            state.marketPrices[r.id] = BASE_PRICES[r.id];
+        }
+    });
+}
+
+function fluctuatePrices() {
+    RESOURCES.forEach(r => {
+        const base = BASE_PRICES[r.id];
+        const change = (Math.random() - 0.5) * 0.2 * base; // ±10%
+        state.marketPrices[r.id] = Math.max(1, Math.round(base + change));
+    });
+    renderMarket();
+    saveState();
+}
+
+function renderMarket() {
+    const list = document.getElementById('market-list');
+    list.innerHTML = '';
+    RESOURCES.forEach(r => {
+        const price = state.marketPrices[r.id] || BASE_PRICES[r.id];
+        const have = state.resources[r.id] || 0;
+        const canBuy = (currentUser.coins || 0) >= price;
+        const canSell = have > 0;
+
+        const row = document.createElement('div');
+        row.className = 'market-row';
+        row.innerHTML = `
+            <span class="market-icon">${r.icon}</span>
+            <span class="market-name">${r.name}</span>
+            <span class="market-stock">x${have}</span>
+            <span class="market-price">${price} coins</span>
+            <button class="market-btn buy" ${!canBuy ? 'disabled' : ''} onclick="marketBuy('${r.id}')">Buy</button>
+            <button class="market-btn sell" ${!canSell ? 'disabled' : ''} onclick="marketSell('${r.id}')">Sell</button>
+        `;
+        list.appendChild(row);
+    });
+}
+
+function marketBuy(resId) {
+    const price = state.marketPrices[resId] || BASE_PRICES[resId];
+    if ((currentUser.coins || 0) < price) return;
+
+    currentUser.coins -= price;
+    state.resources[resId] = (state.resources[resId] || 0) + 1;
+    localStorage.setItem('user', JSON.stringify(currentUser));
+    syncCoins(0);
+    updateCoinsDisplay();
+    updateInventoryDisplays();
+    renderMarket();
+    saveState();
+}
+
+function marketSell(resId) {
+    if ((state.resources[resId] || 0) <= 0) return;
+    const price = state.marketPrices[resId] || BASE_PRICES[resId];
+    const sellPrice = Math.max(1, Math.floor(price * 0.7)); // Sell at 70%
+
+    state.resources[resId]--;
+    currentUser.coins = (currentUser.coins || 0) + sellPrice;
+    localStorage.setItem('user', JSON.stringify(currentUser));
+    syncCoins(0);
+    updateCoinsDisplay();
+    updateInventoryDisplays();
+    renderMarket();
+    saveState();
+    showNotif(`Sold ${RESOURCES.find(r => r.id === resId).name} for ${sellPrice} coins`);
+}
+
+// ============================================
+// UPGRADES TAB
+// ============================================
+function renderUpgrades() {
+    const list = document.getElementById('upgrades-list');
+    list.innerHTML = '';
+
+    UPGRADES.forEach(up => {
+        const level = state.upgrades[up.id] || 0;
+        const maxed = level >= up.max;
+        const cost = up.cost * (level + 1);
+        const canBuy = !maxed && (currentUser.coins || 0) >= cost;
+
+        const card = document.createElement('div');
+        card.className = 'upgrade-card';
+        card.innerHTML = `
+            <div class="upgrade-info">
+                <div class="upgrade-name">${up.name}</div>
+                <div class="upgrade-desc">${up.desc}</div>
+                <div class="upgrade-level">Level ${level}/${up.max}</div>
+            </div>
+            <button class="upgrade-btn ${maxed ? 'maxed' : ''}" ${(!canBuy && !maxed) ? 'disabled' : ''} ${maxed ? 'disabled' : ''} onclick="buyUpgrade('${up.id}')">
+                ${maxed ? 'MAX' : `${cost} coins`}
+            </button>
+        `;
+        list.appendChild(card);
+    });
+}
+
+function buyUpgrade(upId) {
+    const up = UPGRADES.find(u => u.id === upId);
+    if (!up) return;
+    const level = state.upgrades[up.id] || 0;
+    if (level >= up.max) return;
+    const cost = up.cost * (level + 1);
+    if ((currentUser.coins || 0) < cost) return;
+
+    currentUser.coins -= cost;
+    state.upgrades[up.id] = level + 1;
+    localStorage.setItem('user', JSON.stringify(currentUser));
+    syncCoins(0);
+    updateCoinsDisplay();
+    renderUpgrades();
+    saveState();
+
+    if (up.id === 'auto_mine') startAutoMine();
+
+    showNotif(`Upgraded ${up.name} to level ${level + 1}!`);
+}
+
+// ============================================
+// STATS TAB
+// ============================================
+function renderStats() {
+    const list = document.getElementById('stats-list');
+    const rank = getCurrentRank();
+    const playTime = Math.floor((Date.now() - state.stats.playStarted) / 60000);
+
+    list.innerHTML = `
+        <div class="stat-row"><span class="stat-label">Current Rank</span><span class="stat-value" style="color:${rank.color}">${rank.name}</span></div>
+        <div class="stat-row"><span class="stat-label">Total Followers</span><span class="stat-value">${state.followers}</span></div>
+        <div class="stat-row"><span class="stat-label">Blog Posts Published</span><span class="stat-value">${state.stats.totalPublished}</span></div>
+        <div class="stat-row"><span class="stat-label">Resources Mined</span><span class="stat-value">${state.stats.totalMined}</span></div>
+        <div class="stat-row"><span class="stat-label">Items Crafted</span><span class="stat-value">${state.stats.totalCrafted}</span></div>
+        <div class="stat-row"><span class="stat-label">Time Played</span><span class="stat-value">${playTime} min</span></div>
+        <div class="stat-row"><span class="stat-label">Equipment Owned</span><span class="stat-value">${Object.values(state.equipment).filter(v => v).length}</span></div>
+        <div class="stat-row"><span class="stat-label">Mining Speed Bonus</span><span class="stat-value">+${Math.round((getMineSpeedMultiplier() - 1) * 100)}%</span></div>
+        <div class="stat-row"><span class="stat-label">Writing Speed Bonus</span><span class="stat-value">+${Math.round((getWriteSpeedMultiplier() - 1) * 100)}%</span></div>
+        <div class="stat-row"><span class="stat-label">Blog Quality Bonus</span><span class="stat-value">+${Math.round((getBlogQualityMultiplier() - 1) * 100)}%</span></div>
+    `;
+}
+
+// ============================================
+// TAB SYSTEM
+// ============================================
+function switchTab(tabName) {
+    // Update buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.textContent.toLowerCase() === tabName.toLowerCase()) btn.classList.add('active');
+    });
+
+    // Update panels
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    const panel = document.getElementById('tab-' + tabName);
+    if (panel) panel.classList.add('active');
+
+    // Refresh tab content
+    if (tabName === 'craft') { updateInventoryDisplays(); renderCraftList(); }
+    if (tabName === 'write') renderDraftList();
+    if (tabName === 'market') renderMarket();
+    if (tabName === 'upgrades') renderUpgrades();
+    if (tabName === 'stats') renderStats();
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+function showNotif(text) {
+    const el = document.createElement('div');
+    el.className = 'notif';
+    el.textContent = text;
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.5s'; }, 2000);
+    setTimeout(() => el.remove(), 2500);
+}
+
+// ============================================
+// INIT
+// ============================================
+function init() {
+    checkAuth();
+    loadState();
+    initMarketPrices();
+    initMineGrid();
+    updateInventoryDisplays();
+    updateRankDisplay();
+
+    // Start auto systems
+    if (state.upgrades.auto_mine) startAutoMine();
+    if (state.equipment.server_rack) startAutoPublish();
+
+    // Price fluctuation every 60s
+    setInterval(fluctuatePrices, 60000);
+
+    // Auto-save every 30s
+    setInterval(saveState, 30000);
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
