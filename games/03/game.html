@@ -112,6 +112,7 @@
             background: #4CAF50; color: #fff; margin-left: 10px;
         }
         .craft-btn:disabled { background: #555; cursor: default; }
+        .recipe.selected-recipe { border-color: gold; background: rgba(255,215,0,0.1); }
         #craft-close {
             display: block; margin: 10px auto 0; padding: 8px 20px;
             background: #e94560; color: #fff; border: none; border-radius: 5px;
@@ -299,6 +300,7 @@ let selectedSlot = 0;
 let followers = 0;
 let pickaxeLevel = 0; // 0=hand, 1=stone, 2=iron
 let craftOpen = false;
+let selectedRecipe = 0;
 let placeMode = false;
 
 // Movement state
@@ -614,7 +616,12 @@ function placeBlock() {
 function toggleCraft() {
     craftOpen = !craftOpen;
     document.getElementById('craft-panel').classList.toggle('open', craftOpen);
-    if (craftOpen) renderCraftPanel();
+    if (craftOpen) { selectedRecipe = 0; renderCraftPanel(); }
+}
+
+function scrollRecipeIntoView() {
+    const items = document.querySelectorAll('#recipe-list .recipe');
+    if (items[selectedRecipe]) items[selectedRecipe].scrollIntoView({ block: 'nearest' });
 }
 
 function renderCraftPanel() {
@@ -623,7 +630,7 @@ function renderCraftPanel() {
 
     RECIPES.forEach((recipe, idx) => {
         const div = document.createElement('div');
-        div.className = 'recipe';
+        div.className = 'recipe' + (idx === selectedRecipe ? ' selected-recipe' : '');
 
         let canCraft = true;
         let matsHtml = '';
@@ -876,7 +883,30 @@ function updatePhysics(delta) {
 // CONTROLS - KEYBOARD
 // ============================================
 document.addEventListener('keydown', (e) => {
-    if (craftOpen && e.code !== 'KeyE' && e.code !== 'Escape') return;
+    if (craftOpen) {
+        switch (e.code) {
+            case 'ArrowUp':
+                e.preventDefault();
+                selectedRecipe = Math.max(0, selectedRecipe - 1);
+                renderCraftPanel();
+                scrollRecipeIntoView();
+                return;
+            case 'ArrowDown':
+                e.preventDefault();
+                selectedRecipe = Math.min(RECIPES.length - 1, selectedRecipe + 1);
+                renderCraftPanel();
+                scrollRecipeIntoView();
+                return;
+            case 'Enter':
+                e.preventDefault();
+                doCraft(selectedRecipe);
+                return;
+            case 'KeyE': case 'Escape':
+                toggleCraft();
+                return;
+        }
+        return;
+    }
     switch (e.code) {
         case 'KeyW': moveForward = true; break;
         case 'KeyA': moveLeft = true; break;
