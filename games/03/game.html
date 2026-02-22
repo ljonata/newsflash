@@ -328,6 +328,9 @@ let isPointerLocked = false;
 
 // Mining state
 let miningTarget = null, miningTime = 0, miningDuration = 500;
+let isMining = false;
+let mineScreenX, mineScreenY; // screen coords for mobile, undefined for desktop (center)
+let mineTargetKey = null; // "x,y,z" of block being mined
 
 // ============================================
 // THREE.JS SETUP
@@ -620,6 +623,85 @@ const materialCache = {};
 function getCachedMaterial(type) {
     if (!materialCache[type]) materialCache[type] = getBlockMaterial(type);
     return materialCache[type];
+}
+
+// ---- Crack overlay system ----
+const CRACK_STAGES = 4;
+const crackTextures = [];
+const crackMaterials = [];
+let crackMesh = null;
+
+function genCrackTextures() {
+    const crackGeo = new THREE.BoxGeometry(1.005, 1.005, 1.005);
+    for (let stage = 0; stage < CRACK_STAGES; stage++) {
+        const c = document.createElement('canvas');
+        c.width = TEX_SIZE; c.height = TEX_SIZE;
+        const ctx = c.getContext('2d');
+        // Transparent background
+        ctx.clearRect(0, 0, TEX_SIZE, TEX_SIZE);
+        const rng = mulberry32(stage * 137 + 7);
+        const alpha = 0.4 + stage * 0.15;
+        // Draw crack lines
+        const numCracks = 2 + stage * 3;
+        ctx.strokeStyle = `rgba(30,20,10,${alpha})`;
+        ctx.lineWidth = 1;
+        for (let i = 0; i < numCracks; i++) {
+            ctx.beginPath();
+            let x = Math.floor(rng() * TEX_SIZE);
+            let y = Math.floor(rng() * TEX_SIZE);
+            ctx.moveTo(x, y);
+            const segs = 2 + Math.floor(rng() * (2 + stage));
+            for (let s = 0; s < segs; s++) {
+                x += Math.floor((rng() - 0.5) * 7);
+                y += Math.floor((rng() - 0.5) * 7);
+                ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+        // Add dark chips for higher stages
+        if (stage >= 1) {
+            ctx.fillStyle = `rgba(20,15,5,${0.15 + stage * 0.1})`;
+            for (let i = 0; i < stage * 3; i++) {
+                const sx = Math.floor(rng() * TEX_SIZE);
+                const sy = Math.floor(rng() * TEX_SIZE);
+                const sw = 1 + Math.floor(rng() * 2);
+                ctx.fillRect(sx, sy, sw, sw);
+            }
+        }
+        // Final stage gets heavier damage
+        if (stage === 3) {
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            for (let i = 0; i < 6; i++) {
+                const sx = Math.floor(rng() * TEX_SIZE);
+                const sy = Math.floor(rng() * TEX_SIZE);
+                ctx.fillRect(sx, sy, 2, 2);
+            }
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        crackTextures.push(tex);
+        crackMaterials.push(new THREE.MeshBasicMaterial({
+            map: tex, transparent: true, depthWrite: false, polygonOffset: true,
+            polygonOffsetFactor: -1, polygonOffsetUnits: -1
+        }));
+    }
+    crackMesh = new THREE.Mesh(crackGeo, crackMaterials[0]);
+    crackMesh.visible = false;
+    crackMesh.renderOrder = 1;
+    scene.add(crackMesh);
+}
+
+function showCrackOverlay(targetMesh, progress) {
+    if (!crackMesh || !targetMesh) { hideCrackOverlay(); return; }
+    const stage = Math.min(Math.floor(progress * CRACK_STAGES), CRACK_STAGES - 1);
+    crackMesh.position.copy(targetMesh.position);
+    crackMesh.material = crackMaterials[stage];
+    crackMesh.visible = true;
+}
+
+function hideCrackOverlay() {
+    if (crackMesh) crackMesh.visible = false;
 }
 
 function addBlock(x, y, z, type) {
@@ -1237,8 +1319,15 @@ document.addEventListener('mousemove', (e) => {
 });
 
 // Mining / Placing
-let mouseDown = false;
 let mineStartTime = 0;
+
+function stopMining() {
+    isMining = false;
+    mineTargetKey = null;
+    hideCrackOverlay();
+    document.getElementById('mine-progress').style.display = 'none';
+    document.getElementById('mine-progress-fill').style.width = '0%';
+}
 
 canvas.addEventListener('mousedown', (e) => {
     if (!isTouchDevice && !isPointerLocked) return;
@@ -1246,9 +1335,12 @@ canvas.addEventListener('mousedown', (e) => {
     if (craftOpen) return;
 
     if (e.button === 0) {
-        // Left click - mine
-        mouseDown = true;
+        // Left click - start mining
+        isMining = true;
         mineStartTime = performance.now();
+        mineScreenX = undefined;
+        mineScreenY = undefined;
+        mineTargetKey = null;
         document.getElementById('mine-progress').style.display = 'block';
     } else if (e.button === 2) {
         // Right click - place
@@ -1258,9 +1350,7 @@ canvas.addEventListener('mousedown', (e) => {
 
 canvas.addEventListener('mouseup', (e) => {
     if (e.button === 0) {
-        mouseDown = false;
-        document.getElementById('mine-progress').style.display = 'none';
-        document.getElementById('mine-progress-fill').style.width = '0%';
+        stopMining();
     }
 });
 
@@ -1332,12 +1422,17 @@ canvas.addEventListener('touchstart', (e) => {
             touchLook.moved = false;
             touchLook.held = false;
 
-            // Start hold timer for mining
+            // Start hold timer for mining (progressive)
             clearTimeout(touchHoldTimer);
             touchHoldTimer = setTimeout(() => {
                 if (!touchLook.moved) {
                     touchLook.held = true;
-                    mineBlock(touchLook.startX, touchLook.startY);
+                    // Start progressive mining (cracks + progress bar)
+                    isMining = true;
+                    mineStartTime = performance.now();
+                    mineScreenX = touchLook.startX;
+                    mineScreenY = touchLook.startY;
+                    mineTargetKey = null;
                 }
             }, HOLD_DURATION);
         }
@@ -1354,6 +1449,7 @@ canvas.addEventListener('touchmove', (e) => {
             if (Math.abs(totalDx) > 8 || Math.abs(totalDy) > 8) {
                 touchLook.moved = true;
                 clearTimeout(touchHoldTimer);
+                if (isMining) stopMining();
             }
             euler.y -= dx * 0.005;
             euler.x -= dy * 0.005;
@@ -1370,6 +1466,8 @@ canvas.addEventListener('touchend', (e) => {
         if (t.identifier === touchLook.id) {
             touchLook.active = false;
             clearTimeout(touchHoldTimer);
+            // Cancel mining if active
+            if (isMining) stopMining();
             // Quick tap (not dragged, not held) = place block
             if (!touchLook.moved && !touchLook.held) {
                 placeBlock(t.clientX, t.clientY);
@@ -1418,15 +1516,36 @@ function animate() {
 
     updatePhysics(delta);
 
-    // Mining progress (hold left click)
-    if (mouseDown && !craftOpen) {
-        const elapsed = performance.now() - mineStartTime;
-        const duration = miningDuration / (1 + pickaxeLevel * 0.5);
-        const pct = Math.min(elapsed / duration, 1);
-        document.getElementById('mine-progress-fill').style.width = (pct * 100) + '%';
-        if (pct >= 1) {
-            mineBlock();
+    // Mining progress (hold to mine - desktop & mobile)
+    if (isMining && !craftOpen) {
+        const hit = getTargetBlock(mineScreenX, mineScreenY);
+        const targetKey = hit ? `${hit.object.userData.bx},${hit.object.userData.by},${hit.object.userData.bz}` : null;
+
+        // If target changed (looked away), reset mining progress
+        if (targetKey !== mineTargetKey) {
+            mineTargetKey = targetKey;
             mineStartTime = performance.now();
+        }
+
+        if (hit) {
+            const elapsed = performance.now() - mineStartTime;
+            const duration = miningDuration / (1 + pickaxeLevel * 0.5);
+            const pct = Math.min(elapsed / duration, 1);
+
+            document.getElementById('mine-progress').style.display = 'block';
+            document.getElementById('mine-progress-fill').style.width = (pct * 100) + '%';
+            showCrackOverlay(hit.object, pct);
+
+            if (pct >= 1) {
+                mineBlock(mineScreenX, mineScreenY);
+                mineStartTime = performance.now();
+                mineTargetKey = null;
+                hideCrackOverlay();
+            }
+        } else {
+            hideCrackOverlay();
+            document.getElementById('mine-progress').style.display = 'none';
+            document.getElementById('mine-progress-fill').style.width = '0%';
         }
     }
 
@@ -1455,6 +1574,7 @@ window.addEventListener('resize', () => {
 function init() {
     checkAuth();
     genTextures();
+    genCrackTextures();
     const loaded = loadState();
     if (!loaded) generateWorld();
     // Also clear old tab-based state
