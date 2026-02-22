@@ -1141,7 +1141,7 @@ function interact() {
     if (tile === T.CHEST && !openedChests.has(key)) {
         openedChests.add(key);
         // Random reward
-        const rewards = ['potion', 'key', 'shield', 'coins', 'coins', 'coins'];
+        const rewards = ['key', 'key', 'potion', 'shield', 'coins', 'coins'];
         const reward = rewards[Math.floor(Math.random() * rewards.length)];
         if (reward === 'coins') {
             const amt = Math.floor(Math.random() * 5) + 1;
@@ -1187,8 +1187,12 @@ function swingSword() {
         const key = `${tx},${ty}`;
         if (gameMap[ty][tx] === T.BUSH && !cutBushes.has(key)) {
             cutBushes.add(key);
-            // Sometimes drop coins
-            if (Math.random() < 0.4) {
+            // Sometimes drop items
+            const roll = Math.random();
+            if (roll < 0.15) {
+                inventory.key = (inventory.key || 0) + 1;
+                showNotif('Cut bush — found a Key!');
+            } else if (roll < 0.5) {
                 const amt = Math.floor(Math.random() * 3) + 1;
                 playerCoins += amt;
                 inventory.coins += amt;
