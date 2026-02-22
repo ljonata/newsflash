@@ -237,6 +237,7 @@
         .plant-wallnut {
             background: radial-gradient(circle at 40% 40%, #a1887f, #6d4c41);
             border-radius: 12px;
+            transition: filter 0.3s, box-shadow 0.3s;
         }
         .plant-wallnut::before {
             content: '';
@@ -254,6 +255,21 @@
             background-color: #3e2723;
             border-radius: 3px;
             bottom: 10px; left: 15px;
+        }
+        .plant-wallnut.wallnut-damaged {
+            background: radial-gradient(circle at 40% 40%, #8d6e63, #5d4037);
+            box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
+        }
+        .plant-wallnut.wallnut-damaged::before {
+            box-shadow: 16px 0 0 #3e2723, 6px 8px 0 1px rgba(0,0,0,0.3);
+        }
+        .plant-wallnut.wallnut-critical {
+            background: radial-gradient(circle at 40% 40%, #795548, #4e342e);
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.7);
+            filter: brightness(0.7);
+        }
+        .plant-wallnut.wallnut-critical::before {
+            box-shadow: 16px 0 0 #3e2723, 4px 6px 0 1px rgba(0,0,0,0.4), 20px 10px 0 1px rgba(0,0,0,0.3);
         }
 
         /* Snow Pea - blue circle, slows zombies */
@@ -650,13 +666,13 @@
                 id: 'wallnut',
                 name: 'Wall-nut',
                 cost: 50,
-                hp: 5,
+                hp: 15,
                 shootInterval: null, // doesn't shoot
                 damage: 0,
                 projectileClass: null,
                 previewClass: 'preview-wallnut',
                 plantClass: 'plant-wallnut',
-                special: null
+                special: 'wall' // blocks zombies, 15s durability, eaten faster by more zombies
             },
             {
                 id: 'snowpea',
@@ -707,6 +723,7 @@
         let zombieMoveTimer = null;
         let projectileMoveTimer = null;
         let zombieSpawnTimer = null;
+        let wallnutDamageTimer = null;
 
         const grid = [];
         const container = document.getElementById('game-container');
@@ -806,6 +823,7 @@
                 row, col, element: plantEl,
                 type: type,
                 hp: type.hp,
+                maxHp: type.hp,
                 shootInterval: null,
                 sunInterval: null
             };
@@ -970,6 +988,10 @@
                     if (zombie.moveCounter % 2 !== 0) continue; // skip this tick
                 }
 
+                // Check if zombie is held by a wall-nut on its current cell
+                const wallnutHere = plants.find(p => p.row === zombie.row && p.col === zombie.col && p.type.id === 'wallnut');
+                if (wallnutHere) continue; // Blocked — wall-nut damage handled by timer
+
                 zombie.element.remove();
                 zombie.col -= 1;
 
@@ -982,11 +1004,14 @@
                 // Check plant collision
                 const hitPlant = plants.find(p => p.row === zombie.row && p.col === zombie.col);
                 if (hitPlant) {
-                    hitPlant.hp -= 1;
-                    if (hitPlant.hp <= 0) {
-                        removePlant(hitPlant);
+                    if (hitPlant.type.id !== 'wallnut') {
+                        // Normal plant: deal damage
+                        hitPlant.hp -= 1;
+                        if (hitPlant.hp <= 0) {
+                            removePlant(hitPlant);
+                        }
                     }
-                    // Zombie stays in cell after eating
+                    // Wall-nut: zombie enters the cell and stops (damage handled by timer)
                 }
 
                 grid[zombie.row][zombie.col].appendChild(zombie.element);
@@ -1002,6 +1027,30 @@
 
             if (zombiesSpawned >= zombiesPerWave && zombies.length === 0) {
                 nextWave();
+            }
+        }
+
+        // ========== WALL-NUT DURABILITY ==========
+        function updateWallnutDamage() {
+            if (gameOver) return;
+            for (const plant of [...plants]) {
+                if (plant.type.id !== 'wallnut') continue;
+                const eatingCount = zombies.filter(z => z.row === plant.row && z.col === plant.col).length;
+                if (eatingCount > 0) {
+                    plant.hp -= eatingCount; // 1 per zombie per second
+                    // Update visual
+                    const pct = plant.hp / plant.maxHp;
+                    if (pct < 0.33) {
+                        plant.element.classList.add('wallnut-critical');
+                        plant.element.classList.remove('wallnut-damaged');
+                    } else if (pct < 0.66) {
+                        plant.element.classList.add('wallnut-damaged');
+                        plant.element.classList.remove('wallnut-critical');
+                    }
+                    if (plant.hp <= 0) {
+                        removePlant(plant);
+                    }
+                }
             }
         }
 
@@ -1043,6 +1092,7 @@
             if (zombieMoveTimer) clearInterval(zombieMoveTimer);
             if (projectileMoveTimer) clearInterval(projectileMoveTimer);
             if (zombieSpawnTimer) clearInterval(zombieSpawnTimer);
+            if (wallnutDamageTimer) clearInterval(wallnutDamageTimer);
             for (const plant of plants) {
                 if (plant.shootInterval) clearInterval(plant.shootInterval);
                 if (plant.sunInterval) clearInterval(plant.sunInterval);
@@ -1080,6 +1130,7 @@
             zombieMoveTimer = setInterval(moveZombies, ZOMBIE_MOVE_INTERVAL);
             projectileMoveTimer = setInterval(moveProjectiles, PROJECTILE_MOVE_INTERVAL);
             zombieSpawnTimer = setInterval(spawnZombie, ZOMBIE_SPAWN_INTERVAL);
+            wallnutDamageTimer = setInterval(updateWallnutDamage, 1000);
             setTimeout(spawnZombie, 2000);
         }
 
