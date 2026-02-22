@@ -1135,11 +1135,18 @@ function animate() {
     const delta = Math.min(clock.getDelta(), 0.1);
 
     // Mobile joystick movement
-    if (touchJoystick.active) {
-        moveForward = touchJoystick.dy < -0.3;
-        moveBackward = touchJoystick.dy > 0.3;
-        moveLeft = touchJoystick.dx < -0.3;
-        moveRight = touchJoystick.dx > 0.3;
+    if (isTouchDevice) {
+        if (touchJoystick.active) {
+            moveForward = touchJoystick.dy < -0.3;
+            moveBackward = touchJoystick.dy > 0.3;
+            moveLeft = touchJoystick.dx < -0.3;
+            moveRight = touchJoystick.dx > 0.3;
+        } else {
+            moveForward = false;
+            moveBackward = false;
+            moveLeft = false;
+            moveRight = false;
+        }
     }
 
     updatePhysics(delta);
