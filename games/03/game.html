@@ -55,6 +55,7 @@
         .hotbar-slot.selected { border-color: gold; background: rgba(255,215,0,0.15); }
         .hotbar-slot .slot-color {
             width: 24px; height: 24px; border-radius: 3px;
+            image-rendering: pixelated;
         }
         .hotbar-slot .slot-count {
             position: absolute; bottom: 1px; right: 3px;
@@ -784,8 +785,18 @@ function renderHotbar() {
         if (hotbar[i]) {
             const swatch = document.createElement('div');
             swatch.className = 'slot-color';
-            const b = BLOCKS[hotbar[i].type];
-            swatch.style.background = '#' + (b ? b.color.toString(16).padStart(6, '0') : 'ff00ff');
+            const type = hotbar[i].type;
+            // Use canvas texture if available
+            const texKey = (type === 'grass') ? 'grass_top' : (type === 'wood') ? 'wood' : type;
+            if (blockTextures[texKey] && blockTextures[texKey].image) {
+                swatch.style.background = 'none';
+                swatch.style.imageRendering = 'pixelated';
+                swatch.style.backgroundImage = `url(${blockTextures[texKey].image.toDataURL()})`;
+                swatch.style.backgroundSize = 'cover';
+            } else {
+                const b = BLOCKS[type];
+                swatch.style.background = '#' + (b ? b.color.toString(16).padStart(6, '0') : 'ff00ff');
+            }
             slot.appendChild(swatch);
 
             const cnt = document.createElement('div');
