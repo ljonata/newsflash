@@ -960,6 +960,8 @@ function genItemIcon(itemId) {
 let gameMap = null;
 let openedChests = new Set(); // "x,y" keys
 let cutBushes = new Set();
+// 4 key bushes — one near each house, these sparkle as a hint
+const KEY_BUSHES = new Set(['7,9', '23,8', '14,20', '31,12']);
 
 // Player
 let player = { x: 19, y: 13, dir: 'down', frame: 0 };
@@ -1044,6 +1046,39 @@ function render() {
             const dx = sx * TS - (cam.x % 1) * TS;
             const dy = sy * TS - (cam.y % 1) * TS;
             ctx.drawImage(tileC, dx, dy, TS, TS);
+        }
+    }
+
+    // Draw sparkles on key bushes (hint that they hide a key)
+    for (const kb of KEY_BUSHES) {
+        if (cutBushes.has(kb)) continue; // already cut
+        const [bx, by] = kb.split(',').map(Number);
+        const sx2 = bx - Math.floor(cam.x);
+        const sy2 = by - Math.floor(cam.y);
+        if (sx2 < -1 || sx2 > canvas.tilesX || sy2 < -1 || sy2 > canvas.tilesY) continue;
+        const dx = sx2 * TS - (cam.x % 1) * TS;
+        const dy = sy2 * TS - (cam.y % 1) * TS;
+        // 3 sparkle points that twinkle at different phases
+        const t = performance.now() / 1000;
+        const sparkles = [
+            { ox: 0.2, oy: 0.15, phase: 0 },
+            { ox: 0.7, oy: 0.3, phase: 2.1 },
+            { ox: 0.45, oy: 0.65, phase: 4.2 },
+        ];
+        for (const sp of sparkles) {
+            const brightness = Math.sin(t * 3 + sp.phase) * 0.5 + 0.5;
+            if (brightness < 0.3) continue; // dim sparkle hidden
+            const size = 2 + brightness * 4;
+            const alpha = brightness * 0.9;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = '#fffbe0';
+            // Draw a small cross/star shape
+            const cx = dx + sp.ox * TS;
+            const cy = dy + sp.oy * TS;
+            ctx.fillRect(cx - size/2, cy - 1, size, 2);
+            ctx.fillRect(cx - 1, cy - size/2, 2, size);
+            ctx.restore();
         }
     }
 
@@ -1140,8 +1175,8 @@ function interact() {
 
     if (tile === T.CHEST && !openedChests.has(key)) {
         openedChests.add(key);
-        // Random reward
-        const rewards = ['key', 'key', 'potion', 'shield', 'coins', 'coins'];
+        // Random reward (keys only come from special bushes)
+        const rewards = ['potion', 'shield', 'coins', 'coins', 'coins', 'coins'];
         const reward = rewards[Math.floor(Math.random() * rewards.length)];
         if (reward === 'coins') {
             const amt = Math.floor(Math.random() * 5) + 1;
@@ -1187,19 +1222,22 @@ function swingSword() {
         const key = `${tx},${ty}`;
         if (gameMap[ty][tx] === T.BUSH && !cutBushes.has(key)) {
             cutBushes.add(key);
-            // Sometimes drop items
-            const roll = Math.random();
-            if (roll < 0.15) {
+            if (KEY_BUSHES.has(key)) {
+                // Key bush — always drops a key
                 inventory.key = (inventory.key || 0) + 1;
                 showNotif('Cut bush — found a Key!');
-            } else if (roll < 0.5) {
-                const amt = Math.floor(Math.random() * 3) + 1;
-                playerCoins += amt;
-                inventory.coins += amt;
-                showNotif(`Cut bush — found ${amt} coins!`);
-                syncCoins();
             } else {
-                showNotif('Cut the bush!');
+                // Regular bush — sometimes drops coins
+                const roll = Math.random();
+                if (roll < 0.4) {
+                    const amt = Math.floor(Math.random() * 3) + 1;
+                    playerCoins += amt;
+                    inventory.coins += amt;
+                    showNotif(`Cut bush — found ${amt} coins!`);
+                    syncCoins();
+                } else {
+                    showNotif('Cut the bush!');
+                }
             }
             renderBackpack();
             updateHUD();
@@ -1536,7 +1574,8 @@ function updateInteractPrompt() {
             return;
         }
         if (tile === T.BUSH && !cutBushes.has(key)) {
-            prompt.innerHTML = isTouchDevice ? 'Press <b>A</b> to cut' : 'Press <b>Space</b> to cut';
+            const hint = KEY_BUSHES.has(key) ? ' — something shines inside!' : '';
+            prompt.innerHTML = (isTouchDevice ? 'Press <b>A</b> to cut' : 'Press <b>Space</b> to cut') + hint;
             prompt.style.display = 'block';
             return;
         }
