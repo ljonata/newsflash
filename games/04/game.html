@@ -158,17 +158,88 @@
             display: flex; align-items: center; justify-content: center;
             z-index: 160;
         }
+        #btn-quest {
+            position: fixed; top: 44px; right: 6px;
+            width: 40px; height: 32px;
+            background: rgba(55,71,79,0.6);
+            border: 2px solid #546e7a;
+            border-radius: 4px;
+            color: #90caf9; font-size: 9px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 160;
+            display: none;
+        }
 
-        /* Touch: toggle backpack & controls */
+        /* Missions panel */
+        #missions {
+            width: 200px;
+            background: rgba(10, 15, 30, 0.92);
+            border-left: 3px solid #37474f;
+            padding-top: 40px;
+            display: flex; flex-direction: column;
+            z-index: 100;
+            overflow-y: auto;
+        }
+        #missions-title {
+            text-align: center; color: #90caf9;
+            font-size: 14px; font-weight: bold;
+            padding: 8px; letter-spacing: 1px;
+            border-bottom: 2px solid #263238;
+        }
+        .mission {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .mission-header {
+            display: flex; align-items: center; gap: 6px;
+        }
+        .mission-check {
+            width: 14px; height: 14px;
+            border: 2px solid #546e7a;
+            border-radius: 3px;
+            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; color: #4caf50;
+        }
+        .mission.done .mission-check {
+            border-color: #4caf50;
+            background: rgba(76,175,80,0.15);
+        }
+        .mission-name {
+            font-size: 12px; color: #cfd8dc;
+            flex: 1;
+        }
+        .mission.done .mission-name {
+            text-decoration: line-through;
+            color: #607d8b;
+        }
+        .mission-desc {
+            font-size: 10px; color: #78909c;
+            margin-top: 3px; padding-left: 20px;
+            line-height: 1.3;
+        }
+        .mission.done .mission-desc { color: #455a64; }
+        .mission-reward {
+            font-size: 10px; color: #ffd54f;
+            padding-left: 20px; margin-top: 2px;
+        }
+        .mission.done .mission-reward { color: #5d4037; }
+
+        /* Touch: toggle backpack, missions & controls */
         body.is-touch #backpack { display: none; position: fixed; left: 0; top: 0; bottom: 0; z-index: 180; }
         body.is-touch #backpack.open { display: flex; }
+        body.is-touch #missions { display: none; position: fixed; right: 0; top: 0; bottom: 0; z-index: 180; }
+        body.is-touch #missions.open { display: flex; }
         body.is-touch #mobile-controls { display: block; }
         body.is-touch #btn-bag { display: flex; }
+        body.is-touch #btn-quest { display: flex; }
         body:not(.is-touch) #btn-bag { display: none; }
+        body:not(.is-touch) #btn-quest { display: none; }
 
         /* Responsive */
         @media (max-width: 600px) {
             #backpack { width: 150px; }
+            #missions { width: 170px; }
         }
     </style>
 </head>
@@ -199,6 +270,12 @@
     <canvas id="game-canvas"></canvas>
 </div>
 
+<!-- Missions -->
+<div id="missions">
+    <div id="missions-title">MISSIONS</div>
+    <div id="mission-list"></div>
+</div>
+
 <!-- Interaction Prompt -->
 <div id="interact-prompt">Press <b>E</b> to interact</div>
 
@@ -214,6 +291,7 @@
     <div class="action-btn" id="btn-b">B</div>
 </div>
 <div id="btn-bag">BAG</div>
+<div id="btn-quest">QUEST</div>
 
 <script>
 // ============================================
@@ -1058,9 +1136,9 @@ function interact() {
         updateHUD();
         saveState();
     } else if (tile === T.DOOR) {
-        showNotif('The door is locked...');
         if (inventory.key > 0) {
             inventory.key--;
+            doorsOpened++;
             playerCoins += 10;
             inventory.coins += 10;
             showNotif('Used a key! Found 10 coins inside!');
@@ -1068,6 +1146,8 @@ function interact() {
             renderBackpack();
             updateHUD();
             saveState();
+        } else {
+            showNotif('The door is locked... You need a key.');
         }
     }
 }
@@ -1109,6 +1189,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'e') interact();
     if (e.key === ' ') { e.preventDefault(); swingSword(); }
     if (e.key.toLowerCase() === 'i') toggleBackpack();
+    if (e.key.toLowerCase() === 'm') toggleMissions();
 });
 document.addEventListener('keyup', (e) => {
     keysDown[e.key.toLowerCase()] = false;
@@ -1149,6 +1230,9 @@ if (isTouchDevice) {
     });
     document.getElementById('btn-bag').addEventListener('touchstart', (e) => {
         e.preventDefault(); toggleBackpack();
+    });
+    document.getElementById('btn-quest').addEventListener('touchstart', (e) => {
+        e.preventDefault(); toggleMissions();
     });
 }
 
@@ -1207,6 +1291,163 @@ function renderBackpack() {
 function toggleBackpack() {
     if (isTouchDevice) {
         document.getElementById('backpack').classList.toggle('open');
+        document.getElementById('missions').classList.remove('open');
+    }
+}
+
+// ============================================
+// MISSIONS
+// ============================================
+const MISSIONS = [
+    {
+        id: 'first_steps',
+        name: 'First Steps',
+        desc: 'Walk around the village and explore.',
+        reward: null,
+        check: () => {
+            // Complete after walking 20+ tiles
+            return (tilesWalked >= 20);
+        }
+    },
+    {
+        id: 'treasure_hunter',
+        name: 'Treasure Hunter',
+        desc: 'Open your first chest.',
+        reward: '+5 coins',
+        rewardCoins: 5,
+        check: () => openedChests.size >= 1
+    },
+    {
+        id: 'lumberjack',
+        name: 'Bush Whacker',
+        desc: 'Cut down 3 bushes with your sword.',
+        reward: '+3 coins',
+        rewardCoins: 3,
+        check: () => cutBushes.size >= 3
+    },
+    {
+        id: 'collector',
+        name: 'Collector',
+        desc: 'Gather 10 coins total.',
+        reward: null,
+        check: () => playerCoins >= 10
+    },
+    {
+        id: 'treasure_master',
+        name: 'Treasure Master',
+        desc: 'Open all 5 chests in the world.',
+        reward: '+15 coins',
+        rewardCoins: 15,
+        check: () => openedChests.size >= 5
+    },
+    {
+        id: 'herbalist',
+        name: 'Herbalist',
+        desc: 'Find a potion in a chest.',
+        reward: null,
+        check: () => inventory.potion >= 1
+    },
+    {
+        id: 'locksmith',
+        name: 'Locksmith',
+        desc: 'Find a key and use it on a door.',
+        reward: null,
+        check: () => (doorsOpened >= 1)
+    },
+    {
+        id: 'explorer',
+        name: 'Explorer',
+        desc: 'Walk across the bridge over the river.',
+        reward: '+5 coins',
+        rewardCoins: 5,
+        check: () => crossedBridge
+    },
+    {
+        id: 'wealthy',
+        name: 'Wealthy Elf',
+        desc: 'Accumulate 50 coins.',
+        reward: null,
+        check: () => playerCoins >= 50
+    },
+    {
+        id: 'slash_master',
+        name: 'Slash Master',
+        desc: 'Cut down 10 bushes.',
+        reward: '+10 coins',
+        rewardCoins: 10,
+        check: () => cutBushes.size >= 10
+    }
+];
+
+let completedMissions = new Set();
+let tilesWalked = 0;
+let doorsOpened = 0;
+let crossedBridge = false;
+
+function checkMissions() {
+    let changed = false;
+    for (const mission of MISSIONS) {
+        if (completedMissions.has(mission.id)) continue;
+        if (mission.check()) {
+            completedMissions.add(mission.id);
+            changed = true;
+            showNotif(`Mission complete: ${mission.name}!`);
+            if (mission.rewardCoins) {
+                playerCoins += mission.rewardCoins;
+                inventory.coins = playerCoins;
+                syncCoins();
+                updateHUD();
+                renderBackpack();
+            }
+            saveState();
+        }
+    }
+    if (changed) renderMissions();
+}
+
+function renderMissions() {
+    const container = document.getElementById('mission-list');
+    container.innerHTML = '';
+    for (const mission of MISSIONS) {
+        const done = completedMissions.has(mission.id);
+        const div = document.createElement('div');
+        div.className = 'mission' + (done ? ' done' : '');
+
+        const header = document.createElement('div');
+        header.className = 'mission-header';
+
+        const check = document.createElement('div');
+        check.className = 'mission-check';
+        check.textContent = done ? '✓' : '';
+        header.appendChild(check);
+
+        const name = document.createElement('div');
+        name.className = 'mission-name';
+        name.textContent = mission.name;
+        header.appendChild(name);
+
+        div.appendChild(header);
+
+        const desc = document.createElement('div');
+        desc.className = 'mission-desc';
+        desc.textContent = mission.desc;
+        div.appendChild(desc);
+
+        if (mission.reward) {
+            const reward = document.createElement('div');
+            reward.className = 'mission-reward';
+            reward.textContent = done ? 'Claimed' : mission.reward;
+            div.appendChild(reward);
+        }
+
+        container.appendChild(div);
+    }
+}
+
+function toggleMissions() {
+    if (isTouchDevice) {
+        document.getElementById('missions').classList.toggle('open');
+        document.getElementById('backpack').classList.remove('open');
     }
 }
 
@@ -1278,7 +1519,11 @@ function saveState() {
         hp: playerHP, coins: playerCoins,
         inventory: inventory,
         openedChests: [...openedChests],
-        cutBushes: [...cutBushes]
+        cutBushes: [...cutBushes],
+        completedMissions: [...completedMissions],
+        tilesWalked: tilesWalked,
+        doorsOpened: doorsOpened,
+        crossedBridge: crossedBridge
     };
     localStorage.setItem('elfquest_state', JSON.stringify(state));
 }
@@ -1294,6 +1539,10 @@ function loadState() {
         inventory = s.inventory || { sword: 1, shield: 0, key: 0, potion: 0, coins: 0 };
         openedChests = new Set(s.openedChests || []);
         cutBushes = new Set(s.cutBushes || []);
+        completedMissions = new Set(s.completedMissions || []);
+        tilesWalked = s.tilesWalked || 0;
+        doorsOpened = s.doorsOpened || 0;
+        crossedBridge = s.crossedBridge || false;
         return true;
     } catch(e) { return false; }
 }
@@ -1303,6 +1552,7 @@ function loadState() {
 // ============================================
 let lastTime = 0;
 let saveTimer = 0;
+let missionTimer = 0;
 
 function gameLoop(time) {
     requestAnimationFrame(gameLoop);
@@ -1322,6 +1572,11 @@ function gameLoop(time) {
             isMoving = false;
             player.x = moveTo.x;
             player.y = moveTo.y;
+            tilesWalked++;
+            // Check bridge crossing
+            if (gameMap[player.y] && gameMap[player.y][player.x] === T.BRIDGE) {
+                crossedBridge = true;
+            }
         }
     }
 
@@ -1329,6 +1584,13 @@ function gameLoop(time) {
     if (swinging) {
         swingTimer -= delta;
         if (swingTimer <= 0) swinging = false;
+    }
+
+    // Check missions every 2 seconds
+    missionTimer += delta;
+    if (missionTimer > 2) {
+        missionTimer = 0;
+        checkMissions();
     }
 
     // Auto-save
@@ -1353,6 +1615,7 @@ function init() {
     loadState();
     resizeCanvas();
     renderBackpack();
+    renderMissions();
     updateHUD();
     requestAnimationFrame(gameLoop);
 }
