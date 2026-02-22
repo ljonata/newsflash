@@ -811,17 +811,25 @@ function renderHotbar() {
 // ============================================
 // BLOCK INTERACTION
 // ============================================
-function getTargetBlock() {
-    const center = new THREE.Vector2(0, 0);
-    raycaster.setFromCamera(center, camera);
+function getTargetBlock(screenX, screenY) {
+    let ndc;
+    if (screenX !== undefined && screenY !== undefined) {
+        ndc = new THREE.Vector2(
+            (screenX / window.innerWidth) * 2 - 1,
+            -(screenY / window.innerHeight) * 2 + 1
+        );
+    } else {
+        ndc = new THREE.Vector2(0, 0);
+    }
+    raycaster.setFromCamera(ndc, camera);
     const meshes = Object.values(blockMeshes);
     const hits = raycaster.intersectObjects(meshes);
     if (hits.length > 0) return hits[0];
     return null;
 }
 
-function mineBlock() {
-    const hit = getTargetBlock();
+function mineBlock(screenX, screenY) {
+    const hit = getTargetBlock(screenX, screenY);
     if (!hit) return;
     const d = hit.object.userData;
     const type = d.type;
@@ -833,9 +841,9 @@ function mineBlock() {
     saveState();
 }
 
-function placeBlock() {
+function placeBlock(screenX, screenY) {
     if (!hotbar[selectedSlot]) return;
-    const hit = getTargetBlock();
+    const hit = getTargetBlock(screenX, screenY);
     if (!hit) return;
 
     // Calculate placement position from face normal
@@ -1313,11 +1321,14 @@ canvas.addEventListener('touchstart', (e) => {
     // Dismiss start overlay on any canvas touch
     document.getElementById('start-overlay').classList.add('hidden');
     for (const t of e.changedTouches) {
-        if (t.clientX > window.innerWidth / 2) {
+        if (t.clientX > window.innerWidth / 3) {
             touchLook.active = true;
             touchLook.id = t.identifier;
+            touchLook.startX = t.clientX;
+            touchLook.startY = t.clientY;
             touchLook.lastX = t.clientX;
             touchLook.lastY = t.clientY;
+            touchLook.moved = false;
         }
     }
 });
@@ -1327,6 +1338,10 @@ canvas.addEventListener('touchmove', (e) => {
         if (t.identifier === touchLook.id) {
             const dx = t.clientX - touchLook.lastX;
             const dy = t.clientY - touchLook.lastY;
+            // Only count as "moved" if dragged more than 8px total
+            const totalDx = t.clientX - touchLook.startX;
+            const totalDy = t.clientY - touchLook.startY;
+            if (Math.abs(totalDx) > 8 || Math.abs(totalDy) > 8) touchLook.moved = true;
             euler.y -= dx * 0.005;
             euler.x -= dy * 0.005;
             euler.x = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, euler.x));
@@ -1341,8 +1356,15 @@ canvas.addEventListener('touchend', (e) => {
     for (const t of e.changedTouches) {
         if (t.identifier === touchLook.id) {
             touchLook.active = false;
-            // Quick tap = mine
-            mineBlock();
+            // Only act on quick taps (not drags)
+            if (!touchLook.moved) {
+                const sx = t.clientX, sy = t.clientY;
+                if (placeMode) {
+                    placeBlock(sx, sy);
+                } else {
+                    mineBlock(sx, sy);
+                }
+            }
         }
     }
 });
@@ -1358,7 +1380,9 @@ if (btnJump) btnJump.addEventListener('touchstart', (e) => {
 });
 if (btnPlace) btnPlace.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    placeBlock();
+    placeMode = !placeMode;
+    btnPlace.style.background = placeMode ? 'rgba(76,175,80,0.5)' : 'rgba(255,255,255,0.15)';
+    btnPlace.textContent = placeMode ? 'Build' : 'Place';
 });
 if (btnCraft) btnCraft.addEventListener('touchstart', (e) => {
     e.preventDefault();
