@@ -373,7 +373,7 @@ const T = {
     BRIDGE: 11
 };
 
-const WALKABLE = new Set([T.GRASS, T.PATH, T.DOOR, T.FLOWER, T.BRIDGE]);
+const WALKABLE = new Set([T.GRASS, T.PATH, T.DOOR, T.FLOWER, T.BRIDGE, T.WATER]);
 
 // ============================================
 // MAP
@@ -1057,10 +1057,31 @@ function render() {
     const elfC = elfSprites[player.dir][drawFrame];
     const ex = (elfX - cam.x) * TS;
     const ey = (elfY - cam.y) * TS;
-    ctx.drawImage(elfC, ex, ey, TS, TS);
 
-    // Draw sword swing
-    if (swinging) {
+    // Check if elf is swimming
+    const elfTileX = Math.round(elfX), elfTileY = Math.round(elfY);
+    const isSwimming = gameMap[elfTileY] && gameMap[elfTileY][elfTileX] === T.WATER;
+
+    if (isSwimming) {
+        // Draw only top 60% of elf (submerged)
+        const clipH = Math.floor(TS * 0.6);
+        ctx.save();
+        ctx.globalAlpha = 0.9;
+        ctx.drawImage(elfC, 0, 0, TILE, Math.floor(TILE * 0.6), ex, ey, TS, clipH);
+        ctx.globalAlpha = 1;
+        // Water ripples around elf
+        const rippleOff = Math.sin(animFrame * 0.15) * 3;
+        ctx.fillStyle = 'rgba(66,165,245,0.35)';
+        ctx.fillRect(ex - 4 + rippleOff, ey + clipH - 4, TS + 8, 6);
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(ex + 6 - rippleOff, ey + clipH - 6, TS - 12, 3);
+        ctx.restore();
+    } else {
+        ctx.drawImage(elfC, ex, ey, TS, TS);
+    }
+
+    // Draw sword swing (not in water)
+    if (swinging && !isSwimming) {
         ctx.fillStyle = 'rgba(180,200,220,0.8)';
         const swLen = TS * 0.6;
         if (player.dir === 'right') ctx.fillRect(ex + TS, ey + TS*0.3, swLen, 4);
@@ -1376,6 +1397,14 @@ const MISSIONS = [
         reward: '+10 coins',
         rewardCoins: 10,
         check: () => cutBushes.size >= 10
+    },
+    {
+        id: 'swimmer',
+        name: 'Swimmer',
+        desc: 'Take a swim in the lake.',
+        reward: '+3 coins',
+        rewardCoins: 3,
+        check: () => hasSwum
     }
 ];
 
@@ -1383,6 +1412,7 @@ let completedMissions = new Set();
 let tilesWalked = 0;
 let doorsOpened = 0;
 let crossedBridge = false;
+let hasSwum = false;
 
 function checkMissions() {
     let changed = false;
@@ -1523,7 +1553,8 @@ function saveState() {
         completedMissions: [...completedMissions],
         tilesWalked: tilesWalked,
         doorsOpened: doorsOpened,
-        crossedBridge: crossedBridge
+        crossedBridge: crossedBridge,
+        hasSwum: hasSwum
     };
     localStorage.setItem('elfquest_state', JSON.stringify(state));
 }
@@ -1543,6 +1574,7 @@ function loadState() {
         tilesWalked = s.tilesWalked || 0;
         doorsOpened = s.doorsOpened || 0;
         crossedBridge = s.crossedBridge || false;
+        hasSwum = s.hasSwum || false;
         return true;
     } catch(e) { return false; }
 }
@@ -1566,7 +1598,10 @@ function gameLoop(time) {
 
     // Movement interpolation
     if (isMoving) {
-        moveProgress += MOVE_SPEED * delta;
+        // Slow down in water
+        const inWater = gameMap[moveTo.y] && gameMap[moveTo.y][moveTo.x] === T.WATER;
+        const speed = inWater ? MOVE_SPEED * 0.45 : MOVE_SPEED;
+        moveProgress += speed * delta;
         if (moveProgress >= 1) {
             moveProgress = 0;
             isMoving = false;
@@ -1576,6 +1611,10 @@ function gameLoop(time) {
             // Check bridge crossing
             if (gameMap[player.y] && gameMap[player.y][player.x] === T.BRIDGE) {
                 crossedBridge = true;
+            }
+            // Check swimming
+            if (gameMap[player.y] && gameMap[player.y][player.x] === T.WATER) {
+                hasSwum = true;
             }
         }
     }
