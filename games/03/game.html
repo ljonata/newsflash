@@ -160,12 +160,14 @@
         #btn-place { bottom: 140px; right: 20px; }
         #btn-craft { bottom: 80px; right: 80px; }
 
-        @media (max-width: 768px) {
-            #mobile-controls { display: block; }
-            .hotbar-slot { width: 38px; height: 38px; }
-            .hotbar-slot .slot-color { width: 18px; height: 18px; }
-            #hotbar { bottom: 70px; }
-        }
+        /* Mobile: shown via JS class on body */
+        body.is-touch #mobile-controls { display: block; }
+        body.is-touch .hotbar-slot { width: 38px; height: 38px; }
+        body.is-touch .hotbar-slot .slot-color { width: 18px; height: 18px; }
+        body.is-touch #hotbar { bottom: 70px; }
+        body.is-touch #crosshair { display: none; }
+        body.is-touch .controls-help-desktop { display: none; }
+        body:not(.is-touch) .controls-help-mobile { display: none; }
     </style>
 </head>
 <body>
@@ -174,11 +176,16 @@
 <div id="start-overlay">
     <h1>BlogCraft</h1>
     <p>A 3D voxel world of mining, crafting & blogging</p>
-    <p style="color:gold; margin-top:15px;">Click to Play</p>
-    <div class="controls-help">
+    <p style="color:gold; margin-top:15px;" id="start-action">Click to Play</p>
+    <div class="controls-help controls-help-desktop">
         WASD - Move | Mouse - Look | Space - Jump<br>
         Left Click - Mine | Right Click - Place<br>
         1-9 - Select Slot | E - Crafting
+    </div>
+    <div class="controls-help controls-help-mobile">
+        Left Joystick - Move | Right Side - Look<br>
+        Tap - Mine | Place Button - Place Block<br>
+        Tap Hotbar - Select Slot | E Button - Crafting
     </div>
 </div>
 
@@ -224,6 +231,15 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+// ============================================
+// DEVICE DETECTION
+// ============================================
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+if (isTouchDevice) {
+    document.body.classList.add('is-touch');
+    document.getElementById('start-action').textContent = 'Tap to Play';
+}
+
 // ============================================
 // AUTH
 // ============================================
@@ -943,22 +959,28 @@ document.addEventListener('keyup', (e) => {
 const canvas = renderer.domElement;
 
 document.getElementById('start-overlay').addEventListener('click', () => {
-    canvas.requestPointerLock();
+    if (isTouchDevice) {
+        document.getElementById('start-overlay').classList.add('hidden');
+    } else {
+        canvas.requestPointerLock();
+    }
 });
 
 canvas.addEventListener('click', () => {
-    if (!isPointerLocked) {
+    if (!isTouchDevice && !isPointerLocked) {
         canvas.requestPointerLock();
     }
 });
 
 document.addEventListener('pointerlockchange', () => {
     isPointerLocked = document.pointerLockElement === canvas;
-    document.getElementById('start-overlay').classList.toggle('hidden', isPointerLocked);
+    if (!isTouchDevice) {
+        document.getElementById('start-overlay').classList.toggle('hidden', isPointerLocked);
+    }
 });
 
 document.addEventListener('mousemove', (e) => {
-    if (!isPointerLocked) return;
+    if (!isTouchDevice && !isPointerLocked) return;
     const sensitivity = 0.002;
     euler.y -= e.movementX * sensitivity;
     euler.x -= e.movementY * sensitivity;
@@ -971,7 +993,7 @@ let mouseDown = false;
 let mineStartTime = 0;
 
 canvas.addEventListener('mousedown', (e) => {
-    if (!isPointerLocked) return;
+    if (!isTouchDevice && !isPointerLocked) return;
     e.preventDefault();
     if (craftOpen) return;
 
@@ -1047,13 +1069,14 @@ if (joystickArea) {
 
 // Touch look (right side of screen)
 canvas.addEventListener('touchstart', (e) => {
+    // Dismiss start overlay on any canvas touch
+    document.getElementById('start-overlay').classList.add('hidden');
     for (const t of e.changedTouches) {
         if (t.clientX > window.innerWidth / 2) {
             touchLook.active = true;
             touchLook.id = t.identifier;
             touchLook.lastX = t.clientX;
             touchLook.lastY = t.clientY;
-            document.getElementById('start-overlay').classList.add('hidden');
         }
     }
 });
