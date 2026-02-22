@@ -403,9 +403,9 @@ const blockTextures = {};
 function genTextures() {
     const rng = mulberry32(123);
 
-    // Grass top - 4 shades of green
+    // Grass top - 4 shades of green (darker)
     blockTextures.grass_top = makeTexture(ctx => {
-        const greens = [0x4CAF50, 0x66BB6A, 0x388E3C, 0x43A047];
+        const greens = [0x357A38, 0x4E8C51, 0x2E6B30, 0x3A7D3E];
         for (let y = 0; y < TEX_SIZE; y++) {
             for (let x = 0; x < TEX_SIZE; x++) {
                 const base = greens[Math.floor(rng() * greens.length)];
@@ -421,7 +421,7 @@ function genTextures() {
         // Dirt body
         fillPixelNoise(ctx, 0x795548, 15, rng);
         // Green top 3 pixels with jagged edge
-        const greens = [0x4CAF50, 0x66BB6A, 0x388E3C, 0x43A047];
+        const greens = [0x357A38, 0x4E8C51, 0x2E6B30, 0x3A7D3E];
         for (let x = 0; x < TEX_SIZE; x++) {
             const depth = 2 + Math.floor(rng() * 2);
             for (let y = 0; y < depth; y++) {
