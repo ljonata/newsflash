@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Elf Quest</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+            user-select: none;
+        }
+
+        /* Top HUD bar */
+        #hud {
+            position: fixed; top: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.75);
+            padding: 6px 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 200; height: 36px;
+        }
+        #hud-left { display: flex; align-items: center; gap: 12px; }
+        #hud-left .username { color: gold; font-size: 13px; font-weight: bold; }
+        #hud-left .coins { color: lime; font-size: 13px; }
+        #hud-hearts { display: flex; gap: 3px; }
+        .heart {
+            width: 14px; height: 13px;
+            background: #e94560;
+            clip-path: polygon(50% 100%, 0% 35%, 15% 0%, 50% 20%, 85% 0%, 100% 35%);
+        }
+        .heart.empty { background: #444; }
+        #hud-right a {
+            color: #aaa; font-size: 13px; text-decoration: none; margin-left: 10px;
+        }
+        #hud-right a:hover { color: #fff; }
+
+        /* Backpack panel */
+        #backpack {
+            width: 170px;
+            background: rgba(20, 15, 10, 0.92);
+            border-right: 3px solid #5d4037;
+            padding-top: 40px;
+            display: flex; flex-direction: column;
+            z-index: 100;
+            overflow-y: auto;
+        }
+        #backpack-title {
+            text-align: center; color: #d4a574;
+            font-size: 14px; font-weight: bold;
+            padding: 8px; letter-spacing: 1px;
+            border-bottom: 2px solid #3e2723;
+        }
+        #elf-portrait {
+            width: 64px; height: 64px;
+            margin: 10px auto;
+            image-rendering: pixelated;
+            border: 2px solid #5d4037;
+            border-radius: 4px;
+            background: #2e7d32;
+        }
+        .bp-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: #ccc; font-size: 12px;
+            cursor: pointer;
+        }
+        .bp-item:hover { background: rgba(255,255,255,0.05); }
+        .bp-item.selected { background: rgba(255,215,0,0.12); border-left: 3px solid gold; }
+        .bp-item canvas {
+            width: 24px; height: 24px;
+            image-rendering: pixelated;
+        }
+        .bp-item .item-name { flex: 1; }
+        .bp-item .item-count { color: #888; font-size: 11px; }
+
+        /* Game canvas area */
+        #game-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-top: 36px;
+            background: #111;
+            position: relative;
+        }
+        #game-canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            background: #2d5a1e;
+        }
+
+        /* Interaction prompt */
+        #interact-prompt {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: gold;
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            z-index: 150;
+            display: none;
+            border: 1px solid #5d4037;
+        }
+
+        /* Notification */
+        .notif {
+            position: fixed; top: 44px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); color: #fff; padding: 6px 14px;
+            border-radius: 5px; font-size: 13px; z-index: 300;
+            border-left: 3px solid gold;
+            animation: notifIn 0.3s ease;
+        }
+        @keyframes notifIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } }
+
+        /* Mobile controls */
+        #mobile-controls { display: none; position: fixed; z-index: 150; }
+        .dpad {
+            position: fixed; bottom: 20px; left: 20px;
+            width: 120px; height: 120px;
+        }
+        .dpad-btn {
+            position: absolute; width: 38px; height: 38px;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 16px; font-weight: bold;
+        }
+        .dpad-up { top: 0; left: 41px; }
+        .dpad-down { bottom: 0; left: 41px; }
+        .dpad-left { top: 41px; left: 0; }
+        .dpad-right { top: 41px; right: 0; }
+        .action-btn {
+            position: fixed; width: 44px; height: 44px;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            color: #fff; font-size: 13px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #btn-a { bottom: 30px; right: 20px; background: rgba(76,175,80,0.3); border-color: rgba(76,175,80,0.5); }
+        #btn-b { bottom: 80px; right: 60px; background: rgba(233,69,96,0.3); border-color: rgba(233,69,96,0.5); }
+        #btn-bag {
+            position: fixed; top: 44px; left: 6px;
+            width: 32px; height: 32px;
+            background: rgba(141,110,99,0.6);
+            border: 2px solid #8d6e63;
+            border-radius: 4px;
+            color: #fff; font-size: 10px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 160;
+        }
+
+        /* Touch: toggle backpack & controls */
+        body.is-touch #backpack { display: none; position: fixed; left: 0; top: 0; bottom: 0; z-index: 180; }
+        body.is-touch #backpack.open { display: flex; }
+        body.is-touch #mobile-controls { display: block; }
+        body.is-touch #btn-bag { display: flex; }
+        body:not(.is-touch) #btn-bag { display: none; }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            #backpack { width: 150px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- HUD -->
+<div id="hud">
+    <div id="hud-left">
+        <span class="username" id="d-name"></span>
+        <span class="coins" id="d-coins">Coins: 0</span>
+        <div id="hud-hearts"></div>
+    </div>
+    <div id="hud-right">
+        <a href="/games/01/home.html">Home</a>
+        <a onclick="handleLogout()">Logout</a>
+    </div>
+</div>
+
+<!-- Backpack -->
+<div id="backpack">
+    <div id="backpack-title">BACKPACK</div>
+    <canvas id="elf-portrait" width="16" height="16"></canvas>
+    <div id="bp-items"></div>
+</div>
+
+<!-- Game Canvas -->
+<div id="game-area">
+    <canvas id="game-canvas"></canvas>
+</div>
+
+<!-- Interaction Prompt -->
+<div id="interact-prompt">Press <b>E</b> to interact</div>
+
+<!-- Mobile Controls -->
+<div id="mobile-controls">
+    <div class="dpad">
+        <div class="dpad-btn dpad-up" data-dir="up">&#9650;</div>
+        <div class="dpad-btn dpad-down" data-dir="down">&#9660;</div>
+        <div class="dpad-btn dpad-left" data-dir="left">&#9664;</div>
+        <div class="dpad-btn dpad-right" data-dir="right">&#9654;</div>
+    </div>
+    <div class="action-btn" id="btn-a">A</div>
+    <div class="action-btn" id="btn-b">B</div>
+</div>
+<div id="btn-bag">BAG</div>
+
+<script>
+// ============================================
+// DEVICE DETECTION
+// ============================================
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+if (isTouchDevice) document.body.classList.add('is-touch');
+
+// ============================================
+// AUTH
+// ============================================
+const API_URL = '/games/01/api';
+let currentUser = null, authToken = null;
+
+function checkAuth() {
+    authToken = localStorage.getItem('game_token');
+    const name = localStorage.getItem('game_username');
+    if (authToken && name) {
+        currentUser = name;
+        document.getElementById('d-name').textContent = name;
+        fetchCoins();
+    } else {
+        document.getElementById('d-name').textContent = 'Guest';
+    }
+}
+
+async function fetchCoins() {
+    try {
+        const res = await fetch(`${API_URL}/user/profile`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            playerCoins = data.coins || 0;
+            updateHUD();
+        }
+    } catch(e) {}
+}
+
+async function syncCoins() {
+    if (!authToken) return;
+    try {
+        await fetch(`${API_URL}/user/coins`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ coins: playerCoins })
+        });
+    } catch(e) {}
+}
+
+function handleLogout() {
+    localStorage.removeItem('game_token');
+    localStorage.removeItem('game_username');
+    window.location.href = '/games/01/login.html';
+}
+
+// ============================================
+// CONSTANTS
+// ============================================
+const TILE = 16;
+const SCALE = 3;
+const TS = TILE * SCALE; // 48px rendered tile
+const MAP_W = 40;
+const MAP_H = 30;
+
+// Tile IDs
+const T = {
+    GRASS: 0,
+    PATH: 1,
+    TREE: 2,
+    WATER: 3,
+    WALL: 4,
+    DOOR: 5,
+    ROOF: 6,
+    FLOWER: 7,
+    ROCK: 8,
+    CHEST: 9,
+    BUSH: 10,
+    BRIDGE: 11
+};
+
+const WALKABLE = new Set([T.GRASS, T.PATH, T.DOOR, T.FLOWER, T.BRIDGE]);
+
+// ============================================
+// MAP
+// ============================================
+function createMap() {
+    const m = [];
+    for (let y = 0; y < MAP_H; y++) {
+        m[y] = [];
+        for (let x = 0; x < MAP_W; x++) {
+            m[y][x] = T.GRASS;
+        }
+    }
+
+    // === Forest border (trees around the edges) ===
+    for (let x = 0; x < MAP_W; x++) {
+        for (let y = 0; y < 3; y++) m[y][x] = T.TREE;
+        for (let y = MAP_H - 3; y < MAP_H; y++) m[y][x] = T.TREE;
+    }
+    for (let y = 0; y < MAP_H; y++) {
+        for (let x = 0; x < 3; x++) m[y][x] = T.TREE;
+        for (let x = MAP_W - 3; x < MAP_W; x++) m[y][x] = T.TREE;
+    }
+
+    // === Paths ===
+    // Main horizontal road
+    for (let x = 3; x < MAP_W - 3; x++) { m[14][x] = T.PATH; m[15][x] = T.PATH; }
+    // Main vertical road
+    for (let y = 3; y < MAP_H - 3; y++) { m[y][19] = T.PATH; m[y][20] = T.PATH; }
+    // Side path to east
+    for (let x = 20; x < 32; x++) { m[9][x] = T.PATH; m[10][x] = T.PATH; }
+    // Side path south
+    for (let y = 15; y < 22; y++) { m[y][10] = T.PATH; m[y][11] = T.PATH; }
+
+    // === House 1 (top-left village) ===
+    buildHouse(m, 7, 5, 5, 4);
+
+    // === House 2 (top-right) ===
+    buildHouse(m, 24, 5, 5, 4);
+
+    // === House 3 (bottom-left) ===
+    buildHouse(m, 8, 18, 5, 4);
+
+    // === House 4 (far east) ===
+    buildHouse(m, 28, 12, 6, 4);
+
+    // === River / Lake (east side) ===
+    for (let y = 17; y < 25; y++) {
+        for (let x = 25; x < 33; x++) {
+            if (y >= 18 && y <= 23 && x >= 26 && x <= 31) {
+                m[y][x] = T.WATER;
+            }
+        }
+    }
+    // Bridge over river
+    m[20][26] = T.BRIDGE; m[20][27] = T.BRIDGE;
+
+    // === Scattered trees ===
+    const treePosns = [
+        [5,12],[6,11],[13,5],[14,7],[15,6],[16,12],[17,11],[23,17],[24,18],
+        [30,7],[31,8],[32,6],[14,22],[15,23],[33,15],[34,14],[35,16],
+        [7,24],[8,25],[6,26],[12,26],[13,25],[36,10],[37,11],[36,22],
+        [5,17],[4,18],[16,4],[17,3],[33,4],[34,5],[35,24],[36,25]
+    ];
+    for (const [x, y] of treePosns) {
+        if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H && m[y][x] === T.GRASS) {
+            m[y][x] = T.TREE;
+        }
+    }
+
+    // === Flowers ===
+    const flowerPosns = [
+        [10,8],[11,7],[12,9],[18,7],[17,8],[22,11],[23,10],[15,17],
+        [16,18],[6,15],[7,16],[30,20],[31,19],[13,12],[14,11],[25,8],
+        [9,22],[10,23],[32,10],[18,24],[19,23],[21,16],[22,15]
+    ];
+    for (const [x, y] of flowerPosns) {
+        if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H && m[y][x] === T.GRASS) {
+            m[y][x] = T.FLOWER;
+        }
+    }
+
+    // === Rocks ===
+    const rockPosns = [
+        [15,10],[16,9],[27,7],[28,8],[11,24],[35,18],[36,19],[4,10],[5,9]
+    ];
+    for (const [x, y] of rockPosns) {
+        if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H && m[y][x] === T.GRASS) {
+            m[y][x] = T.ROCK;
+        }
+    }
+
+    // === Chests ===
+    const chestPosns = [[12,7],[30,9],[9,21],[33,17],[18,4]];
+    for (const [x, y] of chestPosns) {
+        if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H) {
+            m[y][x] = T.CHEST;
+        }
+    }
+
+    // === Bushes ===
+    const bushPosns = [
+        [6,10],[7,9],[22,7],[23,8],[14,20],[15,21],[31,12],[32,13],
+        [8,13],[17,6],[26,5],[27,6],[10,25],[34,21],[35,20]
+    ];
+    for (const [x, y] of bushPosns) {
+        if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H && m[y][x] === T.GRASS) {
+            m[y][x] = T.BUSH;
+        }
+    }
+
+    return m;
+}
+
+function buildHouse(m, hx, hy, w, h) {
+    // Roof row
+    for (let x = hx; x < hx + w; x++) {
+        if (x >= 0 && x < MAP_W && hy >= 0 && hy < MAP_H) m[hy][x] = T.ROOF;
+    }
+    // Walls
+    for (let y = hy + 1; y < hy + h; y++) {
+        for (let x = hx; x < hx + w; x++) {
+            if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H) m[y][x] = T.WALL;
+        }
+    }
+    // Door at bottom center
+    const doorX = hx + Math.floor(w / 2);
+    const doorY = hy + h - 1;
+    if (doorX >= 0 && doorX < MAP_W && doorY >= 0 && doorY < MAP_H) m[doorY][doorX] = T.DOOR;
+}
+
+// ============================================
+// TILE RENDERING
+// ============================================
+const tileCanvases = {};
+let animFrame = 0;
+
+function mulberry32(a) {
+    return function() {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        var t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+}
+
+function genTileSprite(tileId, variant) {
+    const c = document.createElement('canvas');
+    c.width = TILE; c.height = TILE;
+    const ctx = c.getContext('2d');
+    const rng = mulberry32(tileId * 1000 + (variant || 0));
+
+    switch (tileId) {
+        case T.GRASS: {
+            const greens = ['#3a7d3e', '#357a38', '#4e8c51', '#2e6b30'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = greens[Math.floor(rng() * greens.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            break;
+        }
+        case T.PATH: {
+            const tans = ['#c8a96e', '#b89a5e', '#d4b07a', '#a88b50'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = tans[Math.floor(rng() * tans.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            // A few darker pebbles
+            ctx.fillStyle = '#8d7748';
+            for (let i = 0; i < 4; i++) {
+                ctx.fillRect(Math.floor(rng()*14)+1, Math.floor(rng()*14)+1, 1, 1);
+            }
+            break;
+        }
+        case T.TREE: {
+            // Grass base
+            const greens = ['#3a7d3e', '#357a38', '#2e6b30'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = greens[Math.floor(rng() * greens.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            // Trunk
+            ctx.fillStyle = '#5d4037';
+            ctx.fillRect(7, 10, 2, 6);
+            ctx.fillStyle = '#4e342e';
+            ctx.fillRect(7, 12, 1, 3);
+            // Canopy
+            const leafColors = ['#1b5e20', '#2e7d32', '#256329', '#1a5218'];
+            for (let y = 2; y < 11; y++)
+                for (let x = 3; x < 13; x++) {
+                    const dx = x - 8, dy = y - 6;
+                    if (dx*dx + dy*dy < 20 + rng()*5) {
+                        ctx.fillStyle = leafColors[Math.floor(rng() * leafColors.length)];
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }
+            break;
+        }
+        case T.WATER: {
+            const blues = ['#1565c0', '#1976d2', '#1e88e5', '#0d47a1'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    const idx = (x + y + (variant || 0)) % blues.length;
+                    ctx.fillStyle = blues[idx];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            // Wave highlights
+            ctx.fillStyle = '#42a5f5';
+            const waveOff = (variant || 0) % 4;
+            for (let x = waveOff; x < TILE; x += 4) {
+                ctx.fillRect(x, 4, 2, 1);
+                ctx.fillRect((x+2) % TILE, 10, 2, 1);
+            }
+            break;
+        }
+        case T.WALL: {
+            // Brick pattern
+            ctx.fillStyle = '#795548';
+            ctx.fillRect(0, 0, TILE, TILE);
+            ctx.fillStyle = '#5d4037';
+            for (let y = 0; y < TILE; y += 4) {
+                ctx.fillRect(0, y+3, TILE, 1);
+                const off = (y % 8 === 0) ? 0 : 4;
+                for (let x = off; x < TILE; x += 8) {
+                    ctx.fillRect(x, y, 1, 3);
+                }
+            }
+            break;
+        }
+        case T.DOOR: {
+            // Wall behind
+            ctx.fillStyle = '#795548';
+            ctx.fillRect(0, 0, TILE, TILE);
+            // Door
+            ctx.fillStyle = '#3e2723';
+            ctx.fillRect(3, 2, 10, 14);
+            ctx.fillStyle = '#4e342e';
+            ctx.fillRect(4, 3, 8, 12);
+            // Handle
+            ctx.fillStyle = '#ffd54f';
+            ctx.fillRect(10, 9, 1, 1);
+            break;
+        }
+        case T.ROOF: {
+            // Red roof tiles
+            const reds = ['#b71c1c', '#c62828', '#d32f2f', '#a31515'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = reds[Math.floor(rng() * reds.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            // Ridge line
+            ctx.fillStyle = '#7f0000';
+            ctx.fillRect(0, 7, TILE, 1);
+            break;
+        }
+        case T.FLOWER: {
+            // Grass base
+            const greens = ['#3a7d3e', '#357a38', '#2e6b30'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = greens[Math.floor(rng() * greens.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            // Flowers
+            const petalColors = ['#e91e63', '#ffeb3b', '#ff9800', '#9c27b0', '#fff'];
+            for (let i = 0; i < 3; i++) {
+                const fx = Math.floor(rng() * 12) + 2;
+                const fy = Math.floor(rng() * 12) + 2;
+                ctx.fillStyle = petalColors[Math.floor(rng() * petalColors.length)];
+                ctx.fillRect(fx, fy, 1, 1);
+                ctx.fillRect(fx+1, fy, 1, 1);
+                ctx.fillRect(fx, fy+1, 1, 1);
+                ctx.fillRect(fx+1, fy+1, 1, 1);
+                ctx.fillStyle = '#ffeb3b';
+                ctx.fillRect(fx, fy, 1, 1);
+            }
+            break;
+        }
+        case T.ROCK: {
+            // Grass base
+            const greens = ['#3a7d3e', '#357a38'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = greens[Math.floor(rng() * greens.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            // Rock
+            const greys = ['#9e9e9e', '#757575', '#bdbdbd', '#616161'];
+            for (let y = 4; y < 14; y++)
+                for (let x = 3; x < 13; x++) {
+                    const dx = x - 8, dy = y - 9;
+                    if (dx*dx*0.8 + dy*dy < 18) {
+                        ctx.fillStyle = greys[Math.floor(rng() * greys.length)];
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }
+            break;
+        }
+        case T.CHEST: {
+            // Grass base
+            const greens = ['#3a7d3e', '#357a38', '#2e6b30'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = greens[Math.floor(rng() * greens.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            // Chest box
+            ctx.fillStyle = '#8d6e63';
+            ctx.fillRect(4, 7, 8, 6);
+            ctx.fillStyle = '#6d4c41';
+            ctx.fillRect(4, 7, 8, 1);
+            ctx.fillRect(4, 12, 8, 1);
+            // Lock
+            ctx.fillStyle = '#ffd54f';
+            ctx.fillRect(7, 9, 2, 2);
+            break;
+        }
+        case T.BUSH: {
+            // Grass base
+            const greens = ['#3a7d3e', '#357a38', '#2e6b30'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = greens[Math.floor(rng() * greens.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            // Bush
+            const bushColors = ['#2e7d32', '#388e3c', '#1b5e20', '#4caf50'];
+            for (let y = 5; y < 14; y++)
+                for (let x = 3; x < 13; x++) {
+                    const dx = x - 8, dy = y - 9;
+                    if (dx*dx + dy*dy < 22) {
+                        ctx.fillStyle = bushColors[Math.floor(rng() * bushColors.length)];
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }
+            break;
+        }
+        case T.BRIDGE: {
+            // Water underneath
+            ctx.fillStyle = '#1565c0';
+            ctx.fillRect(0, 0, TILE, TILE);
+            // Planks
+            ctx.fillStyle = '#8d6e63';
+            for (let x = 0; x < TILE; x += 4) {
+                ctx.fillRect(x, 1, 3, 14);
+            }
+            ctx.fillStyle = '#6d4c41';
+            ctx.fillRect(0, 0, TILE, 1);
+            ctx.fillRect(0, 15, TILE, 1);
+            break;
+        }
+    }
+    return c;
+}
+
+function getTileCanvas(tileId, variant) {
+    const key = `${tileId}_${variant || 0}`;
+    if (!tileCanvases[key]) tileCanvases[key] = genTileSprite(tileId, variant);
+    return tileCanvases[key];
+}
+
+// ============================================
+// ELF SPRITE
+// ============================================
+const elfSprites = {};
+
+function genElfSprite(dir, frame) {
+    const c = document.createElement('canvas');
+    c.width = TILE; c.height = TILE;
+    const ctx = c.getContext('2d');
+
+    // Skin
+    const skin = '#fdd9b5';
+    const hair = '#8d6e63';
+    const tunic = '#2e7d32';
+    const tunicDark = '#1b5e20';
+    const boots = '#5d4037';
+    const belt = '#8d6e63';
+    const earColor = '#fdd9b5';
+
+    if (dir === 'down') {
+        // Hair
+        ctx.fillStyle = hair;
+        ctx.fillRect(5, 1, 6, 3);
+        // Face
+        ctx.fillStyle = skin;
+        ctx.fillRect(5, 3, 6, 4);
+        // Eyes
+        ctx.fillStyle = '#1a237e';
+        ctx.fillRect(6, 4, 1, 1);
+        ctx.fillRect(9, 4, 1, 1);
+        // Ears (pointed)
+        ctx.fillStyle = earColor;
+        ctx.fillRect(4, 3, 1, 2);
+        ctx.fillRect(11, 3, 1, 2);
+        ctx.fillStyle = skin;
+        ctx.fillRect(3, 3, 1, 1);
+        ctx.fillRect(12, 3, 1, 1);
+        // Tunic
+        ctx.fillStyle = tunic;
+        ctx.fillRect(5, 7, 6, 4);
+        ctx.fillStyle = tunicDark;
+        ctx.fillRect(5, 7, 1, 4);
+        ctx.fillRect(10, 7, 1, 4);
+        // Belt
+        ctx.fillStyle = belt;
+        ctx.fillRect(5, 9, 6, 1);
+        // Legs/boots
+        ctx.fillStyle = boots;
+        const legOff = frame === 1 ? 1 : 0;
+        ctx.fillRect(6 - legOff, 11, 2, 3);
+        ctx.fillRect(8 + legOff, 11, 2, 3);
+        // Feet
+        ctx.fillStyle = '#3e2723';
+        ctx.fillRect(6 - legOff, 13, 2, 1);
+        ctx.fillRect(8 + legOff, 13, 2, 1);
+    } else if (dir === 'up') {
+        // Hair (back)
+        ctx.fillStyle = hair;
+        ctx.fillRect(5, 1, 6, 5);
+        // Ears
+        ctx.fillStyle = earColor;
+        ctx.fillRect(4, 3, 1, 2);
+        ctx.fillRect(11, 3, 1, 2);
+        ctx.fillStyle = skin;
+        ctx.fillRect(3, 3, 1, 1);
+        ctx.fillRect(12, 3, 1, 1);
+        // Tunic back
+        ctx.fillStyle = tunicDark;
+        ctx.fillRect(5, 6, 6, 5);
+        ctx.fillStyle = belt;
+        ctx.fillRect(5, 9, 6, 1);
+        // Legs
+        ctx.fillStyle = boots;
+        const legOff = frame === 1 ? 1 : 0;
+        ctx.fillRect(6 - legOff, 11, 2, 3);
+        ctx.fillRect(8 + legOff, 11, 2, 3);
+        ctx.fillStyle = '#3e2723';
+        ctx.fillRect(6 - legOff, 13, 2, 1);
+        ctx.fillRect(8 + legOff, 13, 2, 1);
+    } else if (dir === 'left') {
+        // Hair side
+        ctx.fillStyle = hair;
+        ctx.fillRect(6, 1, 5, 4);
+        // Face
+        ctx.fillStyle = skin;
+        ctx.fillRect(5, 3, 4, 4);
+        // Eye
+        ctx.fillStyle = '#1a237e';
+        ctx.fillRect(6, 4, 1, 1);
+        // Ear (pointed left)
+        ctx.fillStyle = earColor;
+        ctx.fillRect(4, 3, 1, 2);
+        ctx.fillStyle = skin;
+        ctx.fillRect(3, 3, 1, 1);
+        // Tunic
+        ctx.fillStyle = tunic;
+        ctx.fillRect(5, 7, 5, 4);
+        ctx.fillStyle = tunicDark;
+        ctx.fillRect(5, 7, 1, 4);
+        ctx.fillStyle = belt;
+        ctx.fillRect(5, 9, 5, 1);
+        // Legs
+        ctx.fillStyle = boots;
+        const legOff = frame === 1 ? 1 : 0;
+        ctx.fillRect(6, 11 - legOff, 2, 3);
+        ctx.fillRect(8, 11 + legOff, 2, 3);
+        ctx.fillStyle = '#3e2723';
+        ctx.fillRect(6, 13 - legOff, 2, 1);
+        ctx.fillRect(8, 13 + legOff, 2, 1);
+    } else { // right
+        ctx.fillStyle = hair;
+        ctx.fillRect(5, 1, 5, 4);
+        ctx.fillStyle = skin;
+        ctx.fillRect(7, 3, 4, 4);
+        ctx.fillStyle = '#1a237e';
+        ctx.fillRect(9, 4, 1, 1);
+        // Ear (pointed right)
+        ctx.fillStyle = earColor;
+        ctx.fillRect(11, 3, 1, 2);
+        ctx.fillStyle = skin;
+        ctx.fillRect(12, 3, 1, 1);
+        ctx.fillStyle = tunic;
+        ctx.fillRect(6, 7, 5, 4);
+        ctx.fillStyle = tunicDark;
+        ctx.fillRect(10, 7, 1, 4);
+        ctx.fillStyle = belt;
+        ctx.fillRect(6, 9, 5, 1);
+        ctx.fillStyle = boots;
+        const legOff = frame === 1 ? 1 : 0;
+        ctx.fillRect(6, 11 + legOff, 2, 3);
+        ctx.fillRect(8, 11 - legOff, 2, 3);
+        ctx.fillStyle = '#3e2723';
+        ctx.fillRect(6, 13 + legOff, 2, 1);
+        ctx.fillRect(8, 13 - legOff, 2, 1);
+    }
+
+    return c;
+}
+
+function initElfSprites() {
+    for (const dir of ['up', 'down', 'left', 'right']) {
+        elfSprites[dir] = [genElfSprite(dir, 0), genElfSprite(dir, 1)];
+    }
+}
+
+// ============================================
+// ITEMS
+// ============================================
+const ITEM_DEFS = {
+    sword:  { name: 'Sword',  color: '#b0bec5', desc: 'A trusty blade' },
+    shield: { name: 'Shield', color: '#5c6bc0', desc: 'Block attacks' },
+    key:    { name: 'Key',    color: '#ffd54f', desc: 'Opens locks' },
+    potion: { name: 'Potion', color: '#e91e63', desc: 'Restores 1 heart' },
+    coins:  { name: 'Coins',  color: '#ffc107', desc: 'Currency' }
+};
+
+function genItemIcon(itemId) {
+    const c = document.createElement('canvas');
+    c.width = 16; c.height = 16;
+    const ctx = c.getContext('2d');
+
+    if (itemId === 'sword') {
+        ctx.fillStyle = '#78909c';
+        ctx.fillRect(7, 1, 2, 9);
+        ctx.fillStyle = '#b0bec5';
+        ctx.fillRect(7, 1, 2, 2);
+        ctx.fillStyle = '#8d6e63';
+        ctx.fillRect(5, 10, 6, 1);
+        ctx.fillStyle = '#6d4c41';
+        ctx.fillRect(7, 11, 2, 3);
+    } else if (itemId === 'shield') {
+        ctx.fillStyle = '#3949ab';
+        ctx.fillRect(4, 2, 8, 10);
+        ctx.fillStyle = '#5c6bc0';
+        ctx.fillRect(5, 3, 6, 8);
+        ctx.fillStyle = '#ffd54f';
+        ctx.fillRect(7, 5, 2, 4);
+        ctx.fillRect(6, 6, 4, 2);
+        ctx.fillStyle = '#3949ab';
+        ctx.fillRect(4, 12, 8, 1);
+        ctx.fillRect(5, 13, 6, 1);
+        ctx.fillRect(6, 14, 4, 1);
+    } else if (itemId === 'key') {
+        ctx.fillStyle = '#ffd54f';
+        ctx.fillRect(6, 2, 4, 4);
+        ctx.fillRect(7, 3, 2, 2);
+        ctx.fillStyle = '#ffc107';
+        ctx.fillRect(7, 6, 2, 7);
+        ctx.fillRect(9, 10, 2, 1);
+        ctx.fillRect(9, 12, 2, 1);
+        // Hollow ring
+        ctx.clearRect(7, 3, 2, 2);
+    } else if (itemId === 'potion') {
+        ctx.fillStyle = '#6d4c41';
+        ctx.fillRect(7, 1, 2, 2);
+        ctx.fillStyle = '#e91e63';
+        ctx.fillRect(5, 4, 6, 8);
+        ctx.fillStyle = '#f06292';
+        ctx.fillRect(6, 5, 2, 3);
+        ctx.fillStyle = '#e91e63';
+        ctx.fillRect(5, 12, 6, 2);
+        ctx.fillRect(6, 14, 4, 1);
+    } else if (itemId === 'coins') {
+        ctx.fillStyle = '#ffc107';
+        ctx.fillRect(5, 4, 6, 8);
+        ctx.fillStyle = '#ffb300';
+        ctx.fillRect(4, 5, 1, 6);
+        ctx.fillRect(11, 5, 1, 6);
+        ctx.fillStyle = '#ffd54f';
+        ctx.fillRect(6, 5, 2, 2);
+        ctx.fillStyle = '#ff8f00';
+        ctx.fillRect(7, 7, 2, 3);
+    }
+    return c;
+}
+
+// ============================================
+// GAME STATE
+// ============================================
+let gameMap = null;
+let openedChests = new Set(); // "x,y" keys
+let cutBushes = new Set();
+
+// Player
+let player = { x: 19, y: 13, dir: 'down', frame: 0 };
+let playerHP = 3;
+let maxHP = 3;
+let playerCoins = 0;
+let inventory = { sword: 1, shield: 0, key: 0, potion: 0, coins: 0 };
+let selectedItem = 'sword';
+
+// Movement interpolation
+let isMoving = false;
+let moveFrom = { x: 0, y: 0 };
+let moveTo = { x: 0, y: 0 };
+let moveProgress = 0;
+const MOVE_SPEED = 5; // tiles per second
+
+// Sword swing
+let swinging = false;
+let swingTimer = 0;
+
+// Canvas
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+
+// ============================================
+// CAMERA & RENDERING
+// ============================================
+function resizeCanvas() {
+    const area = document.getElementById('game-area');
+    const maxW = area.clientWidth;
+    const maxH = area.clientHeight;
+    // How many tiles fit
+    const tilesX = Math.floor(maxW / TS);
+    const tilesY = Math.floor(maxH / TS);
+    const viewW = Math.max(10, Math.min(tilesX, MAP_W));
+    const viewH = Math.max(8, Math.min(tilesY, MAP_H));
+    canvas.width = viewW * TS;
+    canvas.height = viewH * TS;
+    canvas.tilesX = viewW;
+    canvas.tilesY = viewH;
+}
+
+function getCameraOffset() {
+    let px = player.x, py = player.y;
+    if (isMoving) {
+        px = moveFrom.x + (moveTo.x - moveFrom.x) * moveProgress;
+        py = moveFrom.y + (moveTo.y - moveFrom.y) * moveProgress;
+    }
+    const halfX = Math.floor(canvas.tilesX / 2);
+    const halfY = Math.floor(canvas.tilesY / 2);
+    let camX = px - halfX;
+    let camY = py - halfY;
+    camX = Math.max(0, Math.min(MAP_W - canvas.tilesX, camX));
+    camY = Math.max(0, Math.min(MAP_H - canvas.tilesY, camY));
+    return { x: camX, y: camY };
+}
+
+function render() {
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const cam = getCameraOffset();
+    const waterVariant = Math.floor(animFrame / 30) % 4;
+
+    // Draw tiles
+    for (let sy = 0; sy < canvas.tilesY; sy++) {
+        for (let sx = 0; sx < canvas.tilesX; sx++) {
+            const mx = Math.floor(cam.x) + sx;
+            const my = Math.floor(cam.y) + sy;
+            if (mx < 0 || mx >= MAP_W || my < 0 || my >= MAP_H) continue;
+
+            let tileId = gameMap[my][mx];
+            const key = `${mx},${my}`;
+
+            // Opened chests become grass
+            if (tileId === T.CHEST && openedChests.has(key)) tileId = T.GRASS;
+            // Cut bushes become grass
+            if (tileId === T.BUSH && cutBushes.has(key)) tileId = T.GRASS;
+
+            const variant = (tileId === T.WATER) ? waterVariant : 0;
+            const tileC = getTileCanvas(tileId, variant);
+            const dx = sx * TS - (cam.x % 1) * TS;
+            const dy = sy * TS - (cam.y % 1) * TS;
+            ctx.drawImage(tileC, dx, dy, TS, TS);
+        }
+    }
+
+    // Draw elf
+    let elfX = player.x, elfY = player.y;
+    if (isMoving) {
+        elfX = moveFrom.x + (moveTo.x - moveFrom.x) * moveProgress;
+        elfY = moveFrom.y + (moveTo.y - moveFrom.y) * moveProgress;
+    }
+    const drawFrame = isMoving ? (Math.floor(animFrame / 8) % 2) : 0;
+    const elfC = elfSprites[player.dir][drawFrame];
+    const ex = (elfX - cam.x) * TS;
+    const ey = (elfY - cam.y) * TS;
+    ctx.drawImage(elfC, ex, ey, TS, TS);
+
+    // Draw sword swing
+    if (swinging) {
+        ctx.fillStyle = 'rgba(180,200,220,0.8)';
+        const swLen = TS * 0.6;
+        if (player.dir === 'right') ctx.fillRect(ex + TS, ey + TS*0.3, swLen, 4);
+        else if (player.dir === 'left') ctx.fillRect(ex - swLen, ey + TS*0.3, swLen, 4);
+        else if (player.dir === 'down') ctx.fillRect(ex + TS*0.3, ey + TS, 4, swLen);
+        else ctx.fillRect(ex + TS*0.3, ey - swLen, 4, swLen);
+    }
+}
+
+// ============================================
+// MOVEMENT & INPUT
+// ============================================
+const keysDown = {};
+
+function tryMove(dx, dy, dir) {
+    if (isMoving || swinging) return;
+    player.dir = dir;
+    const nx = player.x + dx;
+    const ny = player.y + dy;
+    if (nx < 0 || nx >= MAP_W || ny < 0 || ny >= MAP_H) return;
+
+    const tileId = gameMap[ny][nx];
+    const key = `${nx},${ny}`;
+
+    // Bush acts as walkable if already cut
+    if (tileId === T.BUSH && cutBushes.has(key)) {
+        startMove(nx, ny); return;
+    }
+    // Chest acts as walkable if opened (becomes grass)
+    if (tileId === T.CHEST && openedChests.has(key)) {
+        startMove(nx, ny); return;
+    }
+    if (!WALKABLE.has(tileId)) return;
+    startMove(nx, ny);
+}
+
+function startMove(nx, ny) {
+    isMoving = true;
+    moveFrom.x = player.x;
+    moveFrom.y = player.y;
+    moveTo.x = nx;
+    moveTo.y = ny;
+    moveProgress = 0;
+}
+
+function interact() {
+    // Check tile in front of player
+    const dx = player.dir === 'right' ? 1 : player.dir === 'left' ? -1 : 0;
+    const dy = player.dir === 'down' ? 1 : player.dir === 'up' ? -1 : 0;
+    const tx = player.x + dx;
+    const ty = player.y + dy;
+    if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H) return;
+
+    const key = `${tx},${ty}`;
+    const tile = gameMap[ty][tx];
+
+    if (tile === T.CHEST && !openedChests.has(key)) {
+        openedChests.add(key);
+        // Random reward
+        const rewards = ['potion', 'key', 'shield', 'coins', 'coins', 'coins'];
+        const reward = rewards[Math.floor(Math.random() * rewards.length)];
+        if (reward === 'coins') {
+            const amt = Math.floor(Math.random() * 5) + 1;
+            playerCoins += amt;
+            inventory.coins += amt;
+            showNotif(`Found ${amt} coins!`);
+        } else {
+            inventory[reward] = (inventory[reward] || 0) + 1;
+            showNotif(`Found ${ITEM_DEFS[reward].name}!`);
+        }
+        syncCoins();
+        renderBackpack();
+        updateHUD();
+        saveState();
+    } else if (tile === T.DOOR) {
+        showNotif('The door is locked...');
+        if (inventory.key > 0) {
+            inventory.key--;
+            playerCoins += 10;
+            inventory.coins += 10;
+            showNotif('Used a key! Found 10 coins inside!');
+            syncCoins();
+            renderBackpack();
+            updateHUD();
+            saveState();
+        }
+    }
+}
+
+function swingSword() {
+    if (swinging || isMoving) return;
+    swinging = true;
+    swingTimer = 0.2; // seconds
+
+    // Check for bush in front
+    const dx = player.dir === 'right' ? 1 : player.dir === 'left' ? -1 : 0;
+    const dy = player.dir === 'down' ? 1 : player.dir === 'up' ? -1 : 0;
+    const tx = player.x + dx;
+    const ty = player.y + dy;
+    if (tx >= 0 && tx < MAP_W && ty >= 0 && ty < MAP_H) {
+        const key = `${tx},${ty}`;
+        if (gameMap[ty][tx] === T.BUSH && !cutBushes.has(key)) {
+            cutBushes.add(key);
+            // Sometimes drop coins
+            if (Math.random() < 0.4) {
+                const amt = Math.floor(Math.random() * 3) + 1;
+                playerCoins += amt;
+                inventory.coins += amt;
+                showNotif(`Cut bush — found ${amt} coins!`);
+                syncCoins();
+            } else {
+                showNotif('Cut the bush!');
+            }
+            renderBackpack();
+            updateHUD();
+            saveState();
+        }
+    }
+}
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+    keysDown[e.key.toLowerCase()] = true;
+    if (e.key.toLowerCase() === 'e') interact();
+    if (e.key === ' ') { e.preventDefault(); swingSword(); }
+    if (e.key.toLowerCase() === 'i') toggleBackpack();
+});
+document.addEventListener('keyup', (e) => {
+    keysDown[e.key.toLowerCase()] = false;
+});
+
+function processInput() {
+    if (isMoving) return;
+    if (keysDown['arrowup'] || keysDown['w']) tryMove(0, -1, 'up');
+    else if (keysDown['arrowdown'] || keysDown['s']) tryMove(0, 1, 'down');
+    else if (keysDown['arrowleft'] || keysDown['a']) tryMove(-1, 0, 'left');
+    else if (keysDown['arrowright'] || keysDown['d']) tryMove(1, 0, 'right');
+}
+
+// ============================================
+// MOBILE CONTROLS
+// ============================================
+let mobileDir = null;
+let mobileHoldTimer = null;
+
+if (isTouchDevice) {
+    const dpadBtns = document.querySelectorAll('.dpad-btn');
+    dpadBtns.forEach(btn => {
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            mobileDir = btn.dataset.dir;
+        });
+        btn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (mobileDir === btn.dataset.dir) mobileDir = null;
+        });
+    });
+
+    document.getElementById('btn-a').addEventListener('touchstart', (e) => {
+        e.preventDefault(); swingSword();
+    });
+    document.getElementById('btn-b').addEventListener('touchstart', (e) => {
+        e.preventDefault(); interact();
+    });
+    document.getElementById('btn-bag').addEventListener('touchstart', (e) => {
+        e.preventDefault(); toggleBackpack();
+    });
+}
+
+function processMobileInput() {
+    if (!mobileDir || isMoving) return;
+    const dirs = { up: [0,-1], down: [0,1], left: [-1,0], right: [1,0] };
+    const [dx, dy] = dirs[mobileDir];
+    tryMove(dx, dy, mobileDir);
+}
+
+// ============================================
+// BACKPACK
+// ============================================
+const itemIcons = {};
+
+function initItemIcons() {
+    for (const id of Object.keys(ITEM_DEFS)) {
+        itemIcons[id] = genItemIcon(id);
+    }
+}
+
+function renderBackpack() {
+    const container = document.getElementById('bp-items');
+    container.innerHTML = '';
+    for (const [id, def] of Object.entries(ITEM_DEFS)) {
+        const count = id === 'coins' ? playerCoins : (inventory[id] || 0);
+        if (count <= 0 && id !== 'sword') continue;
+
+        const div = document.createElement('div');
+        div.className = 'bp-item' + (id === selectedItem ? ' selected' : '');
+        div.onclick = () => { selectedItem = id; renderBackpack(); };
+
+        const icon = itemIcons[id].cloneNode(true);
+        div.appendChild(icon);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'item-name';
+        nameSpan.textContent = def.name;
+        div.appendChild(nameSpan);
+
+        const countSpan = document.createElement('span');
+        countSpan.className = 'item-count';
+        countSpan.textContent = count > 1 ? `x${count}` : '';
+        div.appendChild(countSpan);
+
+        container.appendChild(div);
+    }
+
+    // Draw elf portrait
+    const portrait = document.getElementById('elf-portrait');
+    const pCtx = portrait.getContext('2d');
+    pCtx.clearRect(0, 0, 16, 16);
+    pCtx.drawImage(elfSprites.down[0], 0, 0);
+}
+
+function toggleBackpack() {
+    if (isTouchDevice) {
+        document.getElementById('backpack').classList.toggle('open');
+    }
+}
+
+// ============================================
+// HUD
+// ============================================
+function updateHUD() {
+    document.getElementById('d-coins').textContent = `Coins: ${playerCoins}`;
+    inventory.coins = playerCoins;
+
+    const heartsDiv = document.getElementById('hud-hearts');
+    heartsDiv.innerHTML = '';
+    for (let i = 0; i < maxHP; i++) {
+        const h = document.createElement('div');
+        h.className = 'heart' + (i >= playerHP ? ' empty' : '');
+        heartsDiv.appendChild(h);
+    }
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+function showNotif(msg) {
+    const div = document.createElement('div');
+    div.className = 'notif';
+    div.textContent = msg;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 2500);
+}
+
+// ============================================
+// INTERACTION PROMPT
+// ============================================
+function updateInteractPrompt() {
+    const dx = player.dir === 'right' ? 1 : player.dir === 'left' ? -1 : 0;
+    const dy = player.dir === 'down' ? 1 : player.dir === 'up' ? -1 : 0;
+    const tx = player.x + dx;
+    const ty = player.y + dy;
+    const prompt = document.getElementById('interact-prompt');
+
+    if (tx >= 0 && tx < MAP_W && ty >= 0 && ty < MAP_H) {
+        const tile = gameMap[ty][tx];
+        const key = `${tx},${ty}`;
+        if (tile === T.CHEST && !openedChests.has(key)) {
+            prompt.innerHTML = isTouchDevice ? 'Press <b>B</b> to open chest' : 'Press <b>E</b> to open chest';
+            prompt.style.display = 'block';
+            return;
+        }
+        if (tile === T.DOOR) {
+            prompt.innerHTML = isTouchDevice ? 'Press <b>B</b> to interact' : 'Press <b>E</b> to interact';
+            prompt.style.display = 'block';
+            return;
+        }
+        if (tile === T.BUSH && !cutBushes.has(key)) {
+            prompt.innerHTML = isTouchDevice ? 'Press <b>A</b> to cut' : 'Press <b>Space</b> to cut';
+            prompt.style.display = 'block';
+            return;
+        }
+    }
+    prompt.style.display = 'none';
+}
+
+// ============================================
+// SAVE / LOAD
+// ============================================
+function saveState() {
+    const state = {
+        px: player.x, py: player.y, dir: player.dir,
+        hp: playerHP, coins: playerCoins,
+        inventory: inventory,
+        openedChests: [...openedChests],
+        cutBushes: [...cutBushes]
+    };
+    localStorage.setItem('elfquest_state', JSON.stringify(state));
+}
+
+function loadState() {
+    const raw = localStorage.getItem('elfquest_state');
+    if (!raw) return false;
+    try {
+        const s = JSON.parse(raw);
+        player.x = s.px; player.y = s.py; player.dir = s.dir || 'down';
+        playerHP = s.hp || 3;
+        playerCoins = s.coins || 0;
+        inventory = s.inventory || { sword: 1, shield: 0, key: 0, potion: 0, coins: 0 };
+        openedChests = new Set(s.openedChests || []);
+        cutBushes = new Set(s.cutBushes || []);
+        return true;
+    } catch(e) { return false; }
+}
+
+// ============================================
+// GAME LOOP
+// ============================================
+let lastTime = 0;
+let saveTimer = 0;
+
+function gameLoop(time) {
+    requestAnimationFrame(gameLoop);
+    const delta = Math.min((time - lastTime) / 1000, 0.1);
+    lastTime = time;
+    animFrame++;
+
+    // Process input
+    if (isTouchDevice) processMobileInput();
+    else processInput();
+
+    // Movement interpolation
+    if (isMoving) {
+        moveProgress += MOVE_SPEED * delta;
+        if (moveProgress >= 1) {
+            moveProgress = 0;
+            isMoving = false;
+            player.x = moveTo.x;
+            player.y = moveTo.y;
+        }
+    }
+
+    // Sword swing timer
+    if (swinging) {
+        swingTimer -= delta;
+        if (swingTimer <= 0) swinging = false;
+    }
+
+    // Auto-save
+    saveTimer += delta;
+    if (saveTimer > 15) {
+        saveTimer = 0;
+        saveState();
+    }
+
+    updateInteractPrompt();
+    render();
+}
+
+// ============================================
+// INIT
+// ============================================
+function init() {
+    checkAuth();
+    initElfSprites();
+    initItemIcons();
+    gameMap = createMap();
+    loadState();
+    resizeCanvas();
+    renderBackpack();
+    updateHUD();
+    requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener('resize', resizeCanvas);
+init();
+</script>
+</body>
+</html>
