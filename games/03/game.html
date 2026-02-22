@@ -158,7 +158,7 @@
             display: flex; align-items: center; justify-content: center;
         }
         #btn-jump { bottom: 80px; right: 20px; }
-        #btn-place { bottom: 140px; right: 20px; }
+
         #btn-craft { bottom: 80px; right: 80px; }
 
         /* Mobile: shown via JS class on body */
@@ -185,7 +185,7 @@
     </div>
     <div class="controls-help controls-help-mobile">
         Left Joystick - Move | Right Side - Look<br>
-        Tap - Mine | Place Button - Place Block<br>
+        Tap - Build | Hold - Mine<br>
         Tap Hotbar - Select Slot | E Button - Crafting
     </div>
 </div>
@@ -226,7 +226,6 @@
 <div id="mobile-controls">
     <div id="joystick-area"><div id="joystick-knob"></div></div>
     <div class="mobile-btn" id="btn-jump">Jump</div>
-    <div class="mobile-btn" id="btn-place">Place</div>
     <div class="mobile-btn" id="btn-craft">E</div>
 </div>
 
@@ -318,7 +317,7 @@ let followers = 0;
 let pickaxeLevel = 0; // 0=hand, 1=stone, 2=iron
 let craftOpen = false;
 let selectedRecipe = 0;
-let placeMode = false;
+
 
 // Movement state
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
@@ -1316,9 +1315,11 @@ if (joystickArea) {
     });
 }
 
-// Touch look (right side of screen)
+// Touch look + tap to build / hold to mine
+let touchHoldTimer = null;
+const HOLD_DURATION = 400; // ms to count as hold (mine)
+
 canvas.addEventListener('touchstart', (e) => {
-    // Dismiss start overlay on any canvas touch
     document.getElementById('start-overlay').classList.add('hidden');
     for (const t of e.changedTouches) {
         if (t.clientX > window.innerWidth / 3) {
@@ -1329,6 +1330,16 @@ canvas.addEventListener('touchstart', (e) => {
             touchLook.lastX = t.clientX;
             touchLook.lastY = t.clientY;
             touchLook.moved = false;
+            touchLook.held = false;
+
+            // Start hold timer for mining
+            clearTimeout(touchHoldTimer);
+            touchHoldTimer = setTimeout(() => {
+                if (!touchLook.moved) {
+                    touchLook.held = true;
+                    mineBlock(touchLook.startX, touchLook.startY);
+                }
+            }, HOLD_DURATION);
         }
     }
 });
@@ -1338,10 +1349,12 @@ canvas.addEventListener('touchmove', (e) => {
         if (t.identifier === touchLook.id) {
             const dx = t.clientX - touchLook.lastX;
             const dy = t.clientY - touchLook.lastY;
-            // Only count as "moved" if dragged more than 8px total
             const totalDx = t.clientX - touchLook.startX;
             const totalDy = t.clientY - touchLook.startY;
-            if (Math.abs(totalDx) > 8 || Math.abs(totalDy) > 8) touchLook.moved = true;
+            if (Math.abs(totalDx) > 8 || Math.abs(totalDy) > 8) {
+                touchLook.moved = true;
+                clearTimeout(touchHoldTimer);
+            }
             euler.y -= dx * 0.005;
             euler.x -= dy * 0.005;
             euler.x = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, euler.x));
@@ -1356,14 +1369,10 @@ canvas.addEventListener('touchend', (e) => {
     for (const t of e.changedTouches) {
         if (t.identifier === touchLook.id) {
             touchLook.active = false;
-            // Only act on quick taps (not drags)
-            if (!touchLook.moved) {
-                const sx = t.clientX, sy = t.clientY;
-                if (placeMode) {
-                    placeBlock(sx, sy);
-                } else {
-                    mineBlock(sx, sy);
-                }
+            clearTimeout(touchHoldTimer);
+            // Quick tap (not dragged, not held) = place block
+            if (!touchLook.moved && !touchLook.held) {
+                placeBlock(t.clientX, t.clientY);
             }
         }
     }
@@ -1371,18 +1380,11 @@ canvas.addEventListener('touchend', (e) => {
 
 // Mobile buttons
 const btnJump = document.getElementById('btn-jump');
-const btnPlace = document.getElementById('btn-place');
 const btnCraft = document.getElementById('btn-craft');
 
 if (btnJump) btnJump.addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (canJump) { velocity.y = 8; canJump = false; }
-});
-if (btnPlace) btnPlace.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    placeMode = !placeMode;
-    btnPlace.style.background = placeMode ? 'rgba(76,175,80,0.5)' : 'rgba(255,255,255,0.15)';
-    btnPlace.textContent = placeMode ? 'Build' : 'Place';
 });
 if (btnCraft) btnCraft.addEventListener('touchstart', (e) => {
     e.preventDefault();
