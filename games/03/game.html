@@ -364,24 +364,254 @@ let euler = new THREE.Euler(0, 0, 0, 'YXZ');
 // Block geometry (shared)
 const blockGeo = new THREE.BoxGeometry(1, 1, 1);
 
+// ---- Pixel texture generator ----
+const TEX_SIZE = 16;
+
+function makeTexture(drawFn) {
+    const c = document.createElement('canvas');
+    c.width = TEX_SIZE; c.height = TEX_SIZE;
+    const ctx = c.getContext('2d');
+    drawFn(ctx);
+    const tex = new THREE.CanvasTexture(c);
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    return tex;
+}
+
+function hexToRgb(hex) {
+    return [(hex >> 16) & 0xff, (hex >> 8) & 0xff, hex & 0xff];
+}
+
+function varyColor(r, g, b, amount, rng) {
+    const v = Math.floor((rng() - 0.5) * amount * 2);
+    return `rgb(${Math.max(0,Math.min(255,r+v))},${Math.max(0,Math.min(255,g+v))},${Math.max(0,Math.min(255,b+v))})`;
+}
+
+function fillPixelNoise(ctx, baseHex, variance, rng) {
+    const [r, g, b] = hexToRgb(baseHex);
+    for (let y = 0; y < TEX_SIZE; y++) {
+        for (let x = 0; x < TEX_SIZE; x++) {
+            ctx.fillStyle = varyColor(r, g, b, variance, rng);
+            ctx.fillRect(x, y, 1, 1);
+        }
+    }
+}
+
+// Pre-generate textures for each block type
+const blockTextures = {};
+
+function genTextures() {
+    const rng = mulberry32(123);
+
+    // Grass top - 4 shades of green
+    blockTextures.grass_top = makeTexture(ctx => {
+        const greens = [0x4CAF50, 0x66BB6A, 0x388E3C, 0x43A047];
+        for (let y = 0; y < TEX_SIZE; y++) {
+            for (let x = 0; x < TEX_SIZE; x++) {
+                const base = greens[Math.floor(rng() * greens.length)];
+                const [r, g, b] = hexToRgb(base);
+                ctx.fillStyle = varyColor(r, g, b, 12, rng);
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+    });
+
+    // Grass side - dirt with green top strip
+    blockTextures.grass_side = makeTexture(ctx => {
+        // Dirt body
+        fillPixelNoise(ctx, 0x795548, 15, rng);
+        // Green top 3 pixels with jagged edge
+        const greens = [0x4CAF50, 0x66BB6A, 0x388E3C, 0x43A047];
+        for (let x = 0; x < TEX_SIZE; x++) {
+            const depth = 2 + Math.floor(rng() * 2);
+            for (let y = 0; y < depth; y++) {
+                const base = greens[Math.floor(rng() * greens.length)];
+                const [r, g, b] = hexToRgb(base);
+                ctx.fillStyle = varyColor(r, g, b, 10, rng);
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+    });
+
+    // Dirt
+    blockTextures.dirt = makeTexture(ctx => {
+        fillPixelNoise(ctx, 0x795548, 18, rng);
+        // Occasional darker spots
+        for (let i = 0; i < 8; i++) {
+            ctx.fillStyle = varyColor(90, 60, 40, 10, rng);
+            ctx.fillRect(Math.floor(rng()*TEX_SIZE), Math.floor(rng()*TEX_SIZE), 1, 1);
+        }
+    });
+
+    // Stone
+    blockTextures.stone = makeTexture(ctx => {
+        fillPixelNoise(ctx, 0x9E9E9E, 20, rng);
+        // Cracks / darker lines
+        for (let i = 0; i < 5; i++) {
+            ctx.fillStyle = varyColor(100, 100, 100, 15, rng);
+            const sx = Math.floor(rng()*TEX_SIZE);
+            const sy = Math.floor(rng()*TEX_SIZE);
+            ctx.fillRect(sx, sy, 1 + Math.floor(rng()*3), 1);
+        }
+    });
+
+    // Wood - vertical grain
+    blockTextures.wood = makeTexture(ctx => {
+        const browns = [0x5D4037, 0x4E342E, 0x6D4C41, 0x795548];
+        for (let x = 0; x < TEX_SIZE; x++) {
+            const base = browns[x % browns.length];
+            for (let y = 0; y < TEX_SIZE; y++) {
+                const [r, g, b] = hexToRgb(base);
+                ctx.fillStyle = varyColor(r, g, b, 10, rng);
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+    });
+
+    // Wood top - rings
+    blockTextures.wood_top = makeTexture(ctx => {
+        fillPixelNoise(ctx, 0x6D4C41, 12, rng);
+        // Simple ring pattern
+        const cx = 8, cy = 8;
+        for (let y = 0; y < TEX_SIZE; y++) {
+            for (let x = 0; x < TEX_SIZE; x++) {
+                const dist = Math.sqrt((x-cx)*(x-cx)+(y-cy)*(y-cy));
+                if (Math.floor(dist) % 3 === 0) {
+                    ctx.fillStyle = varyColor(70, 50, 30, 8, rng);
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }
+    });
+
+    // Leaves - scattered light/dark greens
+    blockTextures.leaves = makeTexture(ctx => {
+        const greens = [0x2E7D32, 0x1B5E20, 0x388E3C, 0x256D27];
+        for (let y = 0; y < TEX_SIZE; y++) {
+            for (let x = 0; x < TEX_SIZE; x++) {
+                const base = greens[Math.floor(rng() * greens.length)];
+                const [r, g, b] = hexToRgb(base);
+                ctx.fillStyle = varyColor(r, g, b, 15, rng);
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+        // Gaps (transparency effect via darker pixels)
+        for (let i = 0; i < 12; i++) {
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(Math.floor(rng()*TEX_SIZE), Math.floor(rng()*TEX_SIZE), 1, 1);
+        }
+    });
+
+    // Iron ore - stone with silver flecks
+    blockTextures.iron = makeTexture(ctx => {
+        fillPixelNoise(ctx, 0x9E9E9E, 15, rng);
+        for (let i = 0; i < 10; i++) {
+            ctx.fillStyle = varyColor(190, 200, 210, 10, rng);
+            const sx = Math.floor(rng()*14)+1, sy = Math.floor(rng()*14)+1;
+            ctx.fillRect(sx, sy, 2, 2);
+        }
+    });
+
+    // Gold ore - stone with gold flecks
+    blockTextures.gold = makeTexture(ctx => {
+        fillPixelNoise(ctx, 0x9E9E9E, 15, rng);
+        for (let i = 0; i < 8; i++) {
+            ctx.fillStyle = varyColor(255, 200, 0, 15, rng);
+            const sx = Math.floor(rng()*14)+1, sy = Math.floor(rng()*14)+1;
+            ctx.fillRect(sx, sy, 2, 2);
+        }
+    });
+
+    // Crystal - cyan with sparkle
+    blockTextures.crystal = makeTexture(ctx => {
+        const cyans = [0x00BCD4, 0x00ACC1, 0x0097A7, 0x26C6DA];
+        for (let y = 0; y < TEX_SIZE; y++) {
+            for (let x = 0; x < TEX_SIZE; x++) {
+                const base = cyans[Math.floor(rng() * cyans.length)];
+                const [r, g, b] = hexToRgb(base);
+                ctx.fillStyle = varyColor(r, g, b, 20, rng);
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+        // White sparkle pixels
+        for (let i = 0; i < 6; i++) {
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.fillRect(Math.floor(rng()*TEX_SIZE), Math.floor(rng()*TEX_SIZE), 1, 1);
+        }
+    });
+
+    // Planks - horizontal wood grain
+    blockTextures.planks = makeTexture(ctx => {
+        const tans = [0xD7A86E, 0xC9975C, 0xE0B87E, 0xBF8A50];
+        for (let y = 0; y < TEX_SIZE; y++) {
+            const base = tans[Math.floor(y / 4) % tans.length];
+            for (let x = 0; x < TEX_SIZE; x++) {
+                const [r, g, b] = hexToRgb(base);
+                ctx.fillStyle = varyColor(r, g, b, 10, rng);
+                ctx.fillRect(x, y, 1, 1);
+            }
+            // Plank divider line
+            if (y % 4 === 0) {
+                for (let x = 0; x < TEX_SIZE; x++) {
+                    ctx.fillStyle = varyColor(140, 100, 50, 8, rng);
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }
+    });
+
+    // Paper
+    blockTextures.paper = makeTexture(ctx => {
+        fillPixelNoise(ctx, 0xF5F5DC, 8, rng);
+        // Faint lines
+        for (let y = 3; y < TEX_SIZE; y += 4) {
+            for (let x = 0; x < TEX_SIZE; x++) {
+                ctx.fillStyle = 'rgba(180,180,160,0.4)';
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+    });
+
+    // Blog post - pinkish with text lines
+    blockTextures.blogpost = makeTexture(ctx => {
+        fillPixelNoise(ctx, 0xE91E63, 15, rng);
+        // White text lines
+        for (let y = 3; y < TEX_SIZE; y += 3) {
+            for (let x = 2; x < 14; x++) {
+                if (rng() > 0.3) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }
+    });
+}
+
 function getBlockMaterial(type) {
     const b = BLOCKS[type];
     if (!b) return new THREE.MeshLambertMaterial({ color: 0xff00ff });
 
     if (type === 'grass') {
-        // Grass has green top, brown sides
-        return [
-            new THREE.MeshLambertMaterial({ color: b.sideColor }), // right
-            new THREE.MeshLambertMaterial({ color: b.sideColor }), // left
-            new THREE.MeshLambertMaterial({ color: b.topColor }),   // top
-            new THREE.MeshLambertMaterial({ color: b.sideColor }), // bottom
-            new THREE.MeshLambertMaterial({ color: b.sideColor }), // front
-            new THREE.MeshLambertMaterial({ color: b.sideColor }), // back
-        ];
+        const topMat = new THREE.MeshLambertMaterial({ map: blockTextures.grass_top });
+        const sideMat = new THREE.MeshLambertMaterial({ map: blockTextures.grass_side });
+        const bottomMat = new THREE.MeshLambertMaterial({ map: blockTextures.dirt });
+        return [sideMat, sideMat, topMat, bottomMat, sideMat, sideMat];
+    }
+    if (type === 'wood') {
+        const sideMat = new THREE.MeshLambertMaterial({ map: blockTextures.wood });
+        const topMat = new THREE.MeshLambertMaterial({ map: blockTextures.wood_top });
+        return [sideMat, sideMat, topMat, topMat, sideMat, sideMat];
     }
     if (type === 'leaves') {
-        return new THREE.MeshLambertMaterial({ color: b.color, transparent: true, opacity: 0.85 });
+        return new THREE.MeshLambertMaterial({ map: blockTextures.leaves, transparent: true, opacity: 0.9 });
     }
+
+    // For types with a matching texture
+    const texKey = type;
+    if (blockTextures[texKey]) {
+        return new THREE.MeshLambertMaterial({ map: blockTextures[texKey] });
+    }
+
     return new THREE.MeshLambertMaterial({ color: b.color });
 }
 
@@ -1187,6 +1417,7 @@ window.addEventListener('resize', () => {
 // ============================================
 function init() {
     checkAuth();
+    genTextures();
     const loaded = loadState();
     if (!loaded) generateWorld();
     // Also clear old tab-based state
