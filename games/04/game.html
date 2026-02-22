@@ -407,6 +407,15 @@ function createMap() {
     // Side path south
     for (let y = 15; y < 22; y++) { m[y][10] = T.PATH; m[y][11] = T.PATH; }
 
+    // === Connecting paths to houses ===
+    // Path north to House 1 (from main horizontal road)
+    for (let y = 9; y <= 14; y++) { m[y][9] = T.PATH; }
+    // Path west to House 2 (from main vertical road)
+    for (let x = 19; x <= 23; x++) { m[7][x] = T.PATH; }
+    // Path south to House 3 (already covered by south branch x=10-11)
+    // Path south to House 4 (from east branch)
+    for (let y = 10; y <= 12; y++) { m[y][30] = T.PATH; }
+
     // === House 1 (top-left village) ===
     buildHouse(m, 7, 5, 5, 4);
 
@@ -475,8 +484,8 @@ function createMap() {
 
     // === Bushes ===
     const bushPosns = [
-        [6,10],[7,9],[22,7],[23,8],[14,20],[15,21],[31,12],[32,13],
-        [8,13],[17,6],[26,5],[27,6],[10,25],[34,21],[35,20]
+        [6,10],[7,9],[22,7],[23,8],[14,20],[15,21],[27,13],[34,13],
+        [8,13],[17,6],[22,4],[29,9],[10,25],[34,21],[35,20]
     ];
     for (const [x, y] of bushPosns) {
         if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H && m[y][x] === T.GRASS) {
@@ -961,7 +970,7 @@ let gameMap = null;
 let openedChests = new Set(); // "x,y" keys
 let cutBushes = new Set();
 // 4 key bushes — one near each house, these sparkle as a hint
-const KEY_BUSHES = new Set(['7,9', '23,8', '14,20', '31,12']);
+const KEY_BUSHES = new Set(['7,9', '23,8', '14,20', '27,13']);
 
 // Player
 let player = { x: 19, y: 13, dir: 'down', frame: 0 };
@@ -1586,8 +1595,11 @@ function updateInteractPrompt() {
 // ============================================
 // SAVE / LOAD
 // ============================================
+const SAVE_VERSION = 2; // bump to reset old saves
+
 function saveState() {
     const state = {
+        version: SAVE_VERSION,
         px: player.x, py: player.y, dir: player.dir,
         hp: playerHP, coins: playerCoins,
         inventory: inventory,
@@ -1607,6 +1619,11 @@ function loadState() {
     if (!raw) return false;
     try {
         const s = JSON.parse(raw);
+        // Reset if save is from an older map version
+        if (!s.version || s.version < SAVE_VERSION) {
+            localStorage.removeItem('elfquest_state');
+            return false;
+        }
         player.x = s.px; player.y = s.py; player.dir = s.dir || 'down';
         playerHP = s.hp || 3;
         playerCoins = s.coins || 0;
