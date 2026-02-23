@@ -797,61 +797,79 @@ function mulberry32(a) {
 // ============================================
 function createChickenMesh() {
     const group = new THREE.Group();
+    const white = new THREE.MeshLambertMaterial({ color: 0xf2f2f2 });
+    const darkWhite = new THREE.MeshLambertMaterial({ color: 0xddddd5 });
+    const black = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    const red = new THREE.MeshLambertMaterial({ color: 0xcc0000 });
+    const yellow = new THREE.MeshLambertMaterial({ color: 0xccaa00 });
+    const orange = new THREE.MeshLambertMaterial({ color: 0xe8930a });
 
-    // Body (white box)
-    const bodyGeo = new THREE.BoxGeometry(0.4, 0.35, 0.55);
-    const bodyMat = new THREE.MeshLambertMaterial({ color: 0xf5f5f0 });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 0.35;
+    // Body — wide, flat, chunky (Minecraft chicken shape)
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.6), white);
+    body.position.set(0, 0.35, 0);
     group.add(body);
 
-    // Head (smaller white box)
-    const headGeo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
-    const head = new THREE.Mesh(headGeo, bodyMat);
-    head.position.set(0, 0.58, 0.28);
+    // Head — big cube, same width as body looks right in MC
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), white);
+    head.position.set(0, 0.65, 0.3);
     group.add(head);
 
-    // Beak (orange)
-    const beakGeo = new THREE.BoxGeometry(0.08, 0.06, 0.1);
-    const beakMat = new THREE.MeshLambertMaterial({ color: 0xff8c00 });
-    const beak = new THREE.Mesh(beakGeo, beakMat);
-    beak.position.set(0, 0.55, 0.42);
+    // Eyes — black dots on each side of head
+    const eyeGeo = new THREE.BoxGeometry(0.02, 0.06, 0.06);
+    const eyeL = new THREE.Mesh(eyeGeo, black);
+    eyeL.position.set(-0.16, 0.68, 0.36);
+    group.add(eyeL);
+    const eyeR = new THREE.Mesh(eyeGeo, black);
+    eyeR.position.set(0.16, 0.68, 0.36);
+    group.add(eyeR);
+
+    // Beak — flat orange box sticking out front
+    const beak = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.12), orange);
+    beak.position.set(0, 0.62, 0.48);
     group.add(beak);
 
-    // Comb (red, on top of head)
-    const combGeo = new THREE.BoxGeometry(0.06, 0.1, 0.12);
-    const combMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
-    const comb = new THREE.Mesh(combGeo, combMat);
-    comb.position.set(0, 0.72, 0.28);
+    // Comb — red on top of head
+    const comb = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.14), red);
+    comb.position.set(0, 0.84, 0.3);
     group.add(comb);
 
-    // Wattle (red, under beak)
-    const wattleGeo = new THREE.BoxGeometry(0.05, 0.08, 0.05);
-    const wattle = new THREE.Mesh(wattleGeo, combMat);
-    wattle.position.set(0, 0.48, 0.38);
+    // Wattle — red dangling under beak
+    const wattle = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.06), red);
+    wattle.position.set(0, 0.52, 0.44);
     group.add(wattle);
 
-    // Left leg (yellow)
-    const legGeo = new THREE.BoxGeometry(0.06, 0.18, 0.06);
-    const legMat = new THREE.MeshLambertMaterial({ color: 0xddaa00 });
-    const legL = new THREE.Mesh(legGeo, legMat);
-    legL.position.set(-0.1, 0.09, 0);
-    group.add(legL);
+    // Wings — flat boxes on each side, slightly off-white
+    const wingGeo = new THREE.BoxGeometry(0.06, 0.22, 0.4);
+    const wingL = new THREE.Mesh(wingGeo, darkWhite);
+    wingL.position.set(-0.28, 0.38, -0.02);
+    group.add(wingL);
+    const wingR = new THREE.Mesh(wingGeo, darkWhite);
+    wingR.position.set(0.28, 0.38, -0.02);
+    group.add(wingR);
 
-    // Right leg
-    const legR = new THREE.Mesh(legGeo, legMat);
-    legR.position.set(0.1, 0.09, 0);
+    // Legs — yellow sticks
+    const legGeo = new THREE.BoxGeometry(0.06, 0.18, 0.06);
+    const legL = new THREE.Mesh(legGeo, yellow);
+    legL.position.set(-0.12, 0.09, 0);
+    group.add(legL);
+    const legR = new THREE.Mesh(legGeo, yellow);
+    legR.position.set(0.12, 0.09, 0);
     group.add(legR);
 
-    // Wings (slightly darker, flat boxes on sides)
-    const wingGeo = new THREE.BoxGeometry(0.05, 0.2, 0.35);
-    const wingMat = new THREE.MeshLambertMaterial({ color: 0xe0ddd0 });
-    const wingL = new THREE.Mesh(wingGeo, wingMat);
-    wingL.position.set(-0.23, 0.38, -0.02);
-    group.add(wingL);
-    const wingR = new THREE.Mesh(wingGeo, wingMat);
-    wingR.position.set(0.23, 0.38, -0.02);
-    group.add(wingR);
+    // Feet — flat yellow pads
+    const footGeo = new THREE.BoxGeometry(0.1, 0.03, 0.14);
+    const footL = new THREE.Mesh(footGeo, yellow);
+    footL.position.set(-0.12, 0.015, 0.03);
+    group.add(footL);
+    const footR = new THREE.Mesh(footGeo, yellow);
+    footR.position.set(0.12, 0.015, 0.03);
+    group.add(footR);
+
+    // Tail feathers — sticking up at back
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.2, 0.08), darkWhite);
+    tail.position.set(0, 0.55, -0.3);
+    tail.rotation.x = -0.3;
+    group.add(tail);
 
     return group;
 }
