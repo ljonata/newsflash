@@ -367,36 +367,51 @@ raycaster.far = 6;
 // First-person right hand (attached to camera)
 function createHandMesh() {
     const group = new THREE.Group();
-    const skin = new THREE.MeshLambertMaterial({ color: 0xd4a574 });
-    const sleeve = new THREE.MeshLambertMaterial({ color: 0x5b8c3e });
+    // Use MeshBasicMaterial (unlit) so it's always visible regardless of lighting
+    const skin = new THREE.MeshBasicMaterial({ color: 0xd4a574 });
+    const skinDark = new THREE.MeshBasicMaterial({ color: 0xc0956a });
+    const sleeve = new THREE.MeshBasicMaterial({ color: 0x5b8c3e });
+    const sleeveDark = new THREE.MeshBasicMaterial({ color: 0x4a7832 });
 
     // Arm (green sleeve)
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.5, 0.18), sleeve);
-    arm.position.set(0, -0.15, 0);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.6, 0.22), sleeve);
+    arm.position.set(0, -0.2, 0);
     group.add(arm);
 
-    // Hand (skin-colored block at end of arm)
-    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.22, 0.18), skin);
-    hand.position.set(0, 0.2, 0);
+    // Sleeve cuff detail
+    const cuff = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.08, 0.24), sleeveDark);
+    cuff.position.set(0, 0.1, 0);
+    group.add(cuff);
+
+    // Hand (skin-colored block)
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.28, 0.22), skin);
+    hand.position.set(0, 0.3, 0);
     group.add(hand);
 
-    // Fingers (small skin block extending forward)
-    const fingers = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.1), skin);
-    fingers.position.set(0, 0.22, 0.12);
+    // Fingers (extending forward)
+    const fingers = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, 0.14), skinDark);
+    fingers.position.set(0, 0.3, 0.16);
     group.add(fingers);
+
+    // Thumb (side)
+    const thumb = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.1), skinDark);
+    thumb.position.set(-0.14, 0.28, 0.08);
+    group.add(thumb);
 
     return group;
 }
 
 const handGroup = createHandMesh();
-handGroup.position.set(0.55, -0.45, -0.65);
-handGroup.rotation.set(0.3, -0.2, 0.1);
+handGroup.position.set(0.45, -0.4, -0.5);
+handGroup.rotation.set(0.3, -0.15, 0.1);
+// Prevent fog from affecting the hand
+handGroup.traverse(child => { if (child.material) child.material.fog = false; });
 camera.add(handGroup);
 scene.add(camera); // needed so camera children render
 
 let handBobPhase = 0;
-const handRestPos = { x: 0.55, y: -0.45, z: -0.65 };
-const handRestRot = { x: 0.3, y: -0.2, z: 0.1 };
+const handRestPos = { x: 0.45, y: -0.4, z: -0.5 };
+const handRestRot = { x: 0.3, y: -0.15, z: 0.1 };
 
 // Euler for camera rotation
 let euler = new THREE.Euler(0, 0, 0, 'YXZ');
