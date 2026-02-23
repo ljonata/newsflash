@@ -356,6 +356,8 @@ const SCALE = 6;
 const TS = TILE * SCALE; // 96px rendered tile
 const MAP_W = 40;
 const MAP_H = 30;
+let activeMapW = MAP_W;
+let activeMapH = MAP_H;
 
 // Tile IDs
 const T = {
@@ -370,10 +372,20 @@ const T = {
     ROCK: 8,
     CHEST: 9,
     BUSH: 10,
-    BRIDGE: 11
+    BRIDGE: 11,
+    // Interior tiles
+    FLOOR: 12,
+    IWALL: 13,
+    TABLE: 14,
+    CHAIR: 15,
+    BED: 16,
+    BOOKSHELF: 17,
+    FIREPLACE: 18,
+    RUG: 19,
+    IDOOR: 20
 };
 
-const WALKABLE = new Set([T.GRASS, T.PATH, T.DOOR, T.FLOWER, T.BRIDGE, T.WATER]);
+const WALKABLE = new Set([T.GRASS, T.PATH, T.DOOR, T.FLOWER, T.BRIDGE, T.WATER, T.FLOOR, T.RUG, T.IDOOR]);
 
 // ============================================
 // MAP
@@ -512,6 +524,84 @@ function buildHouse(m, hx, hy, w, h) {
     const doorY = hy + h - 1;
     if (doorX >= 0 && doorX < MAP_W && doorY >= 0 && doorY < MAP_H) m[doorY][doorX] = T.DOOR;
 }
+
+// ============================================
+// HOUSE INTERIORS (10x8 maps)
+// ============================================
+// F=FLOOR, W=IWALL, T=TABLE, C=CHAIR, B=BED, K=BOOKSHELF, P=FIREPLACE, R=RUG, D=IDOOR
+const INTERIOR_W = 10;
+const INTERIOR_H = 8;
+
+const HOUSE_INTERIORS = [
+    // House 0: Village Cottage — cozy home with bed, table, fireplace
+    {
+        name: 'Village Cottage',
+        map: [
+            [13,13,13,13,13,13,13,13,13,13],
+            [13,12,12,12,12,12,12,12,12,13],
+            [13,16,16,12,14,14,12,18,12,13],
+            [13,12,12,12,15,12,12,12,12,13],
+            [13,12,19,19,19,19,12,12,12,13],
+            [13,12,19,19,19,19,12,12,12,13],
+            [13,12,12,12,12,12,12,12,12,13],
+            [13,13,13,13,20,13,13,13,13,13]
+        ],
+        doorX: 4, doorY: 7  // IDOOR position inside
+    },
+    // House 1: Elder's Library — full of bookshelves and a reading table
+    {
+        name: "Elder's Library",
+        map: [
+            [13,13,13,13,13,13,13,13,13,13],
+            [13,17,17,12,17,17,12,17,17,13],
+            [13,12,12,12,12,12,12,12,12,13],
+            [13,12,14,14,12,12,14,14,12,13],
+            [13,12,15,12,19,19,12,15,12,13],
+            [13,12,12,12,19,19,12,12,12,13],
+            [13,12,12,12,12,12,12,12,12,13],
+            [13,13,13,13,20,13,13,13,13,13]
+        ],
+        doorX: 4, doorY: 7
+    },
+    // House 2: Traveler's Inn — beds, a bar/table area
+    {
+        name: "Traveler's Inn",
+        map: [
+            [13,13,13,13,13,13,13,13,13,13],
+            [13,16,16,12,12,12,16,16,12,13],
+            [13,12,12,12,12,12,12,12,12,13],
+            [13,12,12,14,14,14,12,12,12,13],
+            [13,12,12,15,12,15,12,12,12,13],
+            [13,12,19,19,19,19,19,12,18,13],
+            [13,12,12,12,12,12,12,12,12,13],
+            [13,13,13,13,20,13,13,13,13,13]
+        ],
+        doorX: 4, doorY: 7
+    },
+    // House 3: Blacksmith's Workshop — anvil(table), fireplace, tools(bookshelf)
+    {
+        name: "Blacksmith's Workshop",
+        map: [
+            [13,13,13,13,13,13,13,13,13,13],
+            [13,18,12,12,17,12,12,12,18,13],
+            [13,12,12,12,12,12,12,12,12,13],
+            [13,12,14,14,12,14,14,12,12,13],
+            [13,12,12,12,12,12,12,12,12,13],
+            [13,12,12,19,19,19,12,12,12,13],
+            [13,12,12,12,12,12,12,12,15,13],
+            [13,13,13,13,13,20,13,13,13,13]
+        ],
+        doorX: 5, doorY: 7
+    }
+];
+
+// Map house door positions (overworld) to interior index
+const HOUSE_DOORS = [
+    { doorX: 9, doorY: 8, interiorIdx: 0 },   // House 1 door
+    { doorX: 26, doorY: 8, interiorIdx: 1 },  // House 2 door
+    { doorX: 10, doorY: 21, interiorIdx: 2 }, // House 3 door
+    { doorX: 31, doorY: 15, interiorIdx: 3 }  // House 4 door
+];
 
 // ============================================
 // TILE RENDERING
@@ -764,6 +854,219 @@ function genTileSprite(tileId, variant) {
             ctx.fillStyle = '#6d4c41';
             ctx.fillRect(0, 0, TILE, 1);
             ctx.fillRect(0, 15, TILE, 1);
+            break;
+        }
+        case T.FLOOR: {
+            const woods = ['#c8a882', '#c2a27a', '#cbb08a', '#bfa076'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = woods[Math.floor(rng() * woods.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            // Plank lines
+            ctx.fillStyle = '#a88960';
+            for (let y = 0; y < TILE; y += 4) {
+                ctx.fillRect(0, y, TILE, 1);
+            }
+            break;
+        }
+        case T.IWALL: {
+            // Stone interior wall
+            ctx.fillStyle = '#9e9e9e';
+            ctx.fillRect(0, 0, TILE, TILE);
+            ctx.fillStyle = '#757575';
+            for (let y = 0; y < TILE; y += 4) {
+                ctx.fillRect(0, y + 3, TILE, 1);
+                const off = (y % 8 === 0) ? 0 : 5;
+                for (let x = off; x < TILE; x += 10) {
+                    ctx.fillRect(x, y, 1, 3);
+                }
+            }
+            // Highlight
+            ctx.fillStyle = '#bdbdbd';
+            for (let i = 0; i < 5; i++) {
+                ctx.fillRect(Math.floor(rng()*14)+1, Math.floor(rng()*14)+1, 1, 1);
+            }
+            break;
+        }
+        case T.TABLE: {
+            // Floor base
+            const woods = ['#c8a882', '#c2a27a'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = woods[Math.floor(rng() * woods.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            ctx.fillStyle = '#a88960';
+            for (let y = 0; y < TILE; y += 4) ctx.fillRect(0, y, TILE, 1);
+            // Table top
+            ctx.fillStyle = '#8d6e63';
+            ctx.fillRect(2, 3, 12, 6);
+            ctx.fillStyle = '#6d4c41';
+            ctx.fillRect(2, 3, 12, 1);
+            ctx.fillRect(2, 8, 12, 1);
+            // Legs
+            ctx.fillStyle = '#5d4037';
+            ctx.fillRect(3, 9, 1, 4);
+            ctx.fillRect(12, 9, 1, 4);
+            break;
+        }
+        case T.CHAIR: {
+            // Floor base
+            const woods = ['#c8a882', '#c2a27a'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = woods[Math.floor(rng() * woods.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            ctx.fillStyle = '#a88960';
+            for (let y = 0; y < TILE; y += 4) ctx.fillRect(0, y, TILE, 1);
+            // Chair back
+            ctx.fillStyle = '#8d6e63';
+            ctx.fillRect(5, 2, 6, 2);
+            ctx.fillStyle = '#6d4c41';
+            ctx.fillRect(5, 2, 1, 9);
+            ctx.fillRect(10, 2, 1, 9);
+            // Seat
+            ctx.fillStyle = '#a1887f';
+            ctx.fillRect(5, 7, 6, 3);
+            // Legs
+            ctx.fillStyle = '#5d4037';
+            ctx.fillRect(5, 11, 1, 3);
+            ctx.fillRect(10, 11, 1, 3);
+            break;
+        }
+        case T.BED: {
+            // Floor base
+            const woods = ['#c8a882', '#c2a27a'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = woods[Math.floor(rng() * woods.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            ctx.fillStyle = '#a88960';
+            for (let y = 0; y < TILE; y += 4) ctx.fillRect(0, y, TILE, 1);
+            // Bed frame
+            ctx.fillStyle = '#5d4037';
+            ctx.fillRect(2, 2, 12, 12);
+            // Pillow
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(3, 3, 10, 3);
+            ctx.fillStyle = '#e0e0e0';
+            ctx.fillRect(3, 5, 10, 1);
+            // Blanket
+            ctx.fillStyle = '#1565c0';
+            ctx.fillRect(3, 6, 10, 7);
+            ctx.fillStyle = '#1976d2';
+            ctx.fillRect(4, 7, 8, 5);
+            break;
+        }
+        case T.BOOKSHELF: {
+            // Wall base
+            ctx.fillStyle = '#9e9e9e';
+            ctx.fillRect(0, 0, TILE, TILE);
+            // Shelf frame
+            ctx.fillStyle = '#5d4037';
+            ctx.fillRect(1, 1, 14, 14);
+            // Shelves
+            ctx.fillStyle = '#6d4c41';
+            ctx.fillRect(1, 5, 14, 1);
+            ctx.fillRect(1, 10, 14, 1);
+            // Books (top shelf)
+            const bookColors = ['#c62828', '#1565c0', '#2e7d32', '#f9a825', '#6a1b9a', '#e65100'];
+            for (let bx = 2; bx < 14; bx += 2) {
+                ctx.fillStyle = bookColors[Math.floor(rng() * bookColors.length)];
+                ctx.fillRect(bx, 2, 2, 3);
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(bx, 3, 2, 1);
+            }
+            // Books (middle shelf)
+            for (let bx = 2; bx < 14; bx += 2) {
+                ctx.fillStyle = bookColors[Math.floor(rng() * bookColors.length)];
+                ctx.fillRect(bx, 6, 2, 4);
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(bx, 8, 2, 1);
+            }
+            // Books (bottom shelf)
+            for (let bx = 2; bx < 14; bx += 2) {
+                ctx.fillStyle = bookColors[Math.floor(rng() * bookColors.length)];
+                ctx.fillRect(bx, 11, 2, 3);
+            }
+            break;
+        }
+        case T.FIREPLACE: {
+            // Wall base
+            ctx.fillStyle = '#9e9e9e';
+            ctx.fillRect(0, 0, TILE, TILE);
+            // Stone frame
+            ctx.fillStyle = '#616161';
+            ctx.fillRect(2, 2, 12, 12);
+            ctx.fillStyle = '#757575';
+            ctx.fillRect(1, 2, 1, 12);
+            ctx.fillRect(14, 2, 1, 12);
+            ctx.fillRect(1, 1, 14, 1);
+            // Fire opening
+            ctx.fillStyle = '#212121';
+            ctx.fillRect(4, 5, 8, 9);
+            // Fire
+            ctx.fillStyle = '#ff6f00';
+            ctx.fillRect(5, 9, 6, 4);
+            ctx.fillStyle = '#ffab00';
+            ctx.fillRect(6, 7, 4, 5);
+            ctx.fillStyle = '#ffd600';
+            ctx.fillRect(7, 8, 2, 3);
+            // Embers
+            ctx.fillStyle = '#dd2c00';
+            ctx.fillRect(5, 13, 6, 1);
+            break;
+        }
+        case T.RUG: {
+            // Floor base
+            const woods = ['#c8a882', '#c2a27a'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = woods[Math.floor(rng() * woods.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            ctx.fillStyle = '#a88960';
+            for (let y = 0; y < TILE; y += 4) ctx.fillRect(0, y, TILE, 1);
+            // Rug
+            ctx.fillStyle = '#b71c1c';
+            ctx.fillRect(1, 1, 14, 14);
+            ctx.fillStyle = '#d32f2f';
+            ctx.fillRect(2, 2, 12, 12);
+            // Pattern
+            ctx.fillStyle = '#ffd54f';
+            ctx.fillRect(3, 3, 10, 1);
+            ctx.fillRect(3, 12, 10, 1);
+            ctx.fillRect(3, 3, 1, 10);
+            ctx.fillRect(12, 3, 1, 10);
+            // Center diamond
+            ctx.fillStyle = '#ff8f00';
+            ctx.fillRect(7, 5, 2, 6);
+            ctx.fillRect(6, 6, 4, 4);
+            break;
+        }
+        case T.IDOOR: {
+            // Floor base
+            const woods = ['#c8a882', '#c2a27a'];
+            for (let y = 0; y < TILE; y++)
+                for (let x = 0; x < TILE; x++) {
+                    ctx.fillStyle = woods[Math.floor(rng() * woods.length)];
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            ctx.fillStyle = '#a88960';
+            for (let y = 0; y < TILE; y += 4) ctx.fillRect(0, y, TILE, 1);
+            // Door mat
+            ctx.fillStyle = '#795548';
+            ctx.fillRect(3, 10, 10, 4);
+            ctx.fillStyle = '#6d4c41';
+            ctx.fillRect(4, 11, 8, 2);
+            // Arrow indicating exit
+            ctx.fillStyle = '#ffd54f';
+            ctx.fillRect(7, 12, 2, 1);
+            ctx.fillRect(6, 11, 4, 1);
+            ctx.fillRect(7, 13, 2, 1);
             break;
         }
     }
@@ -1194,6 +1497,20 @@ const MOVE_SPEED = 5; // tiles per second
 let swinging = false;
 let swingTimer = 0;
 
+// Interior state
+let insideHouse = false;
+let currentInterior = -1; // index into HOUSE_INTERIORS
+let overworldMap = null;  // store overworld map when inside
+let overworldPos = { x: 0, y: 0, dir: 'down' }; // player pos before entering
+let housesVisited = new Set(); // track which houses player has entered
+
+// Star Wars iris wipe transition
+let transitioning = false;
+let transitionPhase = 'none'; // 'iris_close', 'iris_open', 'none'
+let transitionProgress = 0;
+const TRANSITION_SPEED = 1.8; // full transition per second
+let transitionCallback = null;
+
 // Canvas
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -1208,8 +1525,8 @@ function resizeCanvas() {
     // How many tiles fit
     const tilesX = Math.floor(maxW / TS);
     const tilesY = Math.floor(maxH / TS);
-    const viewW = Math.max(10, Math.min(tilesX, MAP_W));
-    const viewH = Math.max(8, Math.min(tilesY, MAP_H));
+    const viewW = Math.max(10, Math.min(tilesX, activeMapW));
+    const viewH = Math.max(8, Math.min(tilesY, activeMapH));
     canvas.width = viewW * TS;
     canvas.height = viewH * TS;
     canvas.tilesX = viewW;
@@ -1226,8 +1543,8 @@ function getCameraOffset() {
     const halfY = Math.floor(canvas.tilesY / 2);
     let camX = px - halfX;
     let camY = py - halfY;
-    camX = Math.max(0, Math.min(MAP_W - canvas.tilesX, camX));
-    camY = Math.max(0, Math.min(MAP_H - canvas.tilesY, camY));
+    camX = Math.max(0, Math.min(activeMapW - canvas.tilesX, camX));
+    camY = Math.max(0, Math.min(activeMapH - canvas.tilesY, camY));
     return { x: camX, y: camY };
 }
 
@@ -1243,7 +1560,7 @@ function render() {
         for (let sx = 0; sx < canvas.tilesX; sx++) {
             const mx = Math.floor(cam.x) + sx;
             const my = Math.floor(cam.y) + sy;
-            if (mx < 0 || mx >= MAP_W || my < 0 || my >= MAP_H) continue;
+            if (mx < 0 || mx >= activeMapW || my < 0 || my >= activeMapH) continue;
 
             let tileId = gameMap[my][mx];
             const key = `${mx},${my}`;
@@ -1265,7 +1582,7 @@ function render() {
     }
 
     // Draw sparkles on key bushes (hint that they hide a key)
-    for (const kb of KEY_BUSHES) {
+    if (!insideHouse) for (const kb of KEY_BUSHES) {
         if (cutBushes.has(kb)) continue; // already cut
         const [bx, by] = kb.split(',').map(Number);
         const sx2 = bx - Math.floor(cam.x);
@@ -1353,7 +1670,7 @@ function tryMove(dx, dy, dir) {
     player.dir = dir;
     const nx = player.x + dx;
     const ny = player.y + dy;
-    if (nx < 0 || nx >= MAP_W || ny < 0 || ny >= MAP_H) return;
+    if (nx < 0 || nx >= activeMapW || ny < 0 || ny >= activeMapH) return;
 
     const tileId = gameMap[ny][nx];
     const key = `${nx},${ny}`;
@@ -1385,7 +1702,7 @@ function interact() {
     const dy = player.dir === 'down' ? 1 : player.dir === 'up' ? -1 : 0;
     const tx = player.x + dx;
     const ty = player.y + dy;
-    if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H) return;
+    if (tx < 0 || tx >= activeMapW || ty < 0 || ty >= activeMapH) return;
 
     const key = `${tx},${ty}`;
     const tile = gameMap[ty][tx];
@@ -1408,21 +1725,84 @@ function interact() {
         renderBackpack();
         updateHUD();
         saveState();
-    } else if (tile === T.DOOR) {
-        if (inventory.key > 0) {
-            inventory.key--;
-            doorsOpened++;
-            playerCoins += 10;
-            inventory.coins += 10;
-            showNotif('Used a key! Found 10 coins inside!');
-            syncCoins();
-            renderBackpack();
-            updateHUD();
-            saveState();
-        } else {
-            showNotif('The door is locked... You need a key.');
+    } else if (tile === T.DOOR && !insideHouse) {
+        // Find which house this door belongs to
+        const houseIdx = HOUSE_DOORS.findIndex(h => h.doorX === tx && h.doorY === ty);
+        if (houseIdx >= 0) {
+            if (inventory.key > 0) {
+                inventory.key--;
+                doorsOpened++;
+                enterHouse(houseIdx);
+            } else {
+                showNotif('The door is locked... You need a key.');
+            }
         }
     }
+}
+
+function enterHouse(houseIdx) {
+    if (transitioning) return;
+    const interior = HOUSE_INTERIORS[houseIdx];
+    transitioning = true;
+    transitionPhase = 'iris_close';
+    transitionProgress = 0;
+    transitionCallback = () => {
+        // Save overworld state
+        overworldMap = gameMap;
+        overworldPos = { x: player.x, y: player.y, dir: player.dir };
+        // Switch to interior
+        insideHouse = true;
+        currentInterior = houseIdx;
+        gameMap = interior.map.map(row => [...row]); // clone so we don't mutate
+        activeMapW = INTERIOR_W;
+        activeMapH = INTERIOR_H;
+        // Place player on interior door tile
+        player.x = interior.doorX;
+        player.y = interior.doorY - 1; // one tile above the door
+        player.dir = 'up';
+        isMoving = false;
+        moveProgress = 0;
+        // Track visit
+        housesVisited.add(houseIdx);
+        resizeCanvas();
+        showNotif(interior.name);
+        renderBackpack();
+        updateHUD();
+        saveState();
+        // Start opening iris
+        transitionPhase = 'iris_open';
+        transitionProgress = 0;
+    };
+}
+
+function exitHouse() {
+    if (transitioning || !insideHouse) return;
+    transitioning = true;
+    transitionPhase = 'iris_close';
+    transitionProgress = 0;
+    transitionCallback = () => {
+        // Restore overworld
+        gameMap = overworldMap;
+        overworldMap = null;
+        insideHouse = false;
+        activeMapW = MAP_W;
+        activeMapH = MAP_H;
+        // Place player just below the door
+        const houseDoor = HOUSE_DOORS[currentInterior];
+        player.x = houseDoor.doorX;
+        player.y = houseDoor.doorY + 1;
+        player.dir = 'down';
+        currentInterior = -1;
+        isMoving = false;
+        moveProgress = 0;
+        resizeCanvas();
+        renderBackpack();
+        updateHUD();
+        saveState();
+        // Start opening iris
+        transitionPhase = 'iris_open';
+        transitionProgress = 0;
+    };
 }
 
 function swingSword() {
@@ -1435,7 +1815,7 @@ function swingSword() {
     const dy = player.dir === 'down' ? 1 : player.dir === 'up' ? -1 : 0;
     const tx = player.x + dx;
     const ty = player.y + dy;
-    if (tx >= 0 && tx < MAP_W && ty >= 0 && ty < MAP_H) {
+    if (tx >= 0 && tx < activeMapW && ty >= 0 && ty < activeMapH) {
         const key = `${tx},${ty}`;
         if (gameMap[ty][tx] === T.BUSH && !cutBushes.has(key)) {
             cutBushes.add(key);
@@ -1665,6 +2045,14 @@ const MISSIONS = [
         reward: '+3 coins',
         rewardCoins: 3,
         check: () => hasSwum
+    },
+    {
+        id: 'home_explorer',
+        name: 'Home Explorer',
+        desc: 'Visit all 4 houses in the village.',
+        reward: '+20 coins',
+        rewardCoins: 20,
+        check: () => housesVisited.size >= 4
     }
 ];
 
@@ -1778,7 +2166,7 @@ function updateInteractPrompt() {
     const ty = player.y + dy;
     const prompt = document.getElementById('interact-prompt');
 
-    if (tx >= 0 && tx < MAP_W && ty >= 0 && ty < MAP_H) {
+    if (tx >= 0 && tx < activeMapW && ty >= 0 && ty < activeMapH) {
         const tile = gameMap[ty][tx];
         const key = `${tx},${ty}`;
         if (tile === T.CHEST && !openedChests.has(key)) {
@@ -1786,8 +2174,9 @@ function updateInteractPrompt() {
             prompt.style.display = 'block';
             return;
         }
-        if (tile === T.DOOR) {
-            prompt.innerHTML = isTouchDevice ? 'Press <b>B</b> to interact' : 'Press <b>E</b> to interact';
+        if (tile === T.DOOR && !insideHouse) {
+            const doorMsg = inventory.key > 0 ? 'enter house' : 'locked (need key)';
+            prompt.innerHTML = isTouchDevice ? `Press <b>B</b> to ${doorMsg}` : `Press <b>E</b> to ${doorMsg}`;
             prompt.style.display = 'block';
             return;
         }
@@ -1804,12 +2193,16 @@ function updateInteractPrompt() {
 // ============================================
 // SAVE / LOAD
 // ============================================
-const SAVE_VERSION = 2; // bump to reset old saves
+const SAVE_VERSION = 3; // bump to reset old saves
 
 function saveState() {
+    // If inside a house, save overworld position so we reload outside
+    const saveX = insideHouse ? overworldPos.x : player.x;
+    const saveY = insideHouse ? overworldPos.y : player.y;
+    const saveDir = insideHouse ? overworldPos.dir : player.dir;
     const state = {
         version: SAVE_VERSION,
-        px: player.x, py: player.y, dir: player.dir,
+        px: saveX, py: saveY, dir: saveDir,
         hp: playerHP, coins: playerCoins,
         inventory: inventory,
         openedChests: [...openedChests],
@@ -1818,7 +2211,8 @@ function saveState() {
         tilesWalked: tilesWalked,
         doorsOpened: doorsOpened,
         crossedBridge: crossedBridge,
-        hasSwum: hasSwum
+        hasSwum: hasSwum,
+        housesVisited: [...housesVisited]
     };
     localStorage.setItem('elfquest_state', JSON.stringify(state));
 }
@@ -1844,6 +2238,7 @@ function loadState() {
         doorsOpened = s.doorsOpened || 0;
         crossedBridge = s.crossedBridge || false;
         hasSwum = s.hasSwum || false;
+        housesVisited = new Set(s.housesVisited || []);
         return true;
     } catch(e) { return false; }
 }
@@ -1855,11 +2250,53 @@ let lastTime = 0;
 let saveTimer = 0;
 let missionTimer = 0;
 
+function renderIrisWipe() {
+    if (!transitioning) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    // Max radius = diagonal / 2
+    const maxR = Math.sqrt(w * w + h * h) / 2;
+    let radius;
+    if (transitionPhase === 'iris_close') {
+        radius = maxR * (1 - transitionProgress);
+    } else {
+        radius = maxR * transitionProgress;
+    }
+    // Draw black with circular hole
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.rect(0, 0, w, h);
+    ctx.arc(w / 2, h / 2, Math.max(0, radius), 0, Math.PI * 2, true);
+    ctx.fill('evenodd');
+    ctx.restore();
+}
+
 function gameLoop(time) {
     requestAnimationFrame(gameLoop);
     const delta = Math.min((time - lastTime) / 1000, 0.1);
     lastTime = time;
     animFrame++;
+
+    // Handle transition animation
+    if (transitioning) {
+        transitionProgress += TRANSITION_SPEED * delta;
+        if (transitionProgress >= 1) {
+            transitionProgress = 1;
+            if (transitionPhase === 'iris_close' && transitionCallback) {
+                const cb = transitionCallback;
+                transitionCallback = null;
+                cb(); // switches map, sets phase to iris_open
+            } else if (transitionPhase === 'iris_open') {
+                transitioning = false;
+                transitionPhase = 'none';
+                transitionProgress = 0;
+            }
+        }
+        render();
+        renderIrisWipe();
+        return; // skip input/game logic during transition
+    }
 
     // Process input
     if (isTouchDevice) processMobileInput();
@@ -1884,6 +2321,10 @@ function gameLoop(time) {
             // Check swimming
             if (gameMap[player.y] && gameMap[player.y][player.x] === T.WATER) {
                 hasSwum = true;
+            }
+            // Check IDOOR — auto-exit house
+            if (insideHouse && gameMap[player.y] && gameMap[player.y][player.x] === T.IDOOR) {
+                exitHouse();
             }
         }
     }
