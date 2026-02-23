@@ -364,6 +364,40 @@ scene.add(dirLight);
 const raycaster = new THREE.Raycaster();
 raycaster.far = 6;
 
+// First-person right hand (attached to camera)
+function createHandMesh() {
+    const group = new THREE.Group();
+    const skin = new THREE.MeshLambertMaterial({ color: 0xd4a574 });
+    const sleeve = new THREE.MeshLambertMaterial({ color: 0x5b8c3e });
+
+    // Arm (green sleeve)
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.5, 0.18), sleeve);
+    arm.position.set(0, -0.15, 0);
+    group.add(arm);
+
+    // Hand (skin-colored block at end of arm)
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.22, 0.18), skin);
+    hand.position.set(0, 0.2, 0);
+    group.add(hand);
+
+    // Fingers (small skin block extending forward)
+    const fingers = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.1), skin);
+    fingers.position.set(0, 0.22, 0.12);
+    group.add(fingers);
+
+    return group;
+}
+
+const handGroup = createHandMesh();
+handGroup.position.set(0.55, -0.45, -0.65);
+handGroup.rotation.set(0.3, -0.2, 0.1);
+camera.add(handGroup);
+scene.add(camera); // needed so camera children render
+
+let handBobPhase = 0;
+const handRestPos = { x: 0.55, y: -0.45, z: -0.65 };
+const handRestRot = { x: 0.3, y: -0.2, z: 0.1 };
+
 // Euler for camera rotation
 let euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
@@ -1724,6 +1758,32 @@ function animate() {
     if (saveTimer > 30) {
         saveTimer = 0;
         saveState();
+    }
+
+    // Animate right hand
+    const isWalking = moveForward || moveBackward || moveLeft || moveRight;
+    handBobPhase += delta * (isWalking ? 6 : 1.5);
+    const bob = Math.sin(handBobPhase) * (isWalking ? 0.04 : 0.01);
+    if (isMining) {
+        // Swing animation — arm pumps forward and down
+        const swing = Math.sin(performance.now() * 0.008) * 0.5 + 0.5;
+        handGroup.position.set(
+            handRestPos.x - swing * 0.1,
+            handRestPos.y - swing * 0.12,
+            handRestPos.z + swing * 0.15
+        );
+        handGroup.rotation.set(
+            handRestRot.x + swing * 0.6,
+            handRestRot.y,
+            handRestRot.z - swing * 0.2
+        );
+    } else {
+        handGroup.position.set(
+            handRestPos.x,
+            handRestPos.y + bob,
+            handRestPos.z
+        );
+        handGroup.rotation.set(handRestRot.x, handRestRot.y, handRestRot.z);
     }
 
     renderer.render(scene, camera);
