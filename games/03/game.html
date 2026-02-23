@@ -179,7 +179,7 @@
     <p>A 3D voxel world of mining, crafting & blogging</p>
     <p style="color:gold; margin-top:15px;" id="start-action">Click to Play</p>
     <div class="controls-help controls-help-desktop">
-        WASD - Move | Mouse - Look | Space - Jump<br>
+        WAD - Move | S - Sprint | Mouse - Look | Space - Jump<br>
         Left Click - Mine | Right Click - Place<br>
         1-9 - Select Slot | E - Crafting
     </div>
@@ -208,6 +208,7 @@
 
 <!-- Crosshair -->
 <div id="crosshair">+</div>
+<div id="sprint-indicator" style="display:none; position:fixed; bottom:70px; left:50%; transform:translateX(-50%); color:#ffd700; font-size:13px; font-weight:bold; z-index:101; pointer-events:none; text-shadow:1px 1px 2px #000; letter-spacing:1px;">SPRINTING</div>
 
 <!-- Mining progress -->
 <div id="mine-progress"><div id="mine-progress-fill"></div></div>
@@ -322,6 +323,7 @@ let selectedRecipe = 0;
 // Movement state
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 let canJump = true;
+let isSprinting = false;
 let velocity = new THREE.Vector3();
 let playerHeight = 1.7;
 let isPointerLocked = false;
@@ -1182,7 +1184,7 @@ function updatePhysics(delta) {
     forward.normalize();
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
 
-    const speed = 5;
+    const speed = isSprinting ? 10 : 5;
     if (moveForward) direction.add(forward);
     if (moveBackward) direction.sub(forward);
     if (moveRight) direction.add(right);
@@ -1256,7 +1258,11 @@ document.addEventListener('keydown', (e) => {
     switch (e.code) {
         case 'KeyW': moveForward = true; break;
         case 'KeyA': moveLeft = true; break;
-        case 'KeyS': moveBackward = true; break;
+        case 'KeyS':
+            isSprinting = !isSprinting;
+            document.getElementById('sprint-indicator').style.display = isSprinting ? 'block' : 'none';
+            break;
+        case 'ArrowDown': moveBackward = true; break;
         case 'KeyD': moveRight = true; break;
         case 'Space':
             e.preventDefault();
@@ -1278,7 +1284,7 @@ document.addEventListener('keyup', (e) => {
     switch (e.code) {
         case 'KeyW': moveForward = false; break;
         case 'KeyA': moveLeft = false; break;
-        case 'KeyS': moveBackward = false; break;
+        case 'ArrowDown': moveBackward = false; break;
         case 'KeyD': moveRight = false; break;
     }
 });
