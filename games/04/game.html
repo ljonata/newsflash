@@ -781,7 +781,7 @@ function getTileCanvas(tileId, variant) {
 // ============================================
 const elfSprites = {};
 
-function genElfSprite(dir, frame) {
+function genElfSprite(dir, frame, hasSword) {
     const c = document.createElement('canvas');
     c.width = TILE; c.height = TILE;
     const ctx = c.getContext('2d');
@@ -796,12 +796,15 @@ function genElfSprite(dir, frame) {
     const bootsDark = '#3e2723';
     const belt = '#8d6e63';
     const beltBuckle = '#ffd600';
-    const hat = '#76ff03';       // lime green
+    const hat = '#76ff03';
     const hatDark = '#64dd17';
     const hatBand = '#33691e';
     const eyeWhite = '#fff';
     const eyeColor = '#1a237e';
     const mouth = '#c97a5a';
+    const swordBlade = '#b0bec5';
+    const swordHilt = '#8d6e63';
+    const swordGuard = '#ffd600';
 
     if (dir === 'down') {
         // Hat
@@ -818,8 +821,8 @@ function genElfSprite(dir, frame) {
         ctx.fillStyle = skin;
         ctx.fillRect(5, 3, 6, 4);
         ctx.fillStyle = skinShade;
-        ctx.fillRect(5, 6, 6, 1); // chin shadow
-        // Eyes (white + pupil)
+        ctx.fillRect(5, 6, 6, 1);
+        // Eyes
         ctx.fillStyle = eyeWhite;
         ctx.fillRect(6, 4, 2, 1);
         ctx.fillRect(9, 4, 2, 1);
@@ -840,25 +843,39 @@ function genElfSprite(dir, frame) {
         ctx.fillStyle = skin;
         ctx.fillRect(4, 3, 1, 2);
         ctx.fillRect(11, 3, 1, 2);
-        ctx.fillStyle = skin;
         ctx.fillRect(3, 3, 1, 1);
         ctx.fillRect(12, 3, 1, 1);
+        // Arms (skin colored, on sides of tunic)
+        ctx.fillStyle = tunic;
+        ctx.fillRect(3, 7, 2, 3);   // left arm sleeve
+        ctx.fillRect(11, 7, 2, 3);  // right arm sleeve
+        ctx.fillStyle = skin;
+        ctx.fillRect(3, 10, 2, 1);  // left hand
+        ctx.fillRect(11, 10, 2, 1); // right hand
+        // Sword in right hand
+        if (hasSword) {
+            ctx.fillStyle = swordHilt;
+            ctx.fillRect(12, 9, 1, 2);
+            ctx.fillStyle = swordGuard;
+            ctx.fillRect(11, 9, 3, 1);
+            ctx.fillStyle = swordBlade;
+            ctx.fillRect(12, 11, 1, 4);
+            ctx.fillStyle = '#cfd8dc';
+            ctx.fillRect(12, 11, 1, 1);
+        }
         // Tunic
         ctx.fillStyle = tunic;
         ctx.fillRect(5, 7, 6, 4);
         ctx.fillStyle = tunicDark;
         ctx.fillRect(5, 7, 1, 4);
         ctx.fillRect(10, 7, 1, 4);
-        // Tunic collar
         ctx.fillStyle = tunicLight;
         ctx.fillRect(6, 7, 4, 1);
-        // Tunic center line
         ctx.fillStyle = tunicDark;
         ctx.fillRect(8, 8, 1, 2);
         // Belt
         ctx.fillStyle = belt;
         ctx.fillRect(5, 10, 6, 1);
-        // Belt buckle
         ctx.fillStyle = beltBuckle;
         ctx.fillRect(8, 10, 1, 1);
         // Legs/boots
@@ -869,7 +886,6 @@ function genElfSprite(dir, frame) {
         ctx.fillStyle = bootsDark;
         ctx.fillRect(6 - legOff, 13, 2, 1);
         ctx.fillRect(8 + legOff, 13, 2, 1);
-        // Boot highlight
         ctx.fillStyle = '#795548';
         ctx.fillRect(6 - legOff, 12, 1, 1);
         ctx.fillRect(8 + legOff, 12, 1, 1);
@@ -890,6 +906,20 @@ function genElfSprite(dir, frame) {
         ctx.fillRect(11, 3, 1, 2);
         ctx.fillRect(3, 3, 1, 1);
         ctx.fillRect(12, 3, 1, 1);
+        // Arms
+        ctx.fillStyle = tunicDark;
+        ctx.fillRect(3, 7, 2, 3);
+        ctx.fillRect(11, 7, 2, 3);
+        ctx.fillStyle = skin;
+        ctx.fillRect(3, 10, 2, 1);
+        ctx.fillRect(11, 10, 2, 1);
+        // Sword in right hand (behind, blade goes up)
+        if (hasSword) {
+            ctx.fillStyle = swordBlade;
+            ctx.fillRect(12, 4, 1, 5);
+            ctx.fillStyle = swordGuard;
+            ctx.fillRect(11, 9, 3, 1);
+        }
         // Tunic back
         ctx.fillStyle = tunicDark;
         ctx.fillRect(5, 6, 6, 5);
@@ -939,6 +969,27 @@ function genElfSprite(dir, frame) {
         ctx.fillStyle = skin;
         ctx.fillRect(4, 3, 1, 2);
         ctx.fillRect(3, 3, 1, 1);
+        // Back arm (right arm, behind body)
+        ctx.fillStyle = tunicDark;
+        ctx.fillRect(9, 7, 2, 3);
+        ctx.fillStyle = skinShade;
+        ctx.fillRect(9, 10, 2, 1);
+        // Sword (behind, blade points left)
+        if (hasSword) {
+            ctx.fillStyle = swordBlade;
+            ctx.fillRect(2, 9, 4, 1);
+            ctx.fillStyle = '#cfd8dc';
+            ctx.fillRect(2, 9, 1, 1);
+            ctx.fillStyle = swordGuard;
+            ctx.fillRect(5, 8, 1, 3);
+            ctx.fillStyle = swordHilt;
+            ctx.fillRect(6, 9, 1, 1);
+        }
+        // Front arm (left arm)
+        ctx.fillStyle = tunic;
+        ctx.fillRect(4, 7, 2, 3);
+        ctx.fillStyle = skin;
+        ctx.fillRect(4, 10, 2, 1);
         // Tunic
         ctx.fillStyle = tunic;
         ctx.fillRect(5, 7, 5, 3);
@@ -990,6 +1041,27 @@ function genElfSprite(dir, frame) {
         ctx.fillStyle = skin;
         ctx.fillRect(11, 3, 1, 2);
         ctx.fillRect(12, 3, 1, 1);
+        // Back arm (left arm, behind body)
+        ctx.fillStyle = tunicDark;
+        ctx.fillRect(5, 7, 2, 3);
+        ctx.fillStyle = skinShade;
+        ctx.fillRect(5, 10, 2, 1);
+        // Front arm (right arm) + sword
+        ctx.fillStyle = tunic;
+        ctx.fillRect(10, 7, 2, 3);
+        ctx.fillStyle = skin;
+        ctx.fillRect(10, 10, 2, 1);
+        // Sword (blade points right)
+        if (hasSword) {
+            ctx.fillStyle = swordHilt;
+            ctx.fillRect(10, 9, 1, 1);
+            ctx.fillStyle = swordGuard;
+            ctx.fillRect(10, 8, 1, 3);
+            ctx.fillStyle = swordBlade;
+            ctx.fillRect(11, 9, 4, 1);
+            ctx.fillStyle = '#cfd8dc';
+            ctx.fillRect(14, 9, 1, 1);
+        }
         // Tunic
         ctx.fillStyle = tunic;
         ctx.fillRect(6, 7, 5, 3);
@@ -1014,9 +1086,12 @@ function genElfSprite(dir, frame) {
     return c;
 }
 
+const elfSwordSprites = {};
+
 function initElfSprites() {
     for (const dir of ['up', 'down', 'left', 'right']) {
-        elfSprites[dir] = [genElfSprite(dir, 0), genElfSprite(dir, 1)];
+        elfSprites[dir] = [genElfSprite(dir, 0, false), genElfSprite(dir, 1, false)];
+        elfSwordSprites[dir] = [genElfSprite(dir, 0, true), genElfSprite(dir, 1, true)];
     }
 }
 
@@ -1229,7 +1304,9 @@ function render() {
         elfY = moveFrom.y + (moveTo.y - moveFrom.y) * moveProgress;
     }
     const drawFrame = isMoving ? (Math.floor(animFrame / 8) % 2) : 0;
-    const elfC = elfSprites[player.dir][drawFrame];
+    const hasSword = inventory.sword > 0;
+    const spriteSet = hasSword ? elfSwordSprites : elfSprites;
+    const elfC = spriteSet[player.dir][drawFrame];
     const ex = (elfX - cam.x) * TS;
     const ey = (elfY - cam.y) * TS;
 
@@ -1488,7 +1565,8 @@ function renderBackpack() {
     const portrait = document.getElementById('elf-portrait');
     const pCtx = portrait.getContext('2d');
     pCtx.clearRect(0, 0, 16, 16);
-    pCtx.drawImage(elfSprites.down[0], 0, 0);
+    const portraitSet = inventory.sword > 0 ? elfSwordSprites : elfSprites;
+    pCtx.drawImage(portraitSet.down[0], 0, 0);
 }
 
 function toggleBackpack() {
