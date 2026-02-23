@@ -364,18 +364,22 @@ scene.add(dirLight);
 const raycaster = new THREE.Raycaster();
 raycaster.far = 6;
 
-// First-person right hand (attached to camera)
+// First-person right hand — separate overlay scene (renders on top)
+const handScene = new THREE.Scene();
+const handCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 10);
+handScene.add(new THREE.AmbientLight(0xffffff, 1.0));
+
 function createHandMesh() {
     const group = new THREE.Group();
     const skin = new THREE.MeshBasicMaterial({ color: 0xd4a574 });
     const sleeve = new THREE.MeshBasicMaterial({ color: 0x5b8c3e });
 
-    // Arm — just a single box (sleeve)
+    // Arm — single box (green sleeve)
     const arm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.5, 0.16), sleeve);
     arm.position.set(0, -0.1, 0);
     group.add(arm);
 
-    // Hand — single skin-colored box on top
+    // Hand — single skin box on top
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.25, 0.16), skin);
     hand.position.set(0, 0.27, 0);
     group.add(hand);
@@ -384,15 +388,12 @@ function createHandMesh() {
 }
 
 const handGroup = createHandMesh();
-handGroup.position.set(0.45, -0.4, -0.5);
+handGroup.position.set(0.55, -0.45, -0.7);
 handGroup.rotation.set(0.3, -0.15, 0.1);
-// Prevent fog from affecting the hand
-handGroup.traverse(child => { if (child.material) child.material.fog = false; });
-camera.add(handGroup);
-scene.add(camera); // needed so camera children render
+handScene.add(handGroup);
 
 let handBobPhase = 0;
-const handRestPos = { x: 0.45, y: -0.4, z: -0.5 };
+const handRestPos = { x: 0.55, y: -0.45, z: -0.7 };
 const handRestRot = { x: 0.3, y: -0.15, z: 0.1 };
 
 // Euler for camera rotation
@@ -1762,7 +1763,6 @@ function animate() {
     handBobPhase += delta * (isWalking ? 6 : 1.5);
     const bob = Math.sin(handBobPhase) * (isWalking ? 0.04 : 0.01);
     if (isMining) {
-        // Swing animation — arm pumps forward and down
         const swing = Math.sin(performance.now() * 0.008) * 0.5 + 0.5;
         handGroup.position.set(
             handRestPos.x - swing * 0.1,
@@ -1775,15 +1775,17 @@ function animate() {
             handRestRot.z - swing * 0.2
         );
     } else {
-        handGroup.position.set(
-            handRestPos.x,
-            handRestPos.y + bob,
-            handRestPos.z
-        );
+        handGroup.position.set(handRestPos.x, handRestPos.y + bob, handRestPos.z);
         handGroup.rotation.set(handRestRot.x, handRestRot.y, handRestRot.z);
     }
 
+    // Render main scene
     renderer.render(scene, camera);
+    // Render hand overlay on top (clear depth only, keep color)
+    renderer.autoClear = false;
+    renderer.clearDepth();
+    renderer.render(handScene, handCamera);
+    renderer.autoClear = true;
 }
 
 // ============================================
@@ -1792,6 +1794,8 @@ function animate() {
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+    handCamera.aspect = window.innerWidth / window.innerHeight;
+    handCamera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
