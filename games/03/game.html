@@ -369,18 +369,63 @@ const handScene = new THREE.Scene();
 const handCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 10);
 handScene.add(new THREE.AmbientLight(0xffffff, 1.0));
 
+function makeHandTexture(drawFn) {
+    const c = document.createElement('canvas');
+    c.width = 16; c.height = 16;
+    const ctx = c.getContext('2d');
+    drawFn(ctx);
+    const tex = new THREE.CanvasTexture(c);
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    return tex;
+}
+
 function createHandMesh() {
     const group = new THREE.Group();
-    const skin = new THREE.MeshBasicMaterial({ color: 0xd4a574 });
-    const sleeve = new THREE.MeshBasicMaterial({ color: 0x5b8c3e });
+    const rng = mulberry32(777);
+
+    // Skin texture — varied tan pixels like Steve's skin
+    const skinTex = makeHandTexture(ctx => {
+        for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+                const v = Math.floor((rng() - 0.5) * 20);
+                const r = Math.max(0, Math.min(255, 212 + v));
+                const g = Math.max(0, Math.min(255, 165 + v));
+                const b = Math.max(0, Math.min(255, 116 + v));
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+    });
+
+    // Sleeve texture — green shirt with darker seam edges
+    const sleeveTex = makeHandTexture(ctx => {
+        for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+                const edge = (x === 0 || x === 15 || y === 0 || y === 15);
+                const v = Math.floor((rng() - 0.5) * 18);
+                const baseR = edge ? 70 : 91;
+                const baseG = edge ? 110 : 140;
+                const baseB = edge ? 45 : 62;
+                const r = Math.max(0, Math.min(255, baseR + v));
+                const g = Math.max(0, Math.min(255, baseG + v));
+                const b = Math.max(0, Math.min(255, baseB + v));
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+    });
+
+    const skinMat = new THREE.MeshBasicMaterial({ map: skinTex });
+    const sleeveMat = new THREE.MeshBasicMaterial({ map: sleeveTex });
 
     // Arm — vertical sleeve
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.5, 0.22), sleeve);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.5, 0.22), sleeveMat);
     arm.position.set(0, -0.15, 0);
     group.add(arm);
 
     // Hand — skin block on top
-    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.25, 0.22), skin);
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.25, 0.22), skinMat);
     hand.position.set(0, 0.22, 0);
     group.add(hand);
 
