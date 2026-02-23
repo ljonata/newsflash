@@ -179,7 +179,7 @@
     <p>A 3D voxel world of mining, crafting & blogging</p>
     <p style="color:gold; margin-top:15px;" id="start-action">Click to Play</p>
     <div class="controls-help controls-help-desktop">
-        WAD - Move | S - Sprint | Mouse - Look | Space - Jump<br>
+        WASD - Move | S+W - Sprint | Mouse - Look | Space - Jump<br>
         Left Click - Mine | Right Click - Place<br>
         1-9 - Select Slot | E - Crafting
     </div>
@@ -1184,9 +1184,11 @@ function updatePhysics(delta) {
     forward.normalize();
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
 
+    isSprinting = moveForward && moveBackward; // S + W = sprint
+    document.getElementById('sprint-indicator').style.display = isSprinting ? 'block' : 'none';
     const speed = isSprinting ? 10 : 5;
     if (moveForward) direction.add(forward);
-    if (moveBackward) direction.sub(forward);
+    if (moveBackward && !isSprinting) direction.sub(forward);
     if (moveRight) direction.add(right);
     if (moveLeft) direction.sub(right);
 
@@ -1258,11 +1260,7 @@ document.addEventListener('keydown', (e) => {
     switch (e.code) {
         case 'KeyW': moveForward = true; break;
         case 'KeyA': moveLeft = true; break;
-        case 'KeyS':
-            isSprinting = !isSprinting;
-            document.getElementById('sprint-indicator').style.display = isSprinting ? 'block' : 'none';
-            break;
-        case 'ArrowDown': moveBackward = true; break;
+        case 'KeyS': moveBackward = true; break;
         case 'KeyD': moveRight = true; break;
         case 'Space':
             e.preventDefault();
@@ -1284,7 +1282,7 @@ document.addEventListener('keyup', (e) => {
     switch (e.code) {
         case 'KeyW': moveForward = false; break;
         case 'KeyA': moveLeft = false; break;
-        case 'ArrowDown': moveBackward = false; break;
+        case 'KeyS': moveBackward = false; break;
         case 'KeyD': moveRight = false; break;
     }
 });
