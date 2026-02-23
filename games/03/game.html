@@ -374,28 +374,28 @@ function createHandMesh() {
     const skin = new THREE.MeshBasicMaterial({ color: 0xd4a574 });
     const sleeve = new THREE.MeshBasicMaterial({ color: 0x5b8c3e });
 
-    // Arm — long sleeve coming up from below
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.8, 0.18), sleeve);
-    arm.position.set(0, -0.4, 0);
+    // Arm — vertical sleeve
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.5, 0.16), sleeve);
+    arm.position.set(0, -0.15, 0);
     group.add(arm);
 
-    // Hand — skin block at the top of the arm
-    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.25, 0.18), skin);
-    hand.position.set(0, 0.12, 0);
+    // Hand — skin block on top
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.25, 0.16), skin);
+    hand.position.set(0, 0.22, 0);
     group.add(hand);
 
     return group;
 }
 
 const handGroup = createHandMesh();
-// Position at bottom-right corner, arm diagonal toward center
-handGroup.position.set(0.85, -0.9, -0.8);
-handGroup.rotation.set(-0.3, -0.5, -0.45);
+// Bottom-right corner, straight vertical like Minecraft
+handGroup.position.set(0.9, -0.7, -1.0);
+handGroup.rotation.set(0, 0, 0);
 handScene.add(handGroup);
 
 let handBobPhase = 0;
-const handRestPos = { x: 0.85, y: -0.9, z: -0.8 };
-const handRestRot = { x: -0.3, y: -0.5, z: -0.45 };
+const handRestPos = { x: 0.9, y: -0.7, z: -1.0 };
+const handRestRot = { x: 0, y: 0, z: 0 };
 
 // Euler for camera rotation
 let euler = new THREE.Euler(0, 0, 0, 'YXZ');
