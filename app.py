@@ -12,7 +12,7 @@ from config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
-socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 
 # In-memory room state for Elf Quest multiplayer
 # rooms[roomCode] = { players: {sid: {username,x,y,dir,frame,hasSword}}, openedChests: set, cutBushes: set }

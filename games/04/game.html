@@ -417,7 +417,7 @@ function updatePlayerCountHUD() {
 
 function connectMultiplayer(roomCode) {
     const username = currentUser || 'Guest';
-    socket = io({ transports: ['websocket'] });
+    socket = io();
 
     socket.on('connect', () => {
         myRoomCode = roomCode;
