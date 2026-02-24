@@ -1,4 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, session, g, jsonify, send_from_directory
+from flask_socketio import SocketIO, join_room as sio_join_room, leave_room as sio_leave_room, emit
 from sqlalchemy import create_engine, select, text, inspect
 from sqlalchemy.orm import Session
 import datetime
@@ -11,6 +12,11 @@ from config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
+
+# In-memory room state for Elf Quest multiplayer
+# rooms[roomCode] = { players: {sid: {username,x,y,dir,frame,hasSword}}, openedChests: set, cutBushes: set }
+elf_rooms = {}
 
 # JWT secret for game authentication
 GAME_JWT_SECRET = os.getenv('GAME_JWT_SECRET', 'labyrinth-game-secret-key-change-in-production')
@@ -657,6 +663,88 @@ def game_select_avatar():
         })
 
 
+# ============================================================
+# ELF QUEST MULTIPLAYER — Socket.IO events
+# ============================================================
+
+@socketio.on('elf_join_room')
+def on_elf_join_room(data):
+    from flask_socketio import request as sio_request
+    sid = sio_request.sid
+    room = str(data.get('room', '')).strip().lower()[:12]
+    username = str(data.get('username', 'Guest'))[:32]
+    if not room:
+        return
+
+    if room not in elf_rooms:
+        elf_rooms[room] = {'players': {}, 'openedChests': [], 'cutBushes': []}
+
+    r = elf_rooms[room]
+    if len(r['players']) >= 4 and sid not in r['players']:
+        emit('elf_room_full')
+        return
+
+    r['players'][sid] = {'username': username, 'x': 19, 'y': 13, 'dir': 'down', 'frame': 0, 'hasSword': True}
+    sio_join_room(room)
+
+    # Send current room state to the joining player
+    emit('elf_room_state', {
+        'sid': sid,
+        'players': {s: p for s, p in r['players'].items() if s != sid},
+        'openedChests': r['openedChests'],
+        'cutBushes': r['cutBushes'],
+    })
+
+    # Notify others in the room
+    emit('elf_player_joined', {'sid': sid, 'username': username}, to=room, include_self=False)
+
+
+@socketio.on('elf_player_update')
+def on_elf_player_update(data):
+    from flask_socketio import request as sio_request
+    sid = sio_request.sid
+    # Find which room this sid is in
+    for room, r in elf_rooms.items():
+        if sid in r['players']:
+            p = r['players'][sid]
+            p['x'] = data.get('x', p['x'])
+            p['y'] = data.get('y', p['y'])
+            p['dir'] = data.get('dir', p['dir'])
+            p['frame'] = data.get('frame', p['frame'])
+            p['hasSword'] = data.get('hasSword', p['hasSword'])
+            emit('elf_remote_update', {'sid': sid, **p}, to=room, include_self=False)
+            break
+
+
+@socketio.on('elf_world_event')
+def on_elf_world_event(data):
+    from flask_socketio import request as sio_request
+    sid = sio_request.sid
+    event_type = data.get('type')
+    key = str(data.get('key', ''))
+    for room, r in elf_rooms.items():
+        if sid in r['players']:
+            if event_type == 'chest' and key not in r['openedChests']:
+                r['openedChests'].append(key)
+            elif event_type == 'bush' and key not in r['cutBushes']:
+                r['cutBushes'].append(key)
+            emit('elf_world_event', {'type': event_type, 'key': key}, to=room, include_self=False)
+            break
+
+
+@socketio.on('disconnect')
+def on_disconnect():
+    from flask_socketio import request as sio_request
+    sid = sio_request.sid
+    for room, r in list(elf_rooms.items()):
+        if sid in r['players']:
+            del r['players'][sid]
+            emit('elf_player_left', {'sid': sid}, to=room)
+            if not r['players']:
+                del elf_rooms[room]
+            break
+
+
 if __name__ == "__main__":
     Base.metadata.create_all(db_engine)
-    app.run(debug=True)
+    socketio.run(app, debug=True)

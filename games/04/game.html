@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Elf Quest</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -242,6 +243,44 @@
             #backpack { width: 150px; }
             #missions { width: 170px; }
         }
+
+        /* Room join overlay */
+        #room-overlay {
+            position: fixed; inset: 0;
+            background: rgba(10,10,20,0.92);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        #room-overlay.hidden { display: none; }
+        #room-box {
+            background: #1a1a2e;
+            border: 2px solid #5d4037;
+            border-radius: 8px;
+            padding: 28px 32px;
+            text-align: center;
+            min-width: 280px;
+        }
+        #room-box h2 { color: gold; font-size: 22px; margin-bottom: 18px; letter-spacing: 2px; }
+        #room-input {
+            display: block; width: 100%;
+            padding: 8px 10px; margin-bottom: 10px;
+            background: #0d0d1a; color: #fff;
+            border: 1px solid #5d4037; border-radius: 4px;
+            font-size: 15px; text-align: center; letter-spacing: 1px;
+        }
+        #room-input::placeholder { color: #555; }
+        .room-btn {
+            display: block; width: 100%;
+            padding: 9px; margin-bottom: 8px;
+            border: none; border-radius: 4px;
+            font-size: 14px; font-weight: bold; cursor: pointer;
+        }
+        #btn-join-room { background: #2e7d32; color: #fff; }
+        #btn-join-room:hover { background: #388e3c; }
+        #btn-solo { background: #37474f; color: #ccc; }
+        #btn-solo:hover { background: #455a64; }
+        #room-error { color: #e94560; font-size: 12px; min-height: 16px; margin-top: 4px; }
+        #hud-players { color: #90caf9; font-size: 12px; margin-left: 8px; }
     </style>
 </head>
 <body>
@@ -255,8 +294,20 @@
         <span class="gametime" id="d-time">07:00</span>
     </div>
     <div id="hud-right">
+        <span id="hud-players"></span>
         <a href="/games/01/home.html">Home</a>
         <a onclick="handleLogout()">Logout</a>
+    </div>
+</div>
+
+<!-- Room join overlay -->
+<div id="room-overlay">
+    <div id="room-box">
+        <h2>ELF QUEST</h2>
+        <input id="room-input" type="text" placeholder="Room code (e.g. forest1)" maxlength="12" autocomplete="off">
+        <button class="room-btn" id="btn-join-room">Join Room</button>
+        <button class="room-btn" id="btn-solo">Play Solo</button>
+        <div id="room-error"></div>
     </div>
 </div>
 
@@ -348,6 +399,111 @@ function handleLogout() {
     localStorage.removeItem('game_token');
     localStorage.removeItem('game_username');
     window.location.href = '/games/01/login.html';
+}
+
+// ============================================
+// MULTIPLAYER
+// ============================================
+let socket = null;
+let myRoomCode = null;
+const remotePlayers = new Map(); // sid -> { username, x, y, dir, frame, hasSword, isMoving, moveFrom, moveTo, moveProgress }
+let lastEmitTime = 0;
+
+function updatePlayerCountHUD() {
+    const el = document.getElementById('hud-players');
+    if (!myRoomCode) { el.textContent = ''; return; }
+    el.textContent = `[${myRoomCode}] ${remotePlayers.size + 1}/4`;
+}
+
+function connectMultiplayer(roomCode) {
+    const username = currentUser || 'Guest';
+    socket = io({ transports: ['websocket'] });
+
+    socket.on('connect', () => {
+        myRoomCode = roomCode;
+        socket.emit('elf_join_room', { room: roomCode, username });
+    });
+
+    socket.on('elf_room_full', () => {
+        document.getElementById('room-error').textContent = 'Room is full (max 4 players).';
+        socket.disconnect();
+        socket = null;
+        myRoomCode = null;
+        document.getElementById('room-overlay').classList.remove('hidden');
+    });
+
+    socket.on('elf_room_state', (data) => {
+        // Apply world state from server
+        for (const key of (data.openedChests || [])) openedChests.add(key);
+        for (const key of (data.cutBushes || [])) cutBushes.add(key);
+        // Populate existing remote players
+        remotePlayers.clear();
+        for (const [sid, p] of Object.entries(data.players || {})) {
+            remotePlayers.set(sid, { ...p, isMoving: false, moveFrom: {x: p.x, y: p.y}, moveTo: {x: p.x, y: p.y}, moveProgress: 0 });
+        }
+        updatePlayerCountHUD();
+        document.getElementById('room-overlay').classList.add('hidden');
+    });
+
+    socket.on('elf_player_joined', (data) => {
+        remotePlayers.set(data.sid, { username: data.username, x: 19, y: 13, dir: 'down', frame: 0, hasSword: true,
+            isMoving: false, moveFrom: {x:19,y:13}, moveTo: {x:19,y:13}, moveProgress: 0 });
+        updatePlayerCountHUD();
+        showNotif(`${data.username} joined the room`);
+    });
+
+    socket.on('elf_remote_update', (data) => {
+        const rp = remotePlayers.get(data.sid);
+        if (!rp) return;
+        const nx = data.x, ny = data.y;
+        if (nx !== rp.x || ny !== rp.y) {
+            rp.moveFrom = { x: rp.x, y: rp.y };
+            rp.moveTo = { x: nx, y: ny };
+            rp.moveProgress = 0;
+            rp.isMoving = true;
+        }
+        rp.x = nx; rp.y = ny;
+        rp.dir = data.dir || rp.dir;
+        rp.frame = data.frame !== undefined ? data.frame : rp.frame;
+        rp.hasSword = data.hasSword !== undefined ? data.hasSword : rp.hasSword;
+    });
+
+    socket.on('elf_player_left', (data) => {
+        const rp = remotePlayers.get(data.sid);
+        if (rp) showNotif(`${rp.username} left the room`);
+        remotePlayers.delete(data.sid);
+        updatePlayerCountHUD();
+    });
+
+    socket.on('elf_world_event', (data) => {
+        if (data.type === 'chest') openedChests.add(data.key);
+        else if (data.type === 'bush') cutBushes.add(data.key);
+    });
+
+    socket.on('disconnect', () => {
+        remotePlayers.clear();
+        updatePlayerCountHUD();
+    });
+}
+
+function initMultiplayerUI() {
+    document.getElementById('btn-join-room').addEventListener('click', () => {
+        const raw = document.getElementById('room-input').value.trim();
+        const roomCode = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!roomCode) {
+            document.getElementById('room-error').textContent = 'Enter a room code.';
+            return;
+        }
+        document.getElementById('room-error').textContent = '';
+        document.getElementById('room-overlay').classList.add('hidden');
+        connectMultiplayer(roomCode);
+    });
+    document.getElementById('room-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') document.getElementById('btn-join-room').click();
+    });
+    document.getElementById('btn-solo').addEventListener('click', () => {
+        document.getElementById('room-overlay').classList.add('hidden');
+    });
 }
 
 // ============================================
@@ -1662,6 +1818,32 @@ function render() {
         else ctx.fillRect(ex + TS*0.3, ey - swLen, 4, swLen);
     }
 
+    // Draw remote players (only when in overworld, not inside house)
+    if (!insideHouse && remotePlayers.size > 0) {
+        for (const rp of remotePlayers.values()) {
+            const rx = rp.isMoving ? rp.moveFrom.x + (rp.moveTo.x - rp.moveFrom.x) * rp.moveProgress : rp.x;
+            const ry = rp.isMoving ? rp.moveFrom.y + (rp.moveTo.y - rp.moveFrom.y) * rp.moveProgress : rp.y;
+            const rSpriteSet = rp.hasSword ? elfSwordSprites : elfSprites;
+            const rDir = rp.dir || 'down';
+            const rFrame = rp.frame || 0;
+            const rC = rSpriteSet[rDir] ? rSpriteSet[rDir][rFrame] : elfSprites['down'][0];
+            const rex = (rx - cam.x) * TS;
+            const rey = (ry - cam.y) * TS;
+            ctx.drawImage(rC, rex, rey, TS, TS);
+            // Username label
+            ctx.save();
+            ctx.font = 'bold 11px Arial';
+            const labelW = Math.max(56, ctx.measureText(rp.username || '?').width + 10);
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
+            ctx.fillRect(rex + TS/2 - labelW/2, rey - 17, labelW, 14);
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText(rp.username || '?', rex + TS/2, rey - 15);
+            ctx.restore();
+        }
+    }
+
     // Day/night overlay
     const nightAlpha = getDayNightAlpha();
     if (nightAlpha > 0.01) {
@@ -1722,6 +1904,7 @@ function interact() {
 
     if (tile === T.CHEST && !openedChests.has(key)) {
         openedChests.add(key);
+        if (socket && socket.connected) socket.emit('elf_world_event', { type: 'chest', key });
         // Random reward (keys only come from special bushes)
         const rewards = ['potion', 'shield', 'coins', 'coins', 'coins', 'coins'];
         const reward = rewards[Math.floor(Math.random() * rewards.length)];
@@ -1832,6 +2015,7 @@ function swingSword() {
         const key = `${tx},${ty}`;
         if (gameMap[ty][tx] === T.BUSH && !cutBushes.has(key)) {
             cutBushes.add(key);
+            if (socket && socket.connected) socket.emit('elf_world_event', { type: 'bush', key });
             if (KEY_BUSHES.has(key)) {
                 // Key bush — always drops a key
                 inventory.key = (inventory.key || 0) + 1;
@@ -2379,6 +2563,27 @@ function gameLoop(time) {
     if (gameTimeMinutes >= 1440) gameTimeMinutes -= 1440;
     document.getElementById('d-time').textContent = formatGameTime(gameTimeMinutes);
 
+    // Advance remote player interpolation
+    for (const rp of remotePlayers.values()) {
+        if (rp.isMoving) {
+            rp.moveProgress += MOVE_SPEED * delta;
+            if (rp.moveProgress >= 1) { rp.moveProgress = 1; rp.isMoving = false; }
+        }
+    }
+
+    // Emit local position to server (~20Hz)
+    if (socket && socket.connected) {
+        const now = performance.now();
+        if (now - lastEmitTime > 50) {
+            lastEmitTime = now;
+            const drawFrame = isMoving ? (Math.floor(animFrame / 8) % 2) : 0;
+            socket.emit('elf_player_update', {
+                x: player.x, y: player.y, dir: player.dir,
+                frame: drawFrame, hasSword: inventory.sword > 0
+            });
+        }
+    }
+
     // Auto-save
     saveTimer += delta;
     if (saveTimer > 15) {
@@ -2403,6 +2608,7 @@ function init() {
     renderBackpack();
     renderMissions();
     updateHUD();
+    initMultiplayerUI();
     requestAnimationFrame(gameLoop);
 }
 
