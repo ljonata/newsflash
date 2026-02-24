@@ -2374,8 +2374,8 @@ function gameLoop(time) {
         checkMissions();
     }
 
-    // Advance game time (1 real second = 1 game minute)
-    gameTimeMinutes += delta * 60;
+    // Advance game time (10 real seconds = 1 game minute)
+    gameTimeMinutes += delta * 6;
     if (gameTimeMinutes >= 1440) gameTimeMinutes -= 1440;
     document.getElementById('d-time').textContent = formatGameTime(gameTimeMinutes);
 
