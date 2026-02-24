@@ -1,82 +1,100 @@
-# Newsflash + Labyrinth Game
+# Newsflash + Games
 
-This repository contains two applications:
+This repository is a Flask monolith serving two applications and four browser games.
 
-## 1. Newsflash (Flask Application)
+---
+
+## Newsflash
 
 A Flask web application with PostgreSQL/SQLite backend for keyword-based authentication and journalism-focused data collection forms.
 
-- Minimalist gray/white UI
-- Mobile-first, phone-optimized design
-- Forms A/B/C submit to PostgreSQL
+- Minimalist gray/white UI, mobile-first design
+- Users authenticate via `?key=keyword` URL parameter (no login/password)
+- Forms A/B/C submit structured data to the database
 - Button D shows all Form A records in a list/detail view
-- Square logo in the navbar
 
-### Quickstart (Newsflash)
+### Quickstart
+
 ```bash
 cp .env.example .env
-# Set FLASK_SECRET_KEY and DATABASE_URL
+# Set FLASK_SECRET_KEY and DATABASE_URL in .env
 
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+.venv\Scripts\activate      # Windows
+# source .venv/bin/activate  # Mac/Linux
 pip install -r requirements.txt
 
-python init_db.py
-python init_db.py --create-user --email user@example.com --keyword secretword123
+python scripts/init_db.py
+python scripts/init_db.py --create-user --email user@example.com --keyword secretword123
 flask --app app run --debug
 ```
 
 ### Deployment (Render)
 - Build: `pip install -r requirements.txt`
 - Start: `gunicorn app:app --workers 3 --threads 2 --bind 0.0.0.0:$PORT --timeout 120`
-- Env: `DATABASE_URL`, `FLASK_SECRET_KEY`
+- Env vars: `DATABASE_URL`, `FLASK_SECRET_KEY`, `GAME_JWT_SECRET`
 
 ---
 
-## 2. Labyrinth Game (`games/01/`)
+## Games
 
-A browser-based maze game where players navigate a red square through increasingly difficult labyrinths while avoiding monsters.
+Four browser games are served from `games/`. All share the same Flask process.
 
-### Features
-- **Level progression**: Monster count increases each level (Level × 3 monsters)
-- **Coin rewards**: Earn coins per level (Level × 10 coins)
-- **Safe houses**: Temporary refuge with time limits
-- **User accounts**: JWT authentication with progress tracking
-- **Leaderboard**: Top 10 players by highest level and coins
-- **Mobile support**: Touch joystick controls
-- **Guest mode**: Play without account (progress not saved)
+### Game 01 — Labyrinth Game (`/games/01/`)
 
-### Tech Stack
-- Node.js + Express.js
-- PostgreSQL (via pg package)
-- bcryptjs + JWT authentication
-- Vanilla JavaScript frontend
+Navigate a red square through procedurally generated mazes while avoiding monsters.
 
-### Quickstart (Labyrinth Game)
+- **Level progression**: Monster count and difficulty scale each level
+- **Coin rewards**: Earn coins per level completed
+- **JWT accounts**: Register/login to save progress
+- **Avatar marketplace**: Buy and equip avatars with earned coins
+- **Leaderboards**: Top 15 by highest level and most avatars
+- **Guest mode**: Play without an account (progress not saved)
+- **Mobile**: Touch joystick controls
+
+**Controls**: Arrow keys (desktop) · Touch joystick (mobile)
+
+**API** (all under `/games/01/api/`): register, login, profile, progress, coins, password, avatars CRUD, leaderboard
+
+**Avatars**: Images in `games/img/avatars/public/` (marketplace) and `games/img/avatars/users/` (private). Populate from images with:
 ```bash
-cd games/01
-npm install
-
-# Set environment variables
-export DATABASE_URL=postgresql://user:pass@host:5432/dbname
-export JWT_SECRET=your-secret-key
-
-npm start
+python scripts/populate_avatars_from_images.py
 ```
-Server runs at: `http://localhost:3000`
 
-### Render Deployment (Game)
-- **Build command**: `cd games/01 && npm install`
-- **Start command**: `cd games/01 && npm start`
-- **Environment variables**: `DATABASE_URL` (from Render PostgreSQL), `JWT_SECRET`, `NODE_ENV=production`
+---
 
-### Game Controls
-- **Desktop**: Arrow keys
-- **Mobile**: Touch joystick (bottom-left corner)
+### Game 02 — Plant Defense (`/games/02/`)
 
-### API Endpoints
-- `POST /api/register` - Create account
-- `POST /api/login` - Login, receive JWT
-- `GET /api/user/profile` - Get user data (auth required)
-- `PUT /api/user/progress` - Save progress (auth required)
-- `GET /api/leaderboard` - Top 10 players
+Plants vs. Zombies-style tower defense on a 5×10 grid.
+
+- Place plants in grid cells to stop waves of zombies marching left
+- Collect sun currency to afford plants; Sunflowers generate extra sun over time
+- Zombie HP scales with wave number; spawn rate increases each wave
+
+**Plants**: Peashooter · Sunflower (sun gen) · Wall-nut (blocker) · Snow Pea (slows) · Repeater (double shot)
+
+Standalone HTML/JS — no dedicated backend. Optional login links to game 01 accounts.
+
+---
+
+### Game 03 — BlogCraft (`/games/03/`)
+
+Minecraft-style block-building game rendered on an HTML5 canvas.
+
+- First-person perspective with crosshair
+- Hotbar for block selection
+- HUD tracks username, coins, followers, and rank
+
+Standalone HTML/JS — no dedicated backend. Optional login links to game 01 accounts.
+
+---
+
+### Game 04 — Elf Quest (`/games/04/`)
+
+Side-scrolling action RPG with a pixel-art elf character.
+
+- Heart-based HP system (displayed in HUD)
+- Backpack/inventory panel for items
+- Coin collection and combat
+
+Standalone HTML/JS — no dedicated backend. Optional login links to game 01 accounts.

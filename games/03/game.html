@@ -87,35 +87,87 @@
         #craft-panel {
             position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(20,20,40,0.95);
+            background: rgba(20,20,40,0.97);
             border: 2px solid #555; border-radius: 10px;
             padding: 20px; z-index: 150;
-            min-width: 320px; max-height: 80vh; overflow-y: auto;
+            min-width: 340px; max-height: 85vh; overflow-y: auto;
             display: none;
         }
         #craft-panel.open { display: block; }
-        #craft-panel h2 { color: gold; text-align: center; margin-bottom: 12px; font-size: 18px; }
-        .recipe {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid #444; border-radius: 6px;
-            padding: 10px; margin-bottom: 8px;
-            display: flex; justify-content: space-between; align-items: center;
+        #craft-panel h2 { color: gold; text-align: center; margin-bottom: 14px; font-size: 18px; }
+        #craft-grid-area {
+            display: flex; align-items: center;
+            justify-content: center; gap: 16px;
+            margin-bottom: 12px;
         }
-        .recipe-info { flex: 1; }
-        .recipe-name { font-weight: bold; color: #fff; font-size: 13px; }
-        .recipe-mats { font-size: 12px; color: #aaa; margin-top: 3px; }
-        .recipe-mats .has { color: lime; }
-        .recipe-mats .miss { color: #e94560; }
-        .recipe-result { font-size: 11px; color: #9c27b0; margin-top: 3px; }
-        .craft-btn {
-            padding: 6px 14px; border: none; border-radius: 5px;
-            font-size: 12px; font-weight: bold; cursor: pointer;
-            background: #4CAF50; color: #fff; margin-left: 10px;
+        #craft-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
         }
-        .craft-btn:disabled { background: #555; cursor: default; }
-        .recipe.selected-recipe { border-color: gold; background: rgba(255,215,0,0.1); }
+        .craft-slot {
+            width: 52px; height: 52px;
+            border: 2px solid #444; border-radius: 4px;
+            background: rgba(0,0,0,0.5);
+            cursor: pointer; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            transition: border-color 0.1s;
+        }
+        .craft-slot:hover { border-color: #aaa; }
+        .craft-slot.has-item { border-color: #777; }
+        .craft-slot .cs-swatch {
+            width: 34px; height: 34px; border-radius: 3px;
+            image-rendering: pixelated; background-size: cover;
+        }
+        .craft-slot .cs-count {
+            position: absolute; bottom: 1px; right: 3px;
+            font-size: 10px; color: #fff; font-weight: bold;
+            text-shadow: 1px 1px 1px #000; pointer-events: none;
+        }
+        #craft-arrow { color: gold; font-size: 26px; flex-shrink: 0; }
+        #craft-output-area { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        #craft-output-slot {
+            width: 60px; height: 60px;
+            border: 2px solid #555; border-radius: 6px;
+            background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            position: relative; font-size: 28px;
+            transition: border-color 0.15s;
+        }
+        #craft-output-slot.has-result { border-color: gold; }
+        #craft-output-slot .cs-swatch { width: 42px; height: 42px; border-radius: 3px; image-rendering: pixelated; background-size: cover; }
+        #craft-output-slot .cs-count { position: absolute; bottom: 2px; right: 4px; font-size: 11px; color: #fff; font-weight: bold; text-shadow: 1px 1px 1px #000; }
+        #craft-output-name { font-size: 12px; color: #fff; text-align: center; min-height: 16px; }
+        #craft-output-info { font-size: 11px; color: #9c27b0; text-align: center; min-height: 14px; }
+        #do-craft-btn {
+            display: block; margin: 0 auto 10px;
+            padding: 7px 28px; border: none; border-radius: 5px;
+            font-size: 13px; font-weight: bold; cursor: pointer;
+            background: #4CAF50; color: #fff;
+        }
+        #do-craft-btn:disabled { background: #555; cursor: default; }
+        #clear-grid-btn {
+            display: block; margin: 0 auto 14px;
+            padding: 5px 18px; border: none; border-radius: 4px;
+            font-size: 12px; cursor: pointer;
+            background: #444; color: #aaa;
+        }
+        #clear-grid-btn:hover { background: #555; }
+        #craft-inventory h3 { font-size: 12px; color: #888; text-align: center; margin-bottom: 8px; }
+        #craft-inv-list { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-bottom: 12px; }
+        .inv-item {
+            width: 46px; height: 46px;
+            border: 2px solid #444; border-radius: 4px;
+            background: rgba(0,0,0,0.4); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; transition: border-color 0.1s;
+        }
+        .inv-item:hover { border-color: #888; }
+        .inv-item.selected { border-color: gold; background: rgba(255,215,0,0.15); }
+        .inv-item .inv-swatch { width: 28px; height: 28px; border-radius: 2px; image-rendering: pixelated; background-size: cover; }
+        .inv-item .inv-count { position: absolute; bottom: 1px; right: 3px; font-size: 10px; color: #fff; font-weight: bold; text-shadow: 1px 1px 1px #000; }
         #craft-close {
-            display: block; margin: 10px auto 0; padding: 8px 20px;
+            display: block; margin: 0 auto; padding: 8px 20px;
             background: #e94560; color: #fff; border: none; border-radius: 5px;
             font-size: 14px; cursor: pointer;
         }
@@ -218,8 +270,22 @@
 
 <!-- Crafting Panel -->
 <div id="craft-panel">
-    <h2>Crafting</h2>
-    <div id="recipe-list"></div>
+    <h2>Crafting Table</h2>
+    <div id="craft-grid-area">
+        <div id="craft-grid"></div>
+        <div id="craft-arrow">➜</div>
+        <div id="craft-output-area">
+            <div id="craft-output-slot"></div>
+            <div id="craft-output-name"></div>
+            <div id="craft-output-info"></div>
+        </div>
+    </div>
+    <button id="do-craft-btn" disabled onclick="doCraft()">Craft</button>
+    <button id="clear-grid-btn" onclick="clearCraftGrid()">Clear Grid</button>
+    <div id="craft-inventory">
+        <h3>Your items — click to select, then click a grid slot</h3>
+        <div id="craft-inv-list"></div>
+    </div>
     <button id="craft-close" onclick="toggleCraft()">Close (E)</button>
 </div>
 
@@ -282,13 +348,42 @@ const BLOCKS = {
 // ============================================
 // RECIPES
 // ============================================
+// Grid patterns: 2D arrays, null = empty slot. Shape and position within the
+// bounding box must match exactly (mirroring supported where mirror:true).
 const RECIPES = [
-    { name: 'Planks', inputs: { wood: 4 }, outputs: { planks: 8 } },
-    { name: 'Paper', inputs: { planks: 3 }, outputs: { paper: 6 } },
-    { name: 'Blog Post', inputs: { paper: 1, leaves: 1 }, outputs: { blogpost: 1 } },
-    { name: 'Stone Pickaxe', inputs: { stone: 3, wood: 2 }, outputs: { _pickaxe_stone: 1 }, special: 'pickaxe_stone' },
-    { name: 'Iron Pickaxe', inputs: { iron: 3, wood: 2 }, outputs: { _pickaxe_iron: 1 }, special: 'pickaxe_iron' },
-    { name: 'Publish Blog Post', inputs: { blogpost: 1 }, outputs: {}, special: 'publish' },
+    {
+        name: 'Planks',
+        pattern: [['wood']],
+        output: { type: 'planks', count: 4 },
+    },
+    {
+        name: 'Paper',
+        pattern: [['planks', 'planks', 'planks']],
+        output: { type: 'paper', count: 3 },
+    },
+    {
+        name: 'Blog Post',
+        pattern: [['paper'], ['leaves'], ['paper']],
+        output: { type: 'blogpost', count: 1 },
+    },
+    {
+        name: 'Stone Pickaxe',
+        pattern: [['stone', 'stone', 'stone'], [null, 'wood', null], [null, 'wood', null]],
+        output: null, special: 'pickaxe_stone',
+        resultText: 'Equip: +50% mine speed',
+    },
+    {
+        name: 'Iron Pickaxe',
+        pattern: [['iron', 'iron', 'iron'], [null, 'wood', null], [null, 'wood', null]],
+        output: null, special: 'pickaxe_iron',
+        resultText: 'Equip: +100% mine speed',
+    },
+    {
+        name: 'Publish!',
+        pattern: [['blogpost']],
+        output: null, special: 'publish',
+        resultText: 'Earns followers + coins',
+    },
 ];
 
 // ============================================
@@ -309,7 +404,13 @@ const RANKS = [
 const WORLD_SIZE = 32;
 const WORLD_HEIGHT = 8;
 let world = {}; // key: "x,y,z" -> blockType string
-let blockMeshes = {}; // key: "x,y,z" -> THREE.Mesh
+// Instanced rendering — one InstancedMesh per block type, drastically reduces draw calls
+const INST_MAX = 6000;
+const instancedMeshes = {};  // type -> THREE.InstancedMesh
+const instSlots = {};        // type -> Array<string> (instanceId -> "x,y,z")
+const blockInstInfo = {};    // "x,y,z" -> {type, idx}
+const _tmpMatrix = new THREE.Matrix4();
+const texDataURLCache = {}; // texKey -> data URL, populated once per texture
 
 let inventory = {}; // blockType -> count
 let hotbar = [null,null,null,null,null,null,null,null,null]; // each: {type, count} or null
@@ -317,7 +418,8 @@ let selectedSlot = 0;
 let followers = 0;
 let pickaxeLevel = 0; // 0=hand, 1=stone, 2=iron
 let craftOpen = false;
-let selectedRecipe = 0;
+let craftGrid = [null,null,null,null,null,null,null,null,null]; // 9 slots, row-major
+let selectedCraftItem = null; // item type currently held to place in grid
 
 
 // Movement state
@@ -678,28 +780,11 @@ function genTextures() {
 function getBlockMaterial(type) {
     const b = BLOCKS[type];
     if (!b) return new THREE.MeshLambertMaterial({ color: 0xff00ff });
-
-    if (type === 'grass') {
-        const topMat = new THREE.MeshLambertMaterial({ map: blockTextures.grass_top });
-        const sideMat = new THREE.MeshLambertMaterial({ map: blockTextures.grass_side });
-        const bottomMat = new THREE.MeshLambertMaterial({ map: blockTextures.dirt });
-        return [sideMat, sideMat, topMat, bottomMat, sideMat, sideMat];
-    }
-    if (type === 'wood') {
-        const sideMat = new THREE.MeshLambertMaterial({ map: blockTextures.wood });
-        const topMat = new THREE.MeshLambertMaterial({ map: blockTextures.wood_top });
-        return [sideMat, sideMat, topMat, topMat, sideMat, sideMat];
-    }
-    if (type === 'leaves') {
-        return new THREE.MeshLambertMaterial({ map: blockTextures.leaves, transparent: true, opacity: 0.9 });
-    }
-
-    // For types with a matching texture
-    const texKey = type;
-    if (blockTextures[texKey]) {
-        return new THREE.MeshLambertMaterial({ map: blockTextures[texKey] });
-    }
-
+    // Single material per type — InstancedMesh requires one material per mesh
+    if (type === 'grass') return new THREE.MeshLambertMaterial({ map: blockTextures.grass_top });
+    if (type === 'wood')  return new THREE.MeshLambertMaterial({ map: blockTextures.wood });
+    if (type === 'leaves') return new THREE.MeshLambertMaterial({ map: blockTextures.leaves, transparent: true, opacity: 0.9 });
+    if (blockTextures[type]) return new THREE.MeshLambertMaterial({ map: blockTextures[type] });
     return new THREE.MeshLambertMaterial({ color: b.color });
 }
 
@@ -708,6 +793,36 @@ const materialCache = {};
 function getCachedMaterial(type) {
     if (!materialCache[type]) materialCache[type] = getBlockMaterial(type);
     return materialCache[type];
+}
+
+function initInstanced() {
+    for (const type of Object.keys(BLOCKS)) {
+        const im = new THREE.InstancedMesh(blockGeo, getCachedMaterial(type), INST_MAX);
+        im.count = 0;
+        im.userData.blockType = type;
+        scene.add(im);
+        instancedMeshes[type] = im;
+        instSlots[type] = [];
+    }
+}
+
+function removeInstance(key) {
+    const info = blockInstInfo[key];
+    if (!info) return;
+    const { type, idx } = info;
+    const im = instancedMeshes[type];
+    const lastIdx = im.count - 1;
+    if (idx !== lastIdx) {
+        const lastKey = instSlots[type][lastIdx];
+        im.getMatrixAt(lastIdx, _tmpMatrix);
+        im.setMatrixAt(idx, _tmpMatrix);
+        instSlots[type][idx] = lastKey;
+        blockInstInfo[lastKey].idx = idx;
+    }
+    im.count--;
+    instSlots[type].length = im.count;
+    delete blockInstInfo[key];
+    im.instanceMatrix.needsUpdate = true;
 }
 
 // ---- Crack overlay system ----
@@ -777,10 +892,10 @@ function genCrackTextures() {
     scene.add(crackMesh);
 }
 
-function showCrackOverlay(targetMesh, progress) {
-    if (!crackMesh || !targetMesh) { hideCrackOverlay(); return; }
+function showCrackOverlay(bx, by, bz, progress) {
+    if (!crackMesh) { hideCrackOverlay(); return; }
     const stage = Math.min(Math.floor(progress * CRACK_STAGES), CRACK_STAGES - 1);
-    crackMesh.position.copy(targetMesh.position);
+    crackMesh.position.set(bx + 0.5, by + 0.5, bz + 0.5);
     crackMesh.material = crackMaterials[stage];
     crackMesh.visible = true;
 }
@@ -789,76 +904,111 @@ function hideCrackOverlay() {
     if (crackMesh) crackMesh.visible = false;
 }
 
+// ---- Hidden-face culling helpers ----
+const DIRS6 = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+
+function isBlockVisible(x, y, z) {
+    for (const [dx, dy, dz] of DIRS6) {
+        const ny = y + dy;
+        if (ny < 0) continue; // treat below bedrock as solid
+        if (!world[`${x+dx},${ny},${z+dz}`]) return true;
+    }
+    return false;
+}
+
+function createBlockMesh(x, y, z, type) {
+    const key = `${x},${y},${z}`;
+    if (blockInstInfo[key]) return;
+    const im = instancedMeshes[type];
+    const idx = im.count++;
+    instSlots[type][idx] = key;
+    blockInstInfo[key] = { type, idx };
+    _tmpMatrix.makeTranslation(x + 0.5, y + 0.5, z + 0.5);
+    im.setMatrixAt(idx, _tmpMatrix);
+    im.instanceMatrix.needsUpdate = true;
+}
+
+// Rebuild all instanced meshes from world data — call after bulk world changes
+function rebuildMeshes() {
+    for (const type of Object.keys(BLOCKS)) {
+        if (instancedMeshes[type]) instancedMeshes[type].count = 0;
+        instSlots[type] = [];
+    }
+    for (const key in blockInstInfo) delete blockInstInfo[key];
+    for (const [key, type] of Object.entries(world)) {
+        const [x, y, z] = key.split(',').map(Number);
+        if (isBlockVisible(x, y, z)) createBlockMesh(x, y, z, type);
+    }
+    for (const type of Object.keys(BLOCKS)) {
+        if (instancedMeshes[type]) instancedMeshes[type].instanceMatrix.needsUpdate = true;
+    }
+}
+
 function addBlock(x, y, z, type) {
     const key = `${x},${y},${z}`;
     world[key] = type;
-    const mesh = new THREE.Mesh(blockGeo, getCachedMaterial(type));
-    mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
-    mesh.userData = { bx: x, by: y, bz: z, type: type };
-    scene.add(mesh);
-    blockMeshes[key] = mesh;
+    if (isBlockVisible(x, y, z)) createBlockMesh(x, y, z, type);
+    // Update neighbors: new block may hide them, or previously-hidden ones may need meshes
+    for (const [dx, dy, dz] of DIRS6) {
+        const nx = x+dx, ny = y+dy, nz = z+dz;
+        const nkey = `${nx},${ny},${nz}`;
+        if (!world[nkey]) continue;
+        if (!isBlockVisible(nx, ny, nz)) {
+            removeInstance(nkey);
+        } else if (!blockInstInfo[nkey]) {
+            createBlockMesh(nx, ny, nz, world[nkey]);
+        }
+    }
 }
 
 function removeBlock(x, y, z) {
     const key = `${x},${y},${z}`;
     delete world[key];
-    if (blockMeshes[key]) {
-        scene.remove(blockMeshes[key]);
-        delete blockMeshes[key];
+    removeInstance(key);
+    // Neighbors that were fully enclosed may now need a mesh
+    for (const [dx, dy, dz] of DIRS6) {
+        const nx = x+dx, ny = y+dy, nz = z+dz;
+        const nkey = `${nx},${ny},${nz}`;
+        if (world[nkey] && !blockInstInfo[nkey]) createBlockMesh(nx, ny, nz, world[nkey]);
     }
 }
 
 function generateWorld() {
     const rng = mulberry32(42); // seeded RNG for consistent world
 
+    // Build world data first, then create meshes in one pass
     for (let x = 0; x < WORLD_SIZE; x++) {
         for (let z = 0; z < WORLD_SIZE; z++) {
-            // Bedrock / stone layer
-            addBlock(x, 0, z, 'stone');
-            // Dirt layer
-            addBlock(x, 1, z, 'dirt');
-            // Grass top
-            addBlock(x, 2, z, 'grass');
-
-            // Scatter ore in stone layer
+            world[`${x},0,${z}`] = 'stone';
+            world[`${x},1,${z}`] = 'dirt';
+            world[`${x},2,${z}`] = 'grass';
             const oreRoll = rng();
-            if (oreRoll < 0.03) {
-                removeBlock(x, 0, z);
-                addBlock(x, 0, z, 'gold');
-            } else if (oreRoll < 0.08) {
-                removeBlock(x, 0, z);
-                addBlock(x, 0, z, 'iron');
-            } else if (oreRoll < 0.10) {
-                removeBlock(x, 0, z);
-                addBlock(x, 0, z, 'crystal');
-            }
+            if (oreRoll < 0.03)       world[`${x},0,${z}`] = 'gold';
+            else if (oreRoll < 0.08)  world[`${x},0,${z}`] = 'iron';
+            else if (oreRoll < 0.10)  world[`${x},0,${z}`] = 'crystal';
         }
     }
 
-    // Generate trees
     for (let i = 0; i < 20; i++) {
         const tx = Math.floor(rng() * (WORLD_SIZE - 4)) + 2;
         const tz = Math.floor(rng() * (WORLD_SIZE - 4)) + 2;
         const height = 3 + Math.floor(rng() * 3);
-
-        // Trunk
-        for (let h = 0; h < height; h++) {
-            addBlock(tx, 3 + h, tz, 'wood');
-        }
-        // Leaves (canopy)
+        for (let h = 0; h < height; h++) world[`${tx},${3+h},${tz}`] = 'wood';
         const topY = 3 + height;
         for (let dx = -2; dx <= 2; dx++) {
             for (let dz = -2; dz <= 2; dz++) {
                 for (let dy = -1; dy <= 1; dy++) {
-                    if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue; // corners
-                    const lx = tx + dx, ly = topY + dy, lz = tz + dz;
+                    if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue;
+                    const lx = tx+dx, ly = topY+dy, lz = tz+dz;
                     if (lx < 0 || lx >= WORLD_SIZE || lz < 0 || lz >= WORLD_SIZE) continue;
                     const lk = `${lx},${ly},${lz}`;
-                    if (!world[lk]) addBlock(lx, ly, lz, 'leaves');
+                    if (!world[lk]) world[lk] = 'leaves';
                 }
             }
         }
     }
+
+    rebuildMeshes();
 }
 
 // Seeded RNG
@@ -1116,9 +1266,10 @@ function renderHotbar() {
             // Use canvas texture if available
             const texKey = (type === 'grass') ? 'grass_top' : (type === 'wood') ? 'wood' : type;
             if (blockTextures[texKey] && blockTextures[texKey].image) {
+                if (!texDataURLCache[texKey]) texDataURLCache[texKey] = blockTextures[texKey].image.toDataURL();
                 swatch.style.background = 'none';
                 swatch.style.imageRendering = 'pixelated';
-                swatch.style.backgroundImage = `url(${blockTextures[texKey].image.toDataURL()})`;
+                swatch.style.backgroundImage = `url(${texDataURLCache[texKey]})`;
                 swatch.style.backgroundSize = 'cover';
             } else {
                 const b = BLOCKS[type];
@@ -1139,32 +1290,25 @@ function renderHotbar() {
 // BLOCK INTERACTION
 // ============================================
 function getTargetBlock(screenX, screenY) {
-    let ndc;
-    if (screenX !== undefined && screenY !== undefined) {
-        ndc = new THREE.Vector2(
-            (screenX / window.innerWidth) * 2 - 1,
-            -(screenY / window.innerHeight) * 2 + 1
-        );
-    } else {
-        ndc = new THREE.Vector2(0, 0);
-    }
+    const ndc = (screenX !== undefined && screenY !== undefined)
+        ? new THREE.Vector2((screenX / window.innerWidth) * 2 - 1, -(screenY / window.innerHeight) * 2 + 1)
+        : new THREE.Vector2(0, 0);
     raycaster.setFromCamera(ndc, camera);
-    const meshes = Object.values(blockMeshes);
-    const hits = raycaster.intersectObjects(meshes);
-    if (hits.length > 0) return hits[0];
-    return null;
+    const hits = raycaster.intersectObjects(Object.values(instancedMeshes), false);
+    if (hits.length === 0) return null;
+    const hit = hits[0];
+    const blockType = hit.object.userData.blockType;
+    const key = instSlots[blockType] && instSlots[blockType][hit.instanceId];
+    if (!key) return null;
+    const [bx, by, bz] = key.split(',').map(Number);
+    return { bx, by, bz, type: blockType, face: hit.face };
 }
 
 function mineBlock(screenX, screenY) {
     const hit = getTargetBlock(screenX, screenY);
     if (!hit) return;
-    const d = hit.object.userData;
-    const type = d.type;
-
-    // Remove block from world
-    removeBlock(d.bx, d.by, d.bz);
-    // Add to inventory
-    addToInventory(type, 1);
+    removeBlock(hit.bx, hit.by, hit.bz);
+    addToInventory(hit.type, 1);
     saveState();
 }
 
@@ -1175,10 +1319,9 @@ function placeBlock(screenX, screenY) {
 
     // Calculate placement position from face normal
     const normal = hit.face.normal;
-    const d = hit.object.userData;
-    const px = d.bx + Math.round(normal.x);
-    const py = d.by + Math.round(normal.y);
-    const pz = d.bz + Math.round(normal.z);
+    const px = hit.bx + Math.round(normal.x);
+    const py = hit.by + Math.round(normal.y);
+    const pz = hit.bz + Math.round(normal.z);
 
     // Don't place inside player
     const camX = Math.floor(camera.position.x);
@@ -1203,97 +1346,259 @@ function placeBlock(screenX, screenY) {
 }
 
 // ============================================
-// CRAFTING
+// CRAFTING — grid-based, shape matters
 // ============================================
+
+// Extract the minimal bounding box of filled slots as a 2D type array.
+// Returns null if grid is empty.
+function extractGridPattern(grid) {
+    let minRow = 3, maxRow = -1, minCol = 3, maxCol = -1;
+    for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+            if (grid[r * 3 + c]) {
+                minRow = Math.min(minRow, r);
+                maxRow = Math.max(maxRow, r);
+                minCol = Math.min(minCol, c);
+                maxCol = Math.max(maxCol, c);
+            }
+        }
+    }
+    if (maxRow === -1) return null;
+    const rows = [];
+    for (let r = minRow; r <= maxRow; r++) {
+        const row = [];
+        for (let c = minCol; c <= maxCol; c++) {
+            row.push(grid[r * 3 + c] ? grid[r * 3 + c].type : null);
+        }
+        rows.push(row);
+    }
+    return rows;
+}
+
+function patternsEqual(a, b) {
+    if (a.length !== b.length) return false;
+    for (let r = 0; r < a.length; r++) {
+        if (a[r].length !== b[r].length) return false;
+        for (let c = 0; c < a[r].length; c++) {
+            if (a[r][c] !== b[r][c]) return false;
+        }
+    }
+    return true;
+}
+
+function matchCurrentRecipe() {
+    const extracted = extractGridPattern(craftGrid);
+    if (!extracted) return null;
+    for (const recipe of RECIPES) {
+        if (patternsEqual(extracted, recipe.pattern)) return recipe;
+        // Check horizontal mirror
+        const mirrored = recipe.pattern.map(row => [...row].reverse());
+        if (patternsEqual(extracted, mirrored)) return recipe;
+    }
+    return null;
+}
+
 function toggleCraft() {
     craftOpen = !craftOpen;
     document.getElementById('craft-panel').classList.toggle('open', craftOpen);
-    if (craftOpen) { selectedRecipe = 0; renderCraftPanel(); }
+    if (craftOpen) {
+        selectedCraftItem = null;
+        renderCraftPanel();
+    } else {
+        returnGridToInventory();
+    }
 }
 
-function scrollRecipeIntoView() {
-    const items = document.querySelectorAll('#recipe-list .recipe');
-    if (items[selectedRecipe]) items[selectedRecipe].scrollIntoView({ block: 'nearest' });
+function returnGridToInventory() {
+    for (let i = 0; i < 9; i++) {
+        if (craftGrid[i]) {
+            addToInventory(craftGrid[i].type, craftGrid[i].count);
+            craftGrid[i] = null;
+        }
+    }
+}
+
+function clearCraftGrid() {
+    returnGridToInventory();
+    renderCraftPanel();
+}
+
+function handleGridSlotClick(idx) {
+    if (selectedCraftItem) {
+        // Placing: consume 1 from inventory into this slot
+        if (countItem(selectedCraftItem) <= 0) {
+            selectedCraftItem = null;
+            renderCraftPanel();
+            return;
+        }
+        // If slot already has a different type, return it first
+        if (craftGrid[idx] && craftGrid[idx].type !== selectedCraftItem) {
+            addToInventory(craftGrid[idx].type, craftGrid[idx].count);
+            craftGrid[idx] = null;
+        }
+        consumeItem(selectedCraftItem, 1);
+        if (craftGrid[idx]) {
+            craftGrid[idx].count++;
+        } else {
+            craftGrid[idx] = { type: selectedCraftItem, count: 1 };
+        }
+    } else if (craftGrid[idx]) {
+        // No item selected — click returns the slot to inventory
+        addToInventory(craftGrid[idx].type, craftGrid[idx].count);
+        craftGrid[idx] = null;
+    }
+    renderCraftPanel();
+}
+
+function handleGridSlotRightClick(e, idx) {
+    e.preventDefault();
+    if (craftGrid[idx]) {
+        addToInventory(craftGrid[idx].type, 1);
+        craftGrid[idx].count--;
+        if (craftGrid[idx].count <= 0) craftGrid[idx] = null;
+        renderCraftPanel();
+    }
+}
+
+function makeSwatchEl(type, w, h) {
+    const swatch = document.createElement('div');
+    swatch.className = 'cs-swatch';
+    swatch.style.width = w + 'px';
+    swatch.style.height = h + 'px';
+    const texKey = type === 'grass' ? 'grass_top' : type === 'wood' ? 'wood' : type;
+    if (blockTextures[texKey] && blockTextures[texKey].image) {
+        if (!texDataURLCache[texKey]) texDataURLCache[texKey] = blockTextures[texKey].image.toDataURL();
+        swatch.style.backgroundImage = `url(${texDataURLCache[texKey]})`;
+        swatch.style.backgroundSize = 'cover';
+    } else {
+        const b = BLOCKS[type];
+        swatch.style.background = '#' + (b ? b.color.toString(16).padStart(6, '0') : 'ff00ff');
+    }
+    return swatch;
 }
 
 function renderCraftPanel() {
-    const list = document.getElementById('recipe-list');
-    list.innerHTML = '';
-
-    RECIPES.forEach((recipe, idx) => {
-        const div = document.createElement('div');
-        div.className = 'recipe' + (idx === selectedRecipe ? ' selected-recipe' : '');
-
-        let canCraft = true;
-        let matsHtml = '';
-        for (const [type, amt] of Object.entries(recipe.inputs)) {
-            const have = countItem(type);
-            const enough = have >= amt;
-            if (!enough) canCraft = false;
-            const b = BLOCKS[type];
-            const name = b ? b.name : type;
-            matsHtml += `<span class="${enough ? 'has' : 'miss'}">${name}: ${have}/${amt}</span> `;
-        }
-
-        // Special checks
-        let resultText = '';
-        if (recipe.special === 'pickaxe_stone') {
-            resultText = 'Equip: +50% mine speed';
-            if (pickaxeLevel >= 1) { canCraft = false; resultText = 'Already owned'; }
-        } else if (recipe.special === 'pickaxe_iron') {
-            resultText = 'Equip: +100% mine speed';
-            if (pickaxeLevel >= 2) { canCraft = false; resultText = 'Already owned'; }
-        } else if (recipe.special === 'publish') {
-            const rank = getRankIndex();
-            const mult = 1 + rank * 0.5;
-            const minF = Math.floor(10 * mult);
-            const maxF = Math.floor(50 * mult);
-            resultText = `Earns ${minF}-${maxF} followers + coins`;
-        } else {
-            const outEntries = Object.entries(recipe.outputs);
-            if (outEntries.length > 0) {
-                resultText = outEntries.map(([t, c]) => `${c}x ${BLOCKS[t] ? BLOCKS[t].name : t}`).join(', ');
+    // --- 3×3 grid ---
+    const gridEl = document.getElementById('craft-grid');
+    gridEl.innerHTML = '';
+    for (let i = 0; i < 9; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'craft-slot' + (craftGrid[i] ? ' has-item' : '');
+        slot.onclick = () => handleGridSlotClick(i);
+        slot.oncontextmenu = (e) => handleGridSlotRightClick(e, i);
+        if (craftGrid[i]) {
+            slot.appendChild(makeSwatchEl(craftGrid[i].type, 34, 34));
+            if (craftGrid[i].count > 1) {
+                const cnt = document.createElement('div');
+                cnt.className = 'cs-count';
+                cnt.textContent = craftGrid[i].count;
+                slot.appendChild(cnt);
             }
         }
+        gridEl.appendChild(slot);
+    }
 
-        div.innerHTML = `
-            <div class="recipe-info">
-                <div class="recipe-name">${recipe.name}</div>
-                <div class="recipe-mats">${matsHtml}</div>
-                ${resultText ? `<div class="recipe-result">${resultText}</div>` : ''}
-            </div>
-        `;
+    // --- Output slot ---
+    const matched = matchCurrentRecipe();
+    const outputSlot = document.getElementById('craft-output-slot');
+    const outputName = document.getElementById('craft-output-name');
+    const outputInfo = document.getElementById('craft-output-info');
+    outputSlot.innerHTML = '';
+    outputSlot.className = matched ? 'has-result' : '';
 
-        const btn = document.createElement('button');
-        btn.className = 'craft-btn';
-        btn.disabled = !canCraft;
-        btn.textContent = 'Craft';
-        btn.onclick = () => doCraft(idx);
-        div.appendChild(btn);
+    if (matched) {
+        if (matched.output) {
+            const sw = makeSwatchEl(matched.output.type, 42, 42);
+            outputSlot.appendChild(sw);
+            if (matched.output.count > 1) {
+                const cnt = document.createElement('div');
+                cnt.className = 'cs-count';
+                cnt.textContent = matched.output.count;
+                outputSlot.appendChild(cnt);
+            }
+        } else {
+            outputSlot.textContent = matched.special === 'publish' ? '📜' : '⛏';
+        }
+        outputName.textContent = matched.name;
+        let infoText = matched.resultText || '';
+        if (matched.special === 'pickaxe_stone' && pickaxeLevel >= 1) infoText = 'Already crafted';
+        if (matched.special === 'pickaxe_iron' && pickaxeLevel >= 2) infoText = 'Already crafted';
+        if (matched.special === 'publish') {
+            const mult = 1 + getRankIndex() * 0.5;
+            infoText = `+${Math.floor(10*mult)}–${Math.floor(50*mult)} followers`;
+        }
+        outputInfo.textContent = infoText;
+    } else {
+        outputName.textContent = '';
+        outputInfo.textContent = '';
+    }
 
-        list.appendChild(div);
-    });
+    // --- Craft button ---
+    let canCraft = false;
+    if (matched) {
+        if (matched.special === 'pickaxe_stone') canCraft = pickaxeLevel < 1;
+        else if (matched.special === 'pickaxe_iron') canCraft = pickaxeLevel < 2;
+        else canCraft = true;
+    }
+    document.getElementById('do-craft-btn').disabled = !canCraft;
+
+    // --- Inventory picker ---
+    const invList = document.getElementById('craft-inv-list');
+    invList.innerHTML = '';
+    const allItems = {};
+    for (let i = 0; i < 9; i++) {
+        if (hotbar[i]) allItems[hotbar[i].type] = (allItems[hotbar[i].type] || 0) + hotbar[i].count;
+    }
+    for (const [type, count] of Object.entries(inventory)) {
+        if (count > 0) allItems[type] = (allItems[type] || 0) + count;
+    }
+    for (const [type, count] of Object.entries(allItems)) {
+        if (!BLOCKS[type]) continue;
+        const item = document.createElement('div');
+        item.className = 'inv-item' + (selectedCraftItem === type ? ' selected' : '');
+        item.onclick = () => {
+            selectedCraftItem = selectedCraftItem === type ? null : type;
+            renderCraftPanel();
+        };
+        const sw = document.createElement('div');
+        sw.className = 'inv-swatch';
+        const texKey = type === 'grass' ? 'grass_top' : type === 'wood' ? 'wood' : type;
+        if (blockTextures[texKey] && blockTextures[texKey].image) {
+            sw.style.backgroundImage = `url(${blockTextures[texKey].image.toDataURL()})`;
+            sw.style.backgroundSize = 'cover';
+            sw.style.width = '28px'; sw.style.height = '28px';
+            sw.style.imageRendering = 'pixelated';
+        } else {
+            const b = BLOCKS[type];
+            sw.style.background = '#' + (b ? b.color.toString(16).padStart(6, '0') : 'ff00ff');
+            sw.style.width = '28px'; sw.style.height = '28px'; sw.style.borderRadius = '2px';
+        }
+        item.appendChild(sw);
+        const cnt = document.createElement('div');
+        cnt.className = 'inv-count';
+        cnt.textContent = count;
+        item.appendChild(cnt);
+        invList.appendChild(item);
+    }
 }
 
-function doCraft(idx) {
-    const recipe = RECIPES[idx];
+function doCraft() {
+    const matched = matchCurrentRecipe();
+    if (!matched) return;
+    if (matched.special === 'pickaxe_stone' && pickaxeLevel >= 1) return;
+    if (matched.special === 'pickaxe_iron' && pickaxeLevel >= 2) return;
 
-    // Verify and consume inputs
-    for (const [type, amt] of Object.entries(recipe.inputs)) {
-        if (countItem(type) < amt) return;
-    }
-    for (const [type, amt] of Object.entries(recipe.inputs)) {
-        consumeItem(type, amt);
-    }
+    // Items were consumed when placed into the grid — just clear it
+    for (let i = 0; i < 9; i++) craftGrid[i] = null;
+    selectedCraftItem = null;
 
-    // Handle special recipes
-    if (recipe.special === 'pickaxe_stone') {
+    if (matched.special === 'pickaxe_stone') {
         pickaxeLevel = Math.max(pickaxeLevel, 1);
-        showNotif('Crafted Stone Pickaxe! Mining is faster.');
-    } else if (recipe.special === 'pickaxe_iron') {
+        showNotif('Stone Pickaxe equipped! Mining is faster.');
+    } else if (matched.special === 'pickaxe_iron') {
         pickaxeLevel = Math.max(pickaxeLevel, 2);
-        showNotif('Crafted Iron Pickaxe! Mining is much faster.');
-    } else if (recipe.special === 'publish') {
+        showNotif('Iron Pickaxe equipped! Mining is much faster.');
+    } else if (matched.special === 'publish') {
         const rank = getRankIndex();
         const mult = 1 + rank * 0.5;
         const gained = Math.floor((10 + Math.random() * 40) * mult);
@@ -1305,11 +1610,8 @@ function doCraft(idx) {
         updateHUD();
         showNotif(`Published! +${gained} followers, +${coins} coins`);
     } else {
-        // Normal recipe - add outputs
-        for (const [type, count] of Object.entries(recipe.outputs)) {
-            addToInventory(type, count);
-        }
-        showNotif('Crafted ' + recipe.name + '!');
+        addToInventory(matched.output.type, matched.output.count);
+        showNotif(`Crafted ${matched.output.count}× ${matched.name}!`);
     }
 
     saveState();
@@ -1370,18 +1672,10 @@ function loadState() {
     if (!raw) return false;
     const s = JSON.parse(raw);
 
-    // Clear existing world
-    for (const key in blockMeshes) {
-        scene.remove(blockMeshes[key]);
-    }
-    blockMeshes = {};
     world = {};
-
-    // Rebuild world from save
-    for (const [key, type] of Object.entries(s.world)) {
-        const [x, y, z] = key.split(',').map(Number);
-        addBlock(x, y, z, type);
-    }
+    // Restore world data then build instanced meshes in one pass
+    for (const [key, type] of Object.entries(s.world)) world[key] = type;
+    rebuildMeshes();
 
     hotbar = s.hotbar || [null,null,null,null,null,null,null,null,null];
     inventory = s.inventory || {};
@@ -1389,7 +1683,11 @@ function loadState() {
     pickaxeLevel = s.pickaxeLevel || 0;
 
     if (s.camPos) camera.position.set(s.camPos.x, s.camPos.y, s.camPos.z);
-    if (s.camRot) { euler.x = s.camRot.x; euler.y = s.camRot.y; }
+    if (s.camRot) {
+        euler.x = 0; // always start looking horizontal — avoids loading into an extreme up/down angle
+        euler.y = s.camRot.y || 0;
+        camera.quaternion.setFromEuler(euler);
+    }
 
     return true;
 }
@@ -1478,27 +1776,7 @@ function updatePhysics(delta) {
 // ============================================
 document.addEventListener('keydown', (e) => {
     if (craftOpen) {
-        switch (e.code) {
-            case 'ArrowUp':
-                e.preventDefault();
-                selectedRecipe = Math.max(0, selectedRecipe - 1);
-                renderCraftPanel();
-                scrollRecipeIntoView();
-                return;
-            case 'ArrowDown':
-                e.preventDefault();
-                selectedRecipe = Math.min(RECIPES.length - 1, selectedRecipe + 1);
-                renderCraftPanel();
-                scrollRecipeIntoView();
-                return;
-            case 'Enter':
-                e.preventDefault();
-                doCraft(selectedRecipe);
-                return;
-            case 'KeyE': case 'Escape':
-                toggleCraft();
-                return;
-        }
+        if (e.code === 'KeyE' || e.code === 'Escape') toggleCraft();
         return;
     }
     switch (e.code) {
@@ -1537,31 +1815,37 @@ document.addEventListener('keyup', (e) => {
 const canvas = renderer.domElement;
 
 document.getElementById('start-overlay').addEventListener('click', () => {
-    if (isTouchDevice) {
-        document.getElementById('start-overlay').classList.add('hidden');
-    } else {
-        canvas.requestPointerLock();
-    }
+    document.getElementById('start-overlay').classList.add('hidden');
+    try { canvas.requestPointerLock(); } catch(e) {}
 });
 
 canvas.addEventListener('click', () => {
-    if (!isTouchDevice && !isPointerLocked) {
-        canvas.requestPointerLock();
+    if (!isPointerLocked) {
+        try { canvas.requestPointerLock(); } catch(e) {}
     }
 });
+
+let lockTimestamp = 0; // time pointer lock was acquired
 
 document.addEventListener('pointerlockchange', () => {
     isPointerLocked = document.pointerLockElement === canvas;
-    if (!isTouchDevice) {
-        document.getElementById('start-overlay').classList.toggle('hidden', isPointerLocked);
-    }
+    // Record the time so we can ignore all spurious deltas for the first 150ms —
+    // browsers deliver accumulated mouse movement as a burst of events right after lock
+    if (isPointerLocked) lockTimestamp = performance.now();
+    document.getElementById('start-overlay').classList.toggle('hidden', isPointerLocked);
 });
 
 document.addEventListener('mousemove', (e) => {
-    if (!isTouchDevice && !isPointerLocked) return;
+    if (!isPointerLocked) return;
+    // Discard the initial burst of spurious events after pointer lock is acquired
+    if (performance.now() - lockTimestamp < 150) return;
     const sensitivity = 0.002;
-    euler.y -= e.movementX * sensitivity;
-    euler.x -= e.movementY * sensitivity;
+    // Clamp per-event delta — tight cap prevents a single fast swipe from slamming
+    // the camera into the pitch floor/ceiling
+    const dx = Math.max(-30, Math.min(30, e.movementX));
+    const dy = Math.max(-30, Math.min(30, e.movementY));
+    euler.y -= dx * sensitivity;
+    euler.x -= dy * sensitivity;
     euler.x = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, euler.x));
     camera.quaternion.setFromEuler(euler);
 });
@@ -1578,7 +1862,7 @@ function stopMining() {
 }
 
 canvas.addEventListener('mousedown', (e) => {
-    if (!isTouchDevice && !isPointerLocked) return;
+    if (!isPointerLocked) return;
     e.preventDefault();
     if (craftOpen) return;
 
@@ -1688,6 +1972,9 @@ canvas.addEventListener('touchstart', (e) => {
 });
 
 canvas.addEventListener('touchmove', (e) => {
+    // When pointer lock is active the user is on a desktop — ignore all touch events
+    // so they don't interfere with mouse look (touchpad fires both mousemove AND touchmove)
+    if (isPointerLocked) return;
     for (const t of e.changedTouches) {
         if (t.identifier === touchLook.id) {
             const dx = t.clientX - touchLook.lastX;
@@ -1768,7 +2055,7 @@ function animate() {
     // Mining progress (hold to mine - desktop & mobile)
     if (isMining && !craftOpen) {
         const hit = getTargetBlock(mineScreenX, mineScreenY);
-        const targetKey = hit ? `${hit.object.userData.bx},${hit.object.userData.by},${hit.object.userData.bz}` : null;
+        const targetKey = hit ? `${hit.bx},${hit.by},${hit.bz}` : null;
 
         // If target changed (looked away), reset mining progress
         if (targetKey !== mineTargetKey) {
@@ -1783,7 +2070,7 @@ function animate() {
 
             document.getElementById('mine-progress').style.display = 'block';
             document.getElementById('mine-progress-fill').style.width = (pct * 100) + '%';
-            showCrackOverlay(hit.object, pct);
+            showCrackOverlay(hit.bx, hit.by, hit.bz, pct);
 
             if (pct >= 1) {
                 mineBlock(mineScreenX, mineScreenY);
@@ -1852,6 +2139,7 @@ window.addEventListener('resize', () => {
 function init() {
     checkAuth();
     genTextures();
+    initInstanced();
     genCrackTextures();
     const loaded = loadState();
     if (!loaded) generateWorld();
@@ -1868,3 +2156,5 @@ init();
 </script>
 </body>
 </html>
+
+

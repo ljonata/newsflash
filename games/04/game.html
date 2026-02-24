@@ -33,6 +33,7 @@
             clip-path: polygon(50% 100%, 0% 35%, 15% 0%, 50% 20%, 85% 0%, 100% 35%);
         }
         .heart.empty { background: #444; }
+        #hud-left .gametime { color: #b0c4de; font-size: 13px; font-variant-numeric: tabular-nums; }
         #hud-right a {
             color: #aaa; font-size: 13px; text-decoration: none; margin-left: 10px;
         }
@@ -251,6 +252,7 @@
         <span class="username" id="d-name"></span>
         <span class="coins" id="d-coins">Coins: 0</span>
         <div id="hud-hearts"></div>
+        <span class="gametime" id="d-time">07:00</span>
     </div>
     <div id="hud-right">
         <a href="/games/01/home.html">Home</a>
@@ -1483,6 +1485,7 @@ let player = { x: 19, y: 13, dir: 'down', frame: 0 };
 let playerHP = 3;
 let maxHP = 3;
 let playerCoins = 0;
+let gameTimeMinutes = 420; // start at 07:00 (1 real second = 1 game minute)
 let inventory = { sword: 1, shield: 0, key: 0, potion: 0, coins: 0 };
 let selectedItem = 'sword';
 
@@ -1657,6 +1660,16 @@ function render() {
         else if (player.dir === 'left') ctx.fillRect(ex - swLen, ey + TS*0.3, swLen, 4);
         else if (player.dir === 'down') ctx.fillRect(ex + TS*0.3, ey + TS, 4, swLen);
         else ctx.fillRect(ex + TS*0.3, ey - swLen, 4, swLen);
+    }
+
+    // Day/night overlay
+    const nightAlpha = getDayNightAlpha();
+    if (nightAlpha > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = nightAlpha;
+        ctx.fillStyle = '#0a0a2a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
     }
 }
 
@@ -2132,6 +2145,21 @@ function toggleMissions() {
 // ============================================
 // HUD
 // ============================================
+function formatGameTime(minutes) {
+    const t = Math.floor(minutes % 1440);
+    const h = Math.floor(t / 60);
+    const m = t % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function getDayNightAlpha() {
+    // 0=midnight darkest, 1=noon fully bright
+    const t = gameTimeMinutes % 1440;
+    const angle = 2 * Math.PI * (t - 720) / 1440; // 0 at noon (720 min)
+    const lightLevel = (Math.cos(angle) + 1) / 2;  // 0..1
+    return (1 - lightLevel) * 0.72;                // max 0.72 alpha at midnight
+}
+
 function updateHUD() {
     document.getElementById('d-coins').textContent = `Coins: ${playerCoins}`;
     inventory.coins = playerCoins;
@@ -2143,6 +2171,8 @@ function updateHUD() {
         h.className = 'heart' + (i >= playerHP ? ' empty' : '');
         heartsDiv.appendChild(h);
     }
+
+    document.getElementById('d-time').textContent = formatGameTime(gameTimeMinutes);
 }
 
 // ============================================
@@ -2212,7 +2242,8 @@ function saveState() {
         doorsOpened: doorsOpened,
         crossedBridge: crossedBridge,
         hasSwum: hasSwum,
-        housesVisited: [...housesVisited]
+        housesVisited: [...housesVisited],
+        gameTimeMinutes: gameTimeMinutes
     };
     localStorage.setItem('elfquest_state', JSON.stringify(state));
 }
@@ -2239,6 +2270,7 @@ function loadState() {
         crossedBridge = s.crossedBridge || false;
         hasSwum = s.hasSwum || false;
         housesVisited = new Set(s.housesVisited || []);
+        if (s.gameTimeMinutes != null) gameTimeMinutes = s.gameTimeMinutes;
         return true;
     } catch(e) { return false; }
 }
@@ -2341,6 +2373,11 @@ function gameLoop(time) {
         missionTimer = 0;
         checkMissions();
     }
+
+    // Advance game time (1 real second = 1 game minute)
+    gameTimeMinutes += delta * 60;
+    if (gameTimeMinutes >= 1440) gameTimeMinutes -= 1440;
+    document.getElementById('d-time').textContent = formatGameTime(gameTimeMinutes);
 
     // Auto-save
     saveTimer += delta;
