@@ -425,7 +425,7 @@ function connectMultiplayer(roomCode) {
         socket.emit('elf_join_room', {
             room: roomCode, username,
             x: player.x, y: player.y, dir: player.dir,
-            hasSword: inventory.sword > 0
+            hasSword: inventory.sword > 0, hp: playerHP
         });
     });
 
@@ -441,6 +441,7 @@ function connectMultiplayer(roomCode) {
         // Apply world state from server
         for (const key of (data.openedChests || [])) openedChests.add(key);
         for (const key of (data.cutBushes || [])) cutBushes.add(key);
+        for (const key of (data.cutTrees || [])) cutTrees.add(key);
         // Store our assigned color slot
         myColorSlot = data.myColorSlot || 0;
         // Populate existing remote players with their real positions and colors
@@ -460,6 +461,7 @@ function connectMultiplayer(roomCode) {
             x: px, y: py, dir: data.dir || 'down', frame: 0,
             hasSword: data.hasSword !== undefined ? data.hasSword : true,
             colorSlot: data.colorSlot || 1,
+            hp: data.hp !== undefined ? data.hp : 3,
             isMoving: false, moveFrom: {x: px, y: py}, moveTo: {x: px, y: py}, moveProgress: 0
         });
         updatePlayerCountHUD();
@@ -480,6 +482,7 @@ function connectMultiplayer(roomCode) {
         rp.dir = data.dir || rp.dir;
         rp.frame = data.frame !== undefined ? data.frame : rp.frame;
         rp.hasSword = data.hasSword !== undefined ? data.hasSword : rp.hasSword;
+        rp.hp = data.hp !== undefined ? data.hp : rp.hp;
     });
 
     socket.on('elf_player_left', (data) => {
@@ -492,6 +495,7 @@ function connectMultiplayer(roomCode) {
     socket.on('elf_world_event', (data) => {
         if (data.type === 'chest') openedChests.add(data.key);
         else if (data.type === 'bush') cutBushes.add(data.key);
+        else if (data.type === 'tree') cutTrees.add(data.key);
     });
 
     socket.on('disconnect', () => {
@@ -1671,6 +1675,7 @@ function genItemIcon(itemId) {
 let gameMap = null;
 let openedChests = new Set(); // "x,y" keys
 let cutBushes = new Set();
+let cutTrees = new Set();
 // 4 key bushes — one near each house, these sparkle as a hint
 const KEY_BUSHES = new Set(['7,9', '23,8', '14,20', '27,13']);
 
@@ -1766,6 +1771,8 @@ function render() {
             if (tileId === T.CHEST && openedChests.has(key)) tileId = T.GRASS;
             // Cut bushes become grass
             if (tileId === T.BUSH && cutBushes.has(key)) tileId = T.GRASS;
+            // Cut trees become grass
+            if (tileId === T.TREE && cutTrees.has(key)) tileId = T.GRASS;
 
             // Trees get unique variant per position, water animates
             let variant = 0;
@@ -1872,16 +1879,25 @@ function render() {
             const rex = (rx - cam.x) * TS;
             const rey = (ry - cam.y) * TS;
             ctx.drawImage(rC, rex, rey, TS, TS);
-            // Username label
+            // Username + HP label above sprite
             ctx.save();
             ctx.font = 'bold 11px Arial';
-            const labelW = Math.max(56, ctx.measureText(rp.username || '?').width + 10);
-            ctx.fillStyle = 'rgba(0,0,0,0.55)';
-            ctx.fillRect(rex + TS/2 - labelW/2, rey - 17, labelW, 14);
-            ctx.fillStyle = '#fff';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
-            ctx.fillText(rp.username || '?', rex + TS/2, rey - 15);
+            const labelW = Math.max(56, ctx.measureText(rp.username || '?').width + 10);
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
+            ctx.fillRect(rex + TS/2 - labelW/2, rey - 30, labelW, 28);
+            // HP hearts row
+            const hp = rp.hp !== undefined ? rp.hp : 3;
+            let heartStr = '';
+            for (let i = 0; i < 3; i++) heartStr += (i < hp) ? '❤' : '♡';
+            ctx.font = '9px Arial';
+            ctx.fillStyle = hp > 1 ? '#e94560' : '#ff6b6b';
+            ctx.fillText(heartStr, rex + TS/2, rey - 29);
+            // Name
+            ctx.font = 'bold 11px Arial';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(rp.username || '?', rex + TS/2, rey - 17);
             ctx.restore();
         }
     }
@@ -1918,6 +1934,10 @@ function tryMove(dx, dy, dir) {
     }
     // Chest acts as walkable if opened (becomes grass)
     if (tileId === T.CHEST && openedChests.has(key)) {
+        startMove(nx, ny); return;
+    }
+    // Tree acts as walkable if already cut
+    if (tileId === T.TREE && cutTrees.has(key)) {
         startMove(nx, ny); return;
     }
     if (!WALKABLE.has(tileId)) return;
@@ -2077,6 +2097,11 @@ function swingSword() {
             }
             renderBackpack();
             updateHUD();
+            saveState();
+        } else if (gameMap[ty][tx] === T.TREE && !cutTrees.has(key)) {
+            cutTrees.add(key);
+            if (socket && socket.connected) socket.emit('elf_world_event', { type: 'tree', key });
+            showNotif('Chopped down a tree!');
             saveState();
         }
     }
@@ -2463,6 +2488,7 @@ function saveState() {
         inventory: inventory,
         openedChests: [...openedChests],
         cutBushes: [...cutBushes],
+        cutTrees: [...cutTrees],
         completedMissions: [...completedMissions],
         tilesWalked: tilesWalked,
         doorsOpened: doorsOpened,
@@ -2490,6 +2516,7 @@ function loadState() {
         inventory = s.inventory || { sword: 1, shield: 0, key: 0, potion: 0, coins: 0 };
         openedChests = new Set(s.openedChests || []);
         cutBushes = new Set(s.cutBushes || []);
+        cutTrees = new Set(s.cutTrees || []);
         completedMissions = new Set(s.completedMissions || []);
         tilesWalked = s.tilesWalked || 0;
         doorsOpened = s.doorsOpened || 0;
@@ -2621,7 +2648,7 @@ function gameLoop(time) {
             const drawFrame = isMoving ? (Math.floor(animFrame / 8) % 2) : 0;
             socket.emit('elf_player_update', {
                 x: player.x, y: player.y, dir: player.dir,
-                frame: drawFrame, hasSword: inventory.sword > 0
+                frame: drawFrame, hasSword: inventory.sword > 0, hp: playerHP
             });
         }
     }

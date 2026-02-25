@@ -677,11 +677,12 @@ def on_elf_join_room(data):
     y = int(data.get('y', 13))
     dir_ = str(data.get('dir', 'down'))
     has_sword = bool(data.get('hasSword', True))
+    hp = int(data.get('hp', 3))
     if not room:
         return
 
     if room not in elf_rooms:
-        elf_rooms[room] = {'players': {}, 'openedChests': [], 'cutBushes': []}
+        elf_rooms[room] = {'players': {}, 'openedChests': [], 'cutBushes': [], 'cutTrees': []}
 
     r = elf_rooms[room]
     if len(r['players']) >= 4 and sid not in r['players']:
@@ -694,7 +695,7 @@ def on_elf_join_room(data):
 
     r['players'][sid] = {
         'username': username, 'x': x, 'y': y, 'dir': dir_,
-        'frame': 0, 'hasSword': has_sword, 'colorSlot': color_slot
+        'frame': 0, 'hasSword': has_sword, 'colorSlot': color_slot, 'hp': hp
     }
     sio_join_room(room)
 
@@ -705,12 +706,13 @@ def on_elf_join_room(data):
         'players': {s: p for s, p in r['players'].items() if s != sid},
         'openedChests': r['openedChests'],
         'cutBushes': r['cutBushes'],
+        'cutTrees': r['cutTrees'],
     })
 
     # Notify others in the room (include full state so they place the new player correctly)
     emit('elf_player_joined', {
         'sid': sid, 'username': username,
-        'x': x, 'y': y, 'dir': dir_, 'hasSword': has_sword, 'colorSlot': color_slot
+        'x': x, 'y': y, 'dir': dir_, 'hasSword': has_sword, 'colorSlot': color_slot, 'hp': hp
     }, to=room, include_self=False)
 
 
@@ -727,6 +729,7 @@ def on_elf_player_update(data):
             p['dir'] = data.get('dir', p['dir'])
             p['frame'] = data.get('frame', p['frame'])
             p['hasSword'] = data.get('hasSword', p['hasSword'])
+            p['hp'] = data.get('hp', p.get('hp', 3))
             emit('elf_remote_update', {'sid': sid, **p}, to=room, include_self=False)
             break
 
@@ -743,6 +746,8 @@ def on_elf_world_event(data):
                 r['openedChests'].append(key)
             elif event_type == 'bush' and key not in r['cutBushes']:
                 r['cutBushes'].append(key)
+            elif event_type == 'tree' and key not in r['cutTrees']:
+                r['cutTrees'].append(key)
             emit('elf_world_event', {'type': event_type, 'key': key}, to=room, include_self=False)
             break
 
