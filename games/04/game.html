@@ -406,7 +406,8 @@ function handleLogout() {
 // ============================================
 let socket = null;
 let myRoomCode = null;
-const remotePlayers = new Map(); // sid -> { username, x, y, dir, frame, hasSword, isMoving, moveFrom, moveTo, moveProgress }
+let myColorSlot = 0;
+const remotePlayers = new Map(); // sid -> { username, x, y, dir, frame, hasSword, colorSlot, isMoving, moveFrom, moveTo, moveProgress }
 let lastEmitTime = 0;
 
 function updatePlayerCountHUD() {
@@ -421,7 +422,11 @@ function connectMultiplayer(roomCode) {
 
     socket.on('connect', () => {
         myRoomCode = roomCode;
-        socket.emit('elf_join_room', { room: roomCode, username });
+        socket.emit('elf_join_room', {
+            room: roomCode, username,
+            x: player.x, y: player.y, dir: player.dir,
+            hasSword: inventory.sword > 0
+        });
     });
 
     socket.on('elf_room_full', () => {
@@ -436,7 +441,9 @@ function connectMultiplayer(roomCode) {
         // Apply world state from server
         for (const key of (data.openedChests || [])) openedChests.add(key);
         for (const key of (data.cutBushes || [])) cutBushes.add(key);
-        // Populate existing remote players
+        // Store our assigned color slot
+        myColorSlot = data.myColorSlot || 0;
+        // Populate existing remote players with their real positions and colors
         remotePlayers.clear();
         for (const [sid, p] of Object.entries(data.players || {})) {
             remotePlayers.set(sid, { ...p, isMoving: false, moveFrom: {x: p.x, y: p.y}, moveTo: {x: p.x, y: p.y}, moveProgress: 0 });
@@ -446,8 +453,15 @@ function connectMultiplayer(roomCode) {
     });
 
     socket.on('elf_player_joined', (data) => {
-        remotePlayers.set(data.sid, { username: data.username, x: 19, y: 13, dir: 'down', frame: 0, hasSword: true,
-            isMoving: false, moveFrom: {x:19,y:13}, moveTo: {x:19,y:13}, moveProgress: 0 });
+        const px = data.x !== undefined ? data.x : 19;
+        const py = data.y !== undefined ? data.y : 13;
+        remotePlayers.set(data.sid, {
+            username: data.username,
+            x: px, y: py, dir: data.dir || 'down', frame: 0,
+            hasSword: data.hasSword !== undefined ? data.hasSword : true,
+            colorSlot: data.colorSlot || 1,
+            isMoving: false, moveFrom: {x: px, y: py}, moveTo: {x: px, y: py}, moveProgress: 0
+        });
         updatePlayerCountHUD();
         showNotif(`${data.username} joined the room`);
     });
@@ -1240,9 +1254,23 @@ function getTileCanvas(tileId, variant) {
 // ============================================
 // ELF SPRITE
 // ============================================
-const elfSprites = {};
+const ELF_PALETTES = [
+    // 0 - Green (default)
+    { tunic: '#2e7d32', tunicDark: '#1b5e20', tunicLight: '#43a047', hat: '#76ff03', hatDark: '#64dd17', hatBand: '#33691e' },
+    // 1 - Blue
+    { tunic: '#1565c0', tunicDark: '#0d47a1', tunicLight: '#1e88e5', hat: '#40c4ff', hatDark: '#00b0ff', hatBand: '#01579b' },
+    // 2 - Red
+    { tunic: '#b71c1c', tunicDark: '#7f0000', tunicLight: '#e53935', hat: '#ff5252', hatDark: '#ff1744', hatBand: '#870000' },
+    // 3 - Purple
+    { tunic: '#6a1b9a', tunicDark: '#4a148c', tunicLight: '#8e24aa', hat: '#ce93d8', hatDark: '#ab47bc', hatBand: '#4a148c' },
+];
 
-function genElfSprite(dir, frame, hasSword) {
+const elfSprites = {};
+const elfColorSprites = {};      // colorSlot -> dir -> [frame0, frame1]
+const elfColorSwordSprites = {}; // colorSlot -> dir -> [frame0, frame1]
+
+function genElfSprite(dir, frame, hasSword, palette) {
+    const P = palette || ELF_PALETTES[0];
     const c = document.createElement('canvas');
     c.width = TILE; c.height = TILE;
     const ctx = c.getContext('2d');
@@ -1250,16 +1278,16 @@ function genElfSprite(dir, frame, hasSword) {
     const skin = '#fdd9b5';
     const skinShade = '#e8c8a0';
     const hair = '#8d6e63';
-    const tunic = '#2e7d32';
-    const tunicDark = '#1b5e20';
-    const tunicLight = '#43a047';
+    const tunic = P.tunic;
+    const tunicDark = P.tunicDark;
+    const tunicLight = P.tunicLight;
     const boots = '#5d4037';
     const bootsDark = '#3e2723';
     const belt = '#8d6e63';
     const beltBuckle = '#ffd600';
-    const hat = '#76ff03';
-    const hatDark = '#64dd17';
-    const hatBand = '#33691e';
+    const hat = P.hat;
+    const hatDark = P.hatDark;
+    const hatBand = P.hatBand;
     const eyeWhite = '#fff';
     const eyeColor = '#1a237e';
     const mouth = '#c97a5a';
@@ -1550,9 +1578,19 @@ function genElfSprite(dir, frame, hasSword) {
 const elfSwordSprites = {};
 
 function initElfSprites() {
+    for (let ci = 0; ci < 4; ci++) {
+        const P = ELF_PALETTES[ci];
+        elfColorSprites[ci] = {};
+        elfColorSwordSprites[ci] = {};
+        for (const dir of ['up', 'down', 'left', 'right']) {
+            elfColorSprites[ci][dir] = [genElfSprite(dir, 0, false, P), genElfSprite(dir, 1, false, P)];
+            elfColorSwordSprites[ci][dir] = [genElfSprite(dir, 0, true, P), genElfSprite(dir, 1, true, P)];
+        }
+    }
+    // elfSprites / elfSwordSprites point to palette 0 (green) for backward compat
     for (const dir of ['up', 'down', 'left', 'right']) {
-        elfSprites[dir] = [genElfSprite(dir, 0, false), genElfSprite(dir, 1, false)];
-        elfSwordSprites[dir] = [genElfSprite(dir, 0, true), genElfSprite(dir, 1, true)];
+        elfSprites[dir] = elfColorSprites[0][dir];
+        elfSwordSprites[dir] = elfColorSwordSprites[0][dir];
     }
 }
 
@@ -1781,7 +1819,9 @@ function render() {
     }
     const drawFrame = isMoving ? (Math.floor(animFrame / 8) % 2) : 0;
     const hasSword = inventory.sword > 0;
-    const spriteSet = hasSword ? elfSwordSprites : elfSprites;
+    const localCI = myColorSlot || 0;
+    const localSpriteBank = hasSword ? elfColorSwordSprites : elfColorSprites;
+    const spriteSet = (localSpriteBank[localCI] || localSpriteBank[0]);
     const elfC = spriteSet[player.dir][drawFrame];
     const ex = (elfX - cam.x) * TS;
     const ey = (elfY - cam.y) * TS;
@@ -1823,10 +1863,12 @@ function render() {
         for (const rp of remotePlayers.values()) {
             const rx = rp.isMoving ? rp.moveFrom.x + (rp.moveTo.x - rp.moveFrom.x) * rp.moveProgress : rp.x;
             const ry = rp.isMoving ? rp.moveFrom.y + (rp.moveTo.y - rp.moveFrom.y) * rp.moveProgress : rp.y;
-            const rSpriteSet = rp.hasSword ? elfSwordSprites : elfSprites;
+            const rCI = rp.colorSlot !== undefined ? rp.colorSlot : 1;
+            const rSpriteBank = rp.hasSword ? elfColorSwordSprites : elfColorSprites;
+            const rSpriteSet = rSpriteBank[rCI] || rSpriteBank[0];
             const rDir = rp.dir || 'down';
             const rFrame = rp.frame || 0;
-            const rC = rSpriteSet[rDir] ? rSpriteSet[rDir][rFrame] : elfSprites['down'][0];
+            const rC = rSpriteSet[rDir] ? rSpriteSet[rDir][rFrame] : elfColorSprites[0]['down'][0];
             const rex = (rx - cam.x) * TS;
             const rey = (ry - cam.y) * TS;
             ctx.drawImage(rC, rex, rey, TS, TS);

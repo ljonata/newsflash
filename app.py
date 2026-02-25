@@ -673,6 +673,10 @@ def on_elf_join_room(data):
     sid = sio_request.sid
     room = str(data.get('room', '')).strip().lower()[:12]
     username = str(data.get('username', 'Guest'))[:32]
+    x = int(data.get('x', 19))
+    y = int(data.get('y', 13))
+    dir_ = str(data.get('dir', 'down'))
+    has_sword = bool(data.get('hasSword', True))
     if not room:
         return
 
@@ -684,19 +688,30 @@ def on_elf_join_room(data):
         emit('elf_room_full')
         return
 
-    r['players'][sid] = {'username': username, 'x': 19, 'y': 13, 'dir': 'down', 'frame': 0, 'hasSword': True}
+    # Assign the lowest unused color slot (0=green, 1=blue, 2=red, 3=purple)
+    used_slots = {p.get('colorSlot', 0) for p in r['players'].values()}
+    color_slot = next(i for i in range(4) if i not in used_slots)
+
+    r['players'][sid] = {
+        'username': username, 'x': x, 'y': y, 'dir': dir_,
+        'frame': 0, 'hasSword': has_sword, 'colorSlot': color_slot
+    }
     sio_join_room(room)
 
     # Send current room state to the joining player
     emit('elf_room_state', {
         'sid': sid,
+        'myColorSlot': color_slot,
         'players': {s: p for s, p in r['players'].items() if s != sid},
         'openedChests': r['openedChests'],
         'cutBushes': r['cutBushes'],
     })
 
-    # Notify others in the room
-    emit('elf_player_joined', {'sid': sid, 'username': username}, to=room, include_self=False)
+    # Notify others in the room (include full state so they place the new player correctly)
+    emit('elf_player_joined', {
+        'sid': sid, 'username': username,
+        'x': x, 'y': y, 'dir': dir_, 'hasSword': has_sword, 'colorSlot': color_slot
+    }, to=room, include_self=False)
 
 
 @socketio.on('elf_player_update')
