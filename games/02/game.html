@@ -193,10 +193,10 @@
         /* ===== PLANT STYLES (in grid) ===== */
         .plant {
             position: absolute;
-            top: 5px;
-            left: 5px;
-            width: 50px;
-            height: 50px;
+            top: 2px;
+            left: 2px;
+            width: 40px;
+            height: 40px;
             z-index: 5;
         }
         /* Peashooter - textured green head with stem, mouth tube, glossy eyes */
@@ -210,25 +210,25 @@
         .plant-peashooter::before {
             content: '';
             position: absolute;
-            width: 9px; height: 10px;
+            width: 7px; height: 8px;
             background: radial-gradient(circle at 40% 35%, #fff, #ddd);
             border-radius: 50%;
-            top: 10px; left: 8px;
+            top: 8px; left: 6px;
             box-shadow:
-                15px 0 0 0 #fff,
-                3px 4px 0 0 #111,
-                18px 4px 0 0 #111,
-                2px 3px 0 0.5px #1b5e20,
-                17px 3px 0 0.5px #1b5e20;
+                12px 0 0 0 #fff,
+                2px 3px 0 0 #111,
+                14px 3px 0 0 #111,
+                1px 2px 0 0.5px #1b5e20,
+                13px 2px 0 0.5px #1b5e20;
         }
         .plant-peashooter::after {
             content: '';
             position: absolute;
-            width: 18px; height: 12px;
+            width: 14px; height: 10px;
             background: linear-gradient(180deg, #2e7d32, #1b5e20);
             border-radius: 2px 10px 10px 2px;
-            top: 19px; right: -5px;
-            box-shadow: inset -2px 0 4px rgba(0,0,0,0.4), inset 6px 0 0 rgba(0,0,0,0.15);
+            top: 15px; right: -4px;
+            box-shadow: inset -2px 0 4px rgba(0,0,0,0.4), inset 5px 0 0 rgba(0,0,0,0.15);
         }
 
         /* Sunflower - petal ring around brown center, happy face, stem hint */
@@ -239,29 +239,29 @@
                 radial-gradient(circle at 50% 50%, #ffee58, #f9a825 55%, #e65100);
             border-radius: 50%;
             box-shadow:
-                0 -8px 0 -2px #fdd835, 0 8px 0 -2px #f9a825,
-                -8px 0 0 -2px #fdd835, 8px 0 0 -2px #f9a825,
-                -6px -6px 0 -3px #ffeb3b, 6px -6px 0 -3px #ffeb3b,
-                -6px 6px 0 -3px #f9a825, 6px 6px 0 -3px #f9a825,
+                0 -6px 0 -2px #fdd835, 0 6px 0 -2px #f9a825,
+                -6px 0 0 -2px #fdd835, 6px 0 0 -2px #f9a825,
+                -5px -5px 0 -3px #ffeb3b, 5px -5px 0 -3px #ffeb3b,
+                -5px 5px 0 -3px #f9a825, 5px 5px 0 -3px #f9a825,
                 inset -2px -2px 4px rgba(0,0,0,0.2), 0 2px 3px rgba(0,0,0,0.3);
         }
         .plant-sunflower::before {
             content: '';
             position: absolute;
-            width: 6px; height: 7px;
+            width: 5px; height: 5px;
             background: #1a1a1a;
             border-radius: 50%;
-            top: 16px; left: 14px;
-            box-shadow: 12px 0 0 #1a1a1a;
+            top: 12px; left: 10px;
+            box-shadow: 10px 0 0 #1a1a1a;
         }
         .plant-sunflower::after {
             content: '';
             position: absolute;
-            width: 12px; height: 5px;
+            width: 10px; height: 4px;
             border: 2px solid #3e2723;
             border-top: none;
             border-radius: 0 0 8px 8px;
-            bottom: 14px; left: 17px;
+            bottom: 10px; left: 13px;
             background: transparent;
         }
 
@@ -278,21 +278,21 @@
         .plant-wallnut::before {
             content: '';
             position: absolute;
-            width: 7px; height: 11px;
+            width: 5px; height: 8px;
             background: #3e2723;
             border-radius: 50%;
-            top: 12px; left: 11px;
-            box-shadow: 15px 0 0 #3e2723,
+            top: 9px; left: 9px;
+            box-shadow: 12px 0 0 #3e2723,
                 2px 3px 0 0 rgba(255,255,255,0.15),
-                17px 3px 0 0 rgba(255,255,255,0.15);
+                14px 3px 0 0 rgba(255,255,255,0.15);
         }
         .plant-wallnut::after {
             content: '';
             position: absolute;
-            width: 18px; height: 5px;
+            width: 14px; height: 4px;
             background: #3e2723;
             border-radius: 3px;
-            bottom: 10px; left: 16px;
+            bottom: 7px; left: 13px;
             box-shadow: 0 -2px 0 rgba(0,0,0,0.1);
         }
         .plant-wallnut.wallnut-damaged {
@@ -326,22 +326,22 @@
         .plant-snowpea::before {
             content: '';
             position: absolute;
-            width: 9px; height: 10px;
+            width: 7px; height: 8px;
             background: radial-gradient(circle at 40% 35%, #e0f7fa, #b3e5fc);
             border-radius: 50%;
-            top: 10px; left: 8px;
+            top: 8px; left: 6px;
             box-shadow:
-                15px 0 0 0 #e0f7fa,
-                3px 4px 0 0 #0d47a1,
-                18px 4px 0 0 #0d47a1;
+                12px 0 0 0 #e0f7fa,
+                2px 3px 0 0 #0d47a1,
+                14px 3px 0 0 #0d47a1;
         }
         .plant-snowpea::after {
             content: '';
             position: absolute;
-            width: 18px; height: 12px;
+            width: 14px; height: 10px;
             background: linear-gradient(180deg, #0288d1, #01579b);
             border-radius: 2px 10px 10px 2px;
-            top: 19px; right: -5px;
+            top: 15px; right: -4px;
             box-shadow: inset -2px 0 4px rgba(0,0,0,0.3), 0 0 4px rgba(129,212,250,0.3);
         }
 
@@ -356,32 +356,32 @@
         .plant-repeater::before {
             content: '';
             position: absolute;
-            width: 9px; height: 10px;
+            width: 7px; height: 8px;
             background: radial-gradient(circle at 40% 35%, #fff, #ffcdd2);
             border-radius: 50%;
-            top: 10px; left: 8px;
+            top: 8px; left: 6px;
             box-shadow:
-                15px 0 0 0 #fff,
-                3px 4px 0 0 #111,
-                18px 4px 0 0 #111;
+                12px 0 0 0 #fff,
+                2px 3px 0 0 #111,
+                14px 3px 0 0 #111;
         }
         .plant-repeater::after {
             content: '';
             position: absolute;
-            width: 22px; height: 14px;
+            width: 17px; height: 11px;
             background: linear-gradient(180deg, #b71c1c 40%, #7f0000);
             border-radius: 2px 10px 10px 2px;
-            top: 17px; right: -8px;
+            top: 14px; right: -6px;
             box-shadow: inset -2px 0 5px rgba(0,0,0,0.5), inset 0 -3px 0 rgba(0,0,0,0.15), inset 0 3px 0 rgba(255,255,255,0.1);
         }
 
         /* ===== ZOMBIE ===== */
         .zombie {
             position: absolute;
-            top: 5px;
-            left: 5px;
-            width: 50px;
-            height: 50px;
+            top: 18px;
+            left: 20px;
+            width: 36px;
+            height: 36px;
             background:
                 radial-gradient(circle at 32% 28%, rgba(120,180,100,0.35) 0%, transparent 30%),
                 radial-gradient(circle at 70% 65%, rgba(0,0,0,0.2) 0%, transparent 35%),
@@ -394,31 +394,31 @@
         .zombie::before {
             content: '';
             position: absolute;
-            width: 11px; height: 12px;
+            width: 8px; height: 9px;
             background: radial-gradient(circle at 40% 35%, #ff1744, #b71c1c);
             border-radius: 50%;
-            top: 10px; left: 7px;
+            top: 7px; left: 5px;
             box-shadow:
-                19px 0 0 0 #ff1744,
+                14px 0 0 0 #ff1744,
                 2px 3px 0 0 #1a0000,
-                21px 3px 0 0 #1a0000,
-                0 0 4px rgba(255,23,68,0.5),
-                19px 0 4px rgba(255,23,68,0.5);
+                16px 3px 0 0 #1a0000,
+                0 0 3px rgba(255,23,68,0.5),
+                14px 0 3px rgba(255,23,68,0.5);
         }
         .zombie::after {
             content: '';
             position: absolute;
-            width: 28px; height: 8px;
+            width: 20px; height: 6px;
             background:
                 linear-gradient(180deg, #5d4037 0%, #3e2723 100%);
             border-radius: 2px 2px 4px 4px;
-            bottom: 10px; left: 11px;
+            bottom: 7px; left: 8px;
             box-shadow:
-                inset 0 -2px 3px rgba(0,0,0,0.4),
-                -3px 3px 0 -1px #4a6d3c,
-                25px 3px 0 -1px #4a6d3c,
-                -3px 7px 0 -1px #3e2723,
-                25px 7px 0 -1px #3e2723;
+                inset 0 -1px 2px rgba(0,0,0,0.4),
+                -2px 2px 0 -1px #4a6d3c,
+                18px 2px 0 -1px #4a6d3c,
+                -2px 5px 0 -1px #3e2723,
+                18px 5px 0 -1px #3e2723;
         }
         .zombie.slowed {
             box-shadow: inset -3px -4px 6px rgba(0,0,0,0.4), inset 2px 2px 4px rgba(129,212,250,0.4), 0 0 10px rgba(129,212,250,0.6), 0 0 20px rgba(129,212,250,0.3);
@@ -563,72 +563,70 @@
             #sun-count { font-size: 13px; }
             .cell { width: 36px; height: 36px; }
             .plant {
-                top: 3px; left: 3px;
-                width: 30px; height: 30px;
+                top: 1px; left: 1px;
+                width: 24px; height: 24px;
             }
             /* Peashooter / Snow Pea / Repeater eyes */
             .plant-peashooter::before, .plant-snowpea::before, .plant-repeater::before {
-                width: 7px; height: 8px;
-                top: 7px; left: 5px;
+                width: 5px; height: 6px;
+                top: 5px; left: 3px;
                 box-shadow:
-                    12px 0 0 0 inherit,
-                    2px 3px 0 0 #111,
-                    14px 3px 0 0 #111;
+                    8px 0 0 0 inherit,
+                    1px 2px 0 0 #111,
+                    9px 2px 0 0 #111;
             }
             /* Peashooter / Snow Pea mouth tube */
             .plant-peashooter::after, .plant-snowpea::after {
-                width: 12px; height: 8px;
-                top: 14px; right: -3px;
+                width: 9px; height: 6px;
+                top: 10px; right: -2px;
             }
             /* Repeater double-barrel */
             .plant-repeater::after {
-                width: 16px; height: 10px;
-                top: 13px; right: -5px;
+                width: 11px; height: 7px;
+                top: 9px; right: -4px;
             }
             /* Sunflower petals + face */
             .plant-sunflower::before {
-                width: 5px; height: 5px;
-                top: 9px; left: 6px;
-                box-shadow: 9px 0 0 #5d4037;
+                width: 4px; height: 4px;
+                top: 7px; left: 4px;
+                box-shadow: 7px 0 0 #5d4037;
             }
             .plant-sunflower::after {
-                width: 10px; height: 5px;
-                bottom: 7px; left: 8px;
+                width: 8px; height: 4px;
+                bottom: 5px; left: 6px;
             }
             /* Wall-nut face */
             .plant-wallnut::before {
-                width: 5px; height: 8px;
-                top: 7px; left: 6px;
-                box-shadow: 10px 0 0 #3e2723;
+                width: 4px; height: 6px;
+                top: 5px; left: 4px;
+                box-shadow: 8px 0 0 #3e2723;
             }
             .plant-wallnut::after {
-                width: 12px; height: 4px;
-                bottom: 6px; left: 9px;
+                width: 10px; height: 3px;
+                bottom: 4px; left: 7px;
             }
             /* Zombie */
             .zombie {
-                top: 3px; left: 3px;
-                width: 30px; height: 30px;
+                top: 12px; left: 12px;
+                width: 22px; height: 22px;
             }
             .zombie::before {
-                width: 7px; height: 8px;
-                top: 6px; left: 4px;
+                width: 5px; height: 6px;
+                top: 4px; left: 3px;
                 box-shadow:
-                    12px 0 0 0 #ff1744,
-                    2px 2px 0 0 #1a0000,
-                    14px 2px 0 0 #1a0000,
-                    0 0 3px rgba(255,23,68,0.5),
-                    12px 0 3px rgba(255,23,68,0.5);
+                    8px 0 0 0 #ff1744,
+                    1px 2px 0 0 #1a0000,
+                    9px 2px 0 0 #1a0000,
+                    0 0 2px rgba(255,23,68,0.5),
+                    8px 0 2px rgba(255,23,68,0.5);
             }
             .zombie::after {
-                width: 17px; height: 5px;
-                bottom: 6px; left: 7px;
+                width: 12px; height: 4px;
+                bottom: 4px; left: 5px;
                 box-shadow:
-                    inset 0 -1px 2px rgba(0,0,0,0.4),
+                    inset 0 -1px 1px rgba(0,0,0,0.4),
                     -2px 2px 0 -1px #4a6d3c,
-                    15px 2px 0 -1px #4a6d3c,
-                    -2px 4px 0 -1px #3e2723,
-                    15px 4px 0 -1px #3e2723;
+                    10px 2px 0 -1px #4a6d3c;
             }
             .projectile { width: 10px; height: 10px; }
             .sun-drop { width: 20px; height: 20px; }
@@ -649,62 +647,62 @@
             #sun-display { padding: 5px 2px; }
             .cell { width: 28px; height: 28px; }
             .plant {
-                top: 2px; left: 2px;
-                width: 24px; height: 24px;
+                top: 1px; left: 1px;
+                width: 18px; height: 18px;
             }
             .plant-peashooter::before, .plant-snowpea::before, .plant-repeater::before {
-                width: 5px; height: 6px;
-                top: 5px; left: 3px;
+                width: 4px; height: 4px;
+                top: 4px; left: 2px;
                 box-shadow:
-                    10px 0 0 0 inherit,
+                    6px 0 0 0 inherit,
                     1px 2px 0 0 #111,
-                    11px 2px 0 0 #111;
+                    7px 2px 0 0 #111;
             }
             .plant-peashooter::after, .plant-snowpea::after {
-                width: 9px; height: 6px;
-                top: 11px; right: -2px;
+                width: 7px; height: 5px;
+                top: 8px; right: -2px;
             }
             .plant-repeater::after {
-                width: 12px; height: 7px;
-                top: 10px; right: -4px;
+                width: 9px; height: 5px;
+                top: 7px; right: -3px;
             }
             .plant-sunflower::before {
-                width: 4px; height: 4px;
-                top: 7px; left: 5px;
-                box-shadow: 7px 0 0 #5d4037;
+                width: 3px; height: 3px;
+                top: 5px; left: 3px;
+                box-shadow: 5px 0 0 #5d4037;
             }
             .plant-sunflower::after {
-                width: 8px; height: 4px;
-                bottom: 5px; left: 6px;
+                width: 6px; height: 3px;
+                bottom: 3px; left: 5px;
             }
             .plant-wallnut::before {
-                width: 4px; height: 6px;
-                top: 5px; left: 5px;
-                box-shadow: 8px 0 0 #3e2723;
+                width: 3px; height: 4px;
+                top: 4px; left: 3px;
+                box-shadow: 6px 0 0 #3e2723;
             }
             .plant-wallnut::after {
-                width: 10px; height: 3px;
-                bottom: 5px; left: 7px;
+                width: 8px; height: 2px;
+                bottom: 3px; left: 5px;
             }
             .zombie {
-                top: 2px; left: 2px;
-                width: 24px; height: 24px;
+                top: 9px; left: 9px;
+                width: 18px; height: 18px;
             }
             .zombie::before {
-                width: 6px; height: 6px;
-                top: 4px; left: 3px;
+                width: 4px; height: 4px;
+                top: 3px; left: 2px;
                 box-shadow:
-                    9px 0 0 0 #ff1744,
+                    7px 0 0 0 #ff1744,
                     1px 2px 0 0 #1a0000,
-                    10px 2px 0 0 #1a0000;
+                    8px 2px 0 0 #1a0000;
             }
             .zombie::after {
-                width: 14px; height: 4px;
-                bottom: 4px; left: 5px;
+                width: 10px; height: 3px;
+                bottom: 3px; left: 4px;
                 box-shadow:
                     inset 0 -1px 1px rgba(0,0,0,0.4),
-                    -2px 2px 0 -1px #4a6d3c,
-                    12px 2px 0 -1px #4a6d3c;
+                    -1px 1px 0 -1px #4a6d3c,
+                    9px 1px 0 -1px #4a6d3c;
             }
             .projectile { width: 8px; height: 8px; }
             .sun-drop { width: 16px; height: 16px; }
@@ -1044,9 +1042,20 @@
             setTimeout(() => {
                 if (plant.element.parentNode) plant.element.style.filter = '';
             }, 300);
-            // Reset progress bar
+            // Reset progress bar and restart animation loop
             plant.sunStart = performance.now();
             if (plant.sunFill) plant.sunFill.style.width = '0%';
+            if (plant.sunProgressRAF) cancelAnimationFrame(plant.sunProgressRAF);
+            function updateBar() {
+                if (gameOver || !plant.element.parentNode) return;
+                const elapsed = performance.now() - plant.sunStart;
+                const pct = Math.min(100, (elapsed / SUN_PRODUCE_INTERVAL) * 100);
+                plant.sunFill.style.width = pct + '%';
+                if (pct < 100) {
+                    plant.sunProgressRAF = requestAnimationFrame(updateBar);
+                }
+            }
+            plant.sunProgressRAF = requestAnimationFrame(updateBar);
         }
 
         // ========== PROJECTILE LOGIC ==========
