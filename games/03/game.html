@@ -450,7 +450,6 @@ let chickenSpawnTimer = 0;
 // THREE.JS SETUP
 // ============================================
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87CEEB);
 scene.fog = new THREE.Fog(0x87CEEB, 30, 60);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -471,6 +470,9 @@ scene.add(dirLight);
 // Raycaster for block interaction
 const raycaster = new THREE.Raycaster();
 raycaster.far = 6;
+
+// Sky camera — follows main camera rotation, stays at origin, renders sun/moon/stars without fog
+const skyCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
 
 // First-person right hand — separate overlay scene (renders on top)
 const handScene = new THREE.Scene();
@@ -1191,8 +1193,14 @@ function updateChickens(delta) {
 // ============================================
 // DAY/NIGHT CYCLE
 // ============================================
-// Stars — small white dots scattered across a large sphere
 let starsMesh = null;
+let sunSprite = null;
+let moonSprite = null;
+
+// Separate scene for sky objects (sun, moon, stars) — rendered without fog
+const skyScene = new THREE.Scene();
+skyScene.background = new THREE.Color(0x87CEEB);
+const SKY_DIST = 80; // distance from camera for sky objects
 
 function createStars() {
     const count = 300;
@@ -1200,19 +1208,126 @@ function createStars() {
     const positions = new Float32Array(count * 3);
     const rng = mulberry32(999);
     for (let i = 0; i < count; i++) {
-        // Random point on a sphere, only upper hemisphere
         const theta = rng() * Math.PI * 2;
-        const phi = rng() * Math.PI * 0.45; // above horizon
-        const r = 55;
-        positions[i * 3]     = Math.sin(phi) * Math.cos(theta) * r + WORLD_SIZE / 2;
-        positions[i * 3 + 1] = Math.cos(phi) * r + 5;
-        positions[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * r + WORLD_SIZE / 2;
+        const phi = rng() * Math.PI * 0.48;
+        const r = SKY_DIST;
+        positions[i * 3]     = Math.sin(phi) * Math.cos(theta) * r;
+        positions[i * 3 + 1] = Math.cos(phi) * r;
+        positions[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * r;
     }
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.4, sizeAttenuation: true });
+    const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, sizeAttenuation: true });
     starsMesh = new THREE.Points(geo, mat);
     starsMesh.visible = false;
-    scene.add(starsMesh);
+    skyScene.add(starsMesh);
+}
+
+function createSunSprite() {
+    const size = 64;
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const ctx = c.getContext('2d');
+    const rng = mulberry32(555);
+    const cx = size / 2, cy = size / 2, r = size / 2 - 2;
+
+    // Outer glow
+    const glow = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
+    glow.addColorStop(0, 'rgba(255,240,100,1)');
+    glow.addColorStop(0.5, 'rgba(255,200,50,0.6)');
+    glow.addColorStop(0.8, 'rgba(255,160,20,0.2)');
+    glow.addColorStop(1, 'rgba(255,130,0,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, size, size);
+
+    // Pixelated sun disc — bright yellow/orange noisy pixels
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const dx = x - cx, dy = y - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < r * 0.55) {
+                const v = Math.floor((rng() - 0.5) * 25);
+                const pr = Math.min(255, 255 + v);
+                const pg = Math.min(255, Math.max(0, 220 + v));
+                const pb = Math.max(0, 60 + v);
+                ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    sunSprite = new THREE.Sprite(mat);
+    sunSprite.scale.set(12, 12, 1);
+    sunSprite.renderOrder = 1;
+    skyScene.add(sunSprite);
+}
+
+function createMoonSprite() {
+    const size = 64;
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const ctx = c.getContext('2d');
+    const rng = mulberry32(777);
+    const cx = size / 2, cy = size / 2, r = size / 2 - 2;
+
+    // Soft glow
+    const glow = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
+    glow.addColorStop(0, 'rgba(230,235,250,1)');
+    glow.addColorStop(0.5, 'rgba(200,210,235,0.4)');
+    glow.addColorStop(0.8, 'rgba(170,180,210,0.15)');
+    glow.addColorStop(1, 'rgba(150,160,200,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, size, size);
+
+    // Pixelated moon disc — bright grey/white pixels
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const dx = x - cx, dy = y - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < r * 0.55) {
+                const v = Math.floor((rng() - 0.5) * 20);
+                const base = 225 + v;
+                const pr = Math.min(255, Math.max(0, base - 5));
+                const pg = Math.min(255, Math.max(0, base));
+                const pb = Math.min(255, Math.max(0, base + 12));
+                ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+    }
+
+    // Craters — darker circular patches
+    const craters = [
+        { x: cx - 6, y: cy - 4, r: 4 },
+        { x: cx + 7, y: cy + 3, r: 3 },
+        { x: cx + 2, y: cy + 8, r: 5 },
+        { x: cx - 8, y: cy + 6, r: 2.5 },
+        { x: cx + 5, y: cy - 7, r: 2 },
+    ];
+    for (const cr of craters) {
+        for (let y = Math.floor(cr.y - cr.r); y <= Math.ceil(cr.y + cr.r); y++) {
+            for (let x = Math.floor(cr.x - cr.r); x <= Math.ceil(cr.x + cr.r); x++) {
+                const dx = x - cr.x, dy = y - cr.y;
+                if (dx * dx + dy * dy < cr.r * cr.r) {
+                    const v = Math.floor((rng() - 0.5) * 15);
+                    ctx.fillStyle = `rgb(${165 + v},${170 + v},${182 + v})`;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    moonSprite = new THREE.Sprite(mat);
+    moonSprite.scale.set(9, 9, 1);
+    moonSprite.renderOrder = 1;
+    skyScene.add(moonSprite);
 }
 
 // Color interpolation helpers
@@ -1225,7 +1340,7 @@ function lerpColor(c1, c2, t) {
     return (r << 16) | (g << 8) | b;
 }
 
-// Sky color keyframes: [gameTime, skyColor]
+// Sky color keyframes
 // 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
 const SKY_KEYS = [
     { t: 0.00, sky: 0x0a0a2e, fog: 0x0a0a2e, ambient: 0.15, dir: 0.05, dirColor: 0x8888aa },
@@ -1264,26 +1379,60 @@ function updateDayNight(delta) {
     const ambientIntensity = k0.ambient + (k1.ambient - k0.ambient) * t;
     const dirIntensity = k0.dir + (k1.dir - k0.dir) * t;
 
-    scene.background.setHex(skyColor);
+    skyScene.background.setHex(skyColor);
     scene.fog.color.setHex(fogColor);
     ambientLight.intensity = ambientIntensity;
     dirLight.intensity = dirIntensity;
     dirLight.color.setHex(dirColor);
 
-    // Rotate sun direction around the world
-    const sunAngle = gameTime * Math.PI * 2;
+    // Sun/moon orbit — arc across the sky relative to camera
+    // sunAngle: 0.25 (6AM) = east horizon, 0.5 (noon) = zenith, 0.75 (6PM) = west horizon
+    const sunAngle = gameTime * Math.PI * 2 - Math.PI / 2;
+    const moonAngle = sunAngle + Math.PI;
+
+    // Positions in sky scene (centered on camera, no fog)
+    const sunX = Math.cos(sunAngle) * SKY_DIST;
+    const sunY = Math.sin(sunAngle) * SKY_DIST;
+    const sunZ = 0;
+
+    const moonX = Math.cos(moonAngle) * SKY_DIST;
+    const moonY = Math.sin(moonAngle) * SKY_DIST;
+    const moonZ = 0;
+
+    // Update directional light to come from the sun direction
     dirLight.position.set(
-        WORLD_SIZE / 2 + Math.cos(sunAngle) * 30,
-        Math.sin(sunAngle) * 30 + 10,
-        WORLD_SIZE / 2
+        camera.position.x + Math.cos(sunAngle) * 30,
+        camera.position.y + Math.sin(sunAngle) * 30,
+        camera.position.z
     );
 
-    // Stars visible at night (gameTime < 0.2 or > 0.8)
+    // Position sun sprite — show when above horizon
+    if (sunSprite) {
+        sunSprite.position.set(sunX, sunY, sunZ);
+        sunSprite.visible = sunY > -4;
+        if (sunY > -4 && sunY < 8) {
+            sunSprite.material.opacity = Math.max(0, Math.min(1, (sunY + 4) / 12));
+        } else {
+            sunSprite.material.opacity = 1;
+        }
+    }
+
+    // Position moon sprite
+    if (moonSprite) {
+        moonSprite.position.set(moonX, moonY, moonZ);
+        moonSprite.visible = moonY > -4;
+        if (moonY > -4 && moonY < 8) {
+            moonSprite.material.opacity = Math.max(0, Math.min(1, (moonY + 4) / 12));
+        } else {
+            moonSprite.material.opacity = 1;
+        }
+    }
+
+    // Stars visible at night
     if (starsMesh) {
         const isNight = gameTime < 0.22 || gameTime > 0.78;
         starsMesh.visible = isNight;
         if (isNight) {
-            // Fade stars near dawn/dusk
             let starAlpha = 1;
             if (gameTime > 0.78) starAlpha = Math.min(1, (gameTime - 0.78) / 0.04);
             else if (gameTime < 0.22) starAlpha = Math.min(1, (0.22 - gameTime) / 0.04);
@@ -1293,13 +1442,12 @@ function updateDayNight(delta) {
     }
 
     // Update HUD clock
-    // gameTime 0=midnight (00:00), 0.5=noon (12:00)
     const totalMinutes = Math.floor(gameTime * 24 * 60);
     const hours = Math.floor(totalMinutes / 60) % 24;
     const minutes = totalMinutes % 60;
     const timeStr = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
     const isDay = gameTime > 0.25 && gameTime < 0.75;
-    const icon = isDay ? '\u2600' : '\u263E'; // sun or moon
+    const icon = isDay ? '\u2600' : '\u263E';
     document.getElementById('d-time').textContent = icon + ' ' + timeStr;
 }
 
@@ -2237,10 +2385,15 @@ function animate() {
         handGroup.rotation.set(handRestRot.x, handRestRot.y, handRestRot.z);
     }
 
-    // Render main scene
-    renderer.render(scene, camera);
-    // Render hand overlay on top (clear depth only, keep color)
+    // Render sky scene first (sun, moon, stars) — no fog, camera rotation only
+    skyCamera.quaternion.copy(camera.quaternion);
+    renderer.render(skyScene, skyCamera);
+
+    // Render main scene on top (keeps sky behind world geometry)
     renderer.autoClear = false;
+    renderer.render(scene, camera);
+
+    // Render hand overlay on top (clear depth only, keep color)
     renderer.clearDepth();
     renderer.render(handScene, handCamera);
     renderer.autoClear = true;
@@ -2250,9 +2403,12 @@ function animate() {
 // RESIZE
 // ============================================
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const aspect = window.innerWidth / window.innerHeight;
+    camera.aspect = aspect;
     camera.updateProjectionMatrix();
-    handCamera.aspect = window.innerWidth / window.innerHeight;
+    skyCamera.aspect = aspect;
+    skyCamera.updateProjectionMatrix();
+    handCamera.aspect = aspect;
     handCamera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
@@ -2266,6 +2422,8 @@ function init() {
     initInstanced();
     genCrackTextures();
     createStars();
+    createSunSprite();
+    createMoonSprite();
     const loaded = loadState();
     if (!loaded) generateWorld();
     // Also clear old tab-based state
