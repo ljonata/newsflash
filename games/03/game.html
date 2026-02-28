@@ -1196,6 +1196,7 @@ function updateChickens(delta) {
 let starsMesh = null;
 let sunSprite = null;
 let moonSprite = null;
+let clouds = []; // { mesh, speed, offset }
 
 // Separate scene for sky objects (sun, moon, stars) — rendered without fog
 const skyScene = new THREE.Scene();
@@ -1270,51 +1271,56 @@ function createSunSprite() {
 }
 
 function createMoonSprite() {
-    const size = 64;
+    const size = 128;
     const c = document.createElement('canvas');
     c.width = size; c.height = size;
     const ctx = c.getContext('2d');
     const rng = mulberry32(777);
-    const cx = size / 2, cy = size / 2, r = size / 2 - 2;
+    const cx = size / 2, cy = size / 2;
 
-    // Square moon — Minecraft style
-    const pad = 10; // padding from edge for glow room
-    const sq = size - pad * 2; // square size
+    // Soft blue-white radial glow
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, size / 2);
+    glow.addColorStop(0, 'rgba(210,220,240,0.8)');
+    glow.addColorStop(0.2, 'rgba(180,195,225,0.4)');
+    glow.addColorStop(0.4, 'rgba(140,160,200,0.12)');
+    glow.addColorStop(0.7, 'rgba(100,120,180,0.03)');
+    glow.addColorStop(1, 'rgba(80,100,160,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, size, size);
 
-    // Outer glow behind square
-    ctx.shadowColor = 'rgba(200,210,240,0.8)';
-    ctx.shadowBlur = 10;
-    ctx.fillStyle = 'rgba(200,210,240,0.15)';
-    ctx.fillRect(pad - 4, pad - 4, sq + 8, sq + 8);
-    ctx.shadowBlur = 0;
+    // Moon square — pixelated at 4px block size for chunky Minecraft look
+    const sqSize = 32;
+    const sqX = cx - sqSize / 2, sqY = cy - sqSize / 2;
+    const pxSize = 4; // each "pixel" is 4x4 canvas pixels
+    const gridW = sqSize / pxSize; // 8x8 grid
 
-    // Pixelated square moon face — bright grey/white noisy pixels
-    for (let y = pad; y < pad + sq; y++) {
-        for (let x = pad; x < pad + sq; x++) {
-            const v = Math.floor((rng() - 0.5) * 20);
-            const base = 225 + v;
-            const pr = Math.min(255, Math.max(0, base - 5));
-            const pg = Math.min(255, Math.max(0, base));
-            const pb = Math.min(255, Math.max(0, base + 12));
-            ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
-            ctx.fillRect(x, y, 1, 1);
+    // Base moon face — light grey/white chunky pixels
+    for (let gy = 0; gy < gridW; gy++) {
+        for (let gx = 0; gx < gridW; gx++) {
+            const v = Math.floor((rng() - 0.5) * 18);
+            const base = 230 + v;
+            ctx.fillStyle = `rgb(${base - 3},${base},${base + 5})`;
+            ctx.fillRect(sqX + gx * pxSize, sqY + gy * pxSize, pxSize, pxSize);
         }
     }
 
-    // Square craters — darker rectangular patches
+    // Large blocky craters — darker grey patches (in grid coords)
     const craters = [
-        { x: pad + 4,  y: pad + 5,  w: 7, h: 6 },
-        { x: pad + 22, y: pad + 8,  w: 5, h: 5 },
-        { x: pad + 14, y: pad + 24, w: 8, h: 7 },
-        { x: pad + 3,  y: pad + 28, w: 4, h: 4 },
-        { x: pad + 28, y: pad + 3,  w: 4, h: 3 },
+        { gx: 1, gy: 1, gw: 2, gh: 2, shade: 160 },
+        { gx: 5, gy: 0, gw: 2, gh: 2, shade: 170 },
+        { gx: 3, gy: 3, gw: 3, gh: 2, shade: 150 },
+        { gx: 0, gy: 5, gw: 2, gh: 2, shade: 165 },
+        { gx: 5, gy: 5, gw: 2, gh: 3, shade: 155 },
+        { gx: 2, gy: 6, gw: 2, gh: 1, shade: 170 },
     ];
     for (const cr of craters) {
-        for (let y = cr.y; y < cr.y + cr.h; y++) {
-            for (let x = cr.x; x < cr.x + cr.w; x++) {
+        for (let gy = cr.gy; gy < cr.gy + cr.gh; gy++) {
+            for (let gx = cr.gx; gx < cr.gx + cr.gw; gx++) {
+                if (gx >= gridW || gy >= gridW) continue;
                 const v = Math.floor((rng() - 0.5) * 15);
-                ctx.fillStyle = `rgb(${165 + v},${170 + v},${182 + v})`;
-                ctx.fillRect(x, y, 1, 1);
+                const s = cr.shade + v;
+                ctx.fillStyle = `rgb(${s - 5},${s},${s + 8})`;
+                ctx.fillRect(sqX + gx * pxSize, sqY + gy * pxSize, pxSize, pxSize);
             }
         }
     }
@@ -1324,9 +1330,87 @@ function createMoonSprite() {
     tex.minFilter = THREE.NearestFilter;
     const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
     moonSprite = new THREE.Sprite(mat);
-    moonSprite.scale.set(9, 9, 1);
+    moonSprite.scale.set(14, 14, 1);
     moonSprite.renderOrder = 1;
     skyScene.add(moonSprite);
+}
+
+function createClouds() {
+    const rng = mulberry32(333);
+    const cloudCount = 18;
+
+    for (let i = 0; i < cloudCount; i++) {
+        // Each cloud is a group of 2-5 flat boxes merged together
+        const group = new THREE.Group();
+        const segCount = 2 + Math.floor(rng() * 4);
+        const cloudMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff, transparent: true, opacity: 0.85,
+            depthTest: false
+        });
+
+        for (let s = 0; s < segCount; s++) {
+            const w = 3 + rng() * 5;
+            const h = 0.6 + rng() * 0.4;
+            const d = 2 + rng() * 3;
+            const seg = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), cloudMat);
+            seg.position.set(
+                (rng() - 0.5) * 4,
+                (rng() - 0.5) * 0.3,
+                (rng() - 0.5) * 2
+            );
+            group.add(seg);
+        }
+
+        // Spread clouds on a ring around the sky
+        const angle = rng() * Math.PI * 2;
+        const dist = 25 + rng() * 30;
+        const height = 20 + rng() * 15;
+        group.position.set(
+            Math.cos(angle) * dist,
+            height,
+            Math.sin(angle) * dist
+        );
+        group.userData.angle = angle;
+        group.userData.dist = dist;
+        group.userData.height = height;
+        group.userData.speed = 0.003 + rng() * 0.006;
+
+        scene.add(group);
+        clouds.push(group);
+    }
+}
+
+function updateClouds(delta) {
+    const camX = camera.position.x;
+    const camZ = camera.position.z;
+
+    // Tint clouds based on time of day
+    const isDay = gameTime > 0.25 && gameTime < 0.75;
+    const nearDawn = gameTime > 0.2 && gameTime < 0.3;
+    const nearDusk = gameTime > 0.7 && gameTime < 0.8;
+    let cr = 255, cg = 255, cb = 255, opacity = 0.85;
+
+    if (nearDawn || nearDusk) {
+        cr = 255; cg = 180; cb = 130; opacity = 0.8;
+    } else if (!isDay) {
+        cr = 30; cg = 30; cb = 50; opacity = 0.7;
+    }
+
+    for (const cloud of clouds) {
+        // Drift clouds slowly
+        cloud.userData.angle += cloud.userData.speed * delta;
+        const a = cloud.userData.angle;
+        const d = cloud.userData.dist;
+        cloud.position.set(
+            camX + Math.cos(a) * d,
+            cloud.userData.height,
+            camZ + Math.sin(a) * d
+        );
+
+        // Update cloud color
+        cloud.children[0].material.color.setRGB(cr / 255, cg / 255, cb / 255);
+        cloud.children[0].material.opacity = opacity;
+    }
 }
 
 // Color interpolation helpers
@@ -2322,6 +2406,7 @@ function animate() {
     updatePhysics(delta);
     updateChickens(delta);
     updateDayNight(delta);
+    updateClouds(delta);
 
     // Mining progress (hold to mine - desktop & mobile)
     if (isMining && !craftOpen) {
@@ -2423,6 +2508,7 @@ function init() {
     createStars();
     createSunSprite();
     createMoonSprite();
+    createClouds();
     const loaded = loadState();
     if (!loaded) generateWorld();
     // Also clear old tab-based state
