@@ -321,7 +321,7 @@
 <!-- Chat -->
 <button id="chat-btn" onclick="openChat()">Chat (Q)</button>
 <div id="chat-box">
-    <div id="chat-header">Hold <span>Q</span> for 3 seconds to leave <div id="chat-quit-bar"><div id="chat-quit-fill"></div></div></div>
+    <div id="chat-header">Press <span>Escape</span> to close chat</div>
     <div id="chat-messages"></div>
     <div id="chat-input-row">
         <input id="chat-input" type="text" placeholder="Type a message..." maxlength="120" autocomplete="off">
@@ -2127,6 +2127,7 @@ function animateQuitBar() {
 
 // Chat input listens for its own keys to prevent game interference
 document.getElementById('chat-input').addEventListener('keydown', (e) => {
+    if (e.code === 'Escape') return; // let Escape bubble up to close chat
     e.stopPropagation(); // prevent game keydown handler from firing
     if (e.code === 'Enter') sendChat();
 });
@@ -2276,9 +2277,8 @@ function updatePhysics(delta) {
 // CONTROLS - KEYBOARD
 // ============================================
 document.addEventListener('keydown', (e) => {
-    // When chat is open, only Q (hold to quit) matters — input handles its own keys
     if (chatOpen) {
-        if (e.code === 'KeyQ') { e.preventDefault(); startQuitHold(); }
+        if (e.code === 'Escape') closeChat();
         return;
     }
     if (craftOpen) {
