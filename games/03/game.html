@@ -1230,28 +1230,26 @@ function createSunSprite() {
     const rng = mulberry32(555);
     const cx = size / 2, cy = size / 2, r = size / 2 - 2;
 
-    // Outer glow
-    const glow = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
-    glow.addColorStop(0, 'rgba(255,240,100,1)');
-    glow.addColorStop(0.5, 'rgba(255,200,50,0.6)');
-    glow.addColorStop(0.8, 'rgba(255,160,20,0.2)');
-    glow.addColorStop(1, 'rgba(255,130,0,0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, size, size);
+    // Square sun — Minecraft style
+    const pad = 10;
+    const sq = size - pad * 2;
 
-    // Pixelated sun disc — bright yellow/orange noisy pixels
-    for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-            const dx = x - cx, dy = y - cy;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < r * 0.55) {
-                const v = Math.floor((rng() - 0.5) * 25);
-                const pr = Math.min(255, 255 + v);
-                const pg = Math.min(255, Math.max(0, 220 + v));
-                const pb = Math.max(0, 60 + v);
-                ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
-                ctx.fillRect(x, y, 1, 1);
-            }
+    // Outer glow behind square
+    ctx.shadowColor = 'rgba(255,200,50,0.8)';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = 'rgba(255,220,80,0.15)';
+    ctx.fillRect(pad - 4, pad - 4, sq + 8, sq + 8);
+    ctx.shadowBlur = 0;
+
+    // Pixelated square sun face — bright yellow/orange noisy pixels
+    for (let y = pad; y < pad + sq; y++) {
+        for (let x = pad; x < pad + sq; x++) {
+            const v = Math.floor((rng() - 0.5) * 25);
+            const pr = Math.min(255, 255 + v);
+            const pg = Math.min(255, Math.max(0, 220 + v));
+            const pb = Math.max(0, 60 + v);
+            ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
+            ctx.fillRect(x, y, 1, 1);
         }
     }
 
@@ -1273,49 +1271,44 @@ function createMoonSprite() {
     const rng = mulberry32(777);
     const cx = size / 2, cy = size / 2, r = size / 2 - 2;
 
-    // Soft glow
-    const glow = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
-    glow.addColorStop(0, 'rgba(230,235,250,1)');
-    glow.addColorStop(0.5, 'rgba(200,210,235,0.4)');
-    glow.addColorStop(0.8, 'rgba(170,180,210,0.15)');
-    glow.addColorStop(1, 'rgba(150,160,200,0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, size, size);
+    // Square moon — Minecraft style
+    const pad = 10; // padding from edge for glow room
+    const sq = size - pad * 2; // square size
 
-    // Pixelated moon disc — bright grey/white pixels
-    for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-            const dx = x - cx, dy = y - cy;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < r * 0.55) {
-                const v = Math.floor((rng() - 0.5) * 20);
-                const base = 225 + v;
-                const pr = Math.min(255, Math.max(0, base - 5));
-                const pg = Math.min(255, Math.max(0, base));
-                const pb = Math.min(255, Math.max(0, base + 12));
-                ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
-                ctx.fillRect(x, y, 1, 1);
-            }
+    // Outer glow behind square
+    ctx.shadowColor = 'rgba(200,210,240,0.8)';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = 'rgba(200,210,240,0.15)';
+    ctx.fillRect(pad - 4, pad - 4, sq + 8, sq + 8);
+    ctx.shadowBlur = 0;
+
+    // Pixelated square moon face — bright grey/white noisy pixels
+    for (let y = pad; y < pad + sq; y++) {
+        for (let x = pad; x < pad + sq; x++) {
+            const v = Math.floor((rng() - 0.5) * 20);
+            const base = 225 + v;
+            const pr = Math.min(255, Math.max(0, base - 5));
+            const pg = Math.min(255, Math.max(0, base));
+            const pb = Math.min(255, Math.max(0, base + 12));
+            ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
+            ctx.fillRect(x, y, 1, 1);
         }
     }
 
-    // Craters — darker circular patches
+    // Square craters — darker rectangular patches
     const craters = [
-        { x: cx - 6, y: cy - 4, r: 4 },
-        { x: cx + 7, y: cy + 3, r: 3 },
-        { x: cx + 2, y: cy + 8, r: 5 },
-        { x: cx - 8, y: cy + 6, r: 2.5 },
-        { x: cx + 5, y: cy - 7, r: 2 },
+        { x: pad + 4,  y: pad + 5,  w: 7, h: 6 },
+        { x: pad + 22, y: pad + 8,  w: 5, h: 5 },
+        { x: pad + 14, y: pad + 24, w: 8, h: 7 },
+        { x: pad + 3,  y: pad + 28, w: 4, h: 4 },
+        { x: pad + 28, y: pad + 3,  w: 4, h: 3 },
     ];
     for (const cr of craters) {
-        for (let y = Math.floor(cr.y - cr.r); y <= Math.ceil(cr.y + cr.r); y++) {
-            for (let x = Math.floor(cr.x - cr.r); x <= Math.ceil(cr.x + cr.r); x++) {
-                const dx = x - cr.x, dy = y - cr.y;
-                if (dx * dx + dy * dy < cr.r * cr.r) {
-                    const v = Math.floor((rng() - 0.5) * 15);
-                    ctx.fillStyle = `rgb(${165 + v},${170 + v},${182 + v})`;
-                    ctx.fillRect(x, y, 1, 1);
-                }
+        for (let y = cr.y; y < cr.y + cr.h; y++) {
+            for (let x = cr.x; x < cr.x + cr.w; x++) {
+                const v = Math.floor((rng() - 0.5) * 15);
+                ctx.fillStyle = `rgb(${165 + v},${170 + v},${182 + v})`;
+                ctx.fillRect(x, y, 1, 1);
             }
         }
     }
