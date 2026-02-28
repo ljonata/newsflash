@@ -1166,12 +1166,38 @@
                 moveCounter: 0
             });
             zombiesSpawned++;
+            updateZombieOffsets();
         }
 
         function updateChompingState() {
             for (const zombie of zombies) {
                 const onPlant = plants.some(p => p.row === zombie.row && p.col === zombie.col);
                 zombie.element.classList.toggle('chomping', onPlant);
+            }
+        }
+
+        // Offset zombies sharing the same cell so you can see there's more than one
+        const ZOMBIE_OFFSETS = [
+            { x: 0, y: 0 },
+            { x: 14, y: -10 },
+            { x: -8, y: 12 },
+            { x: 16, y: 8 }
+        ];
+
+        function updateZombieOffsets() {
+            // Group zombies by cell
+            const cells = {};
+            for (const z of zombies) {
+                const key = `${z.row},${z.col}`;
+                if (!cells[key]) cells[key] = [];
+                cells[key].push(z);
+            }
+            for (const group of Object.values(cells)) {
+                for (let i = 0; i < group.length; i++) {
+                    const off = ZOMBIE_OFFSETS[Math.min(i, ZOMBIE_OFFSETS.length - 1)];
+                    group[i].element.style.marginLeft = off.x + 'px';
+                    group[i].element.style.marginTop = off.y + 'px';
+                }
             }
         }
 
@@ -1215,6 +1241,7 @@
             }
 
             updateChompingState();
+            updateZombieOffsets();
         }
 
         function killZombie(zombie) {
@@ -1223,6 +1250,7 @@
             zombies = zombies.filter(z => z !== zombie);
             kills++;
             updateStatus();
+            updateZombieOffsets();
 
             if (zombiesSpawned >= zombiesPerWave && zombies.length === 0) {
                 nextWave();
