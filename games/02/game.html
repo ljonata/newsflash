@@ -382,80 +382,47 @@
             left: 5px;
             width: 50px;
             height: 50px;
-            background: none;
+            background:
+                radial-gradient(circle at 32% 28%, rgba(120,180,100,0.35) 0%, transparent 30%),
+                radial-gradient(circle at 70% 65%, rgba(0,0,0,0.2) 0%, transparent 35%),
+                repeating-linear-gradient(170deg, transparent, transparent 4px, rgba(0,0,0,0.06) 4px, rgba(0,0,0,0.06) 5px),
+                radial-gradient(circle at 50% 50%, #6a8f5c, #4a6d3c 45%, #2d4a22);
+            border-radius: 10px 10px 6px 6px;
+            box-shadow: inset -3px -4px 6px rgba(0,0,0,0.4), inset 2px 2px 4px rgba(140,200,120,0.2), 0 3px 5px rgba(0,0,0,0.4);
             z-index: 6;
         }
-        /* Zombie head - green skin, glowing red eyes, jagged mouth */
         .zombie::before {
             content: '';
             position: absolute;
-            width: 24px;
-            height: 24px;
-            top: -2px;
-            left: 13px;
-            background:
-                radial-gradient(circle at 32% 28%, rgba(160,220,130,0.3) 0%, transparent 28%),
-                radial-gradient(circle at 50% 50%, #7a9f6c, #5a7f4c 50%, #3a5f2c);
-            border-radius: 50% 50% 40% 40%;
+            width: 11px; height: 12px;
+            background: radial-gradient(circle at 40% 35%, #ff1744, #b71c1c);
+            border-radius: 50%;
+            top: 10px; left: 7px;
             box-shadow:
-                /* Left eye */
-                5px 8px 0 2px #ff1744,
-                5px 9px 0 0.5px #1a0000,
-                5px 8px 3px 1px rgba(255,23,68,0.3),
-                /* Right eye */
-                13px 8px 0 2px #ff1744,
-                13px 9px 0 0.5px #1a0000,
-                13px 8px 3px 1px rgba(255,23,68,0.3),
-                /* Jagged mouth */
-                6px 16px 0 0 #2d4a22,
-                8px 15px 0 0 #2d4a22,
-                10px 16px 0 0 #2d4a22,
-                12px 15px 0 0 #2d4a22,
-                14px 16px 0 0 #2d4a22,
-                /* Head depth */
-                inset -2px -3px 5px rgba(0,0,0,0.3);
+                19px 0 0 0 #ff1744,
+                2px 3px 0 0 #1a0000,
+                21px 3px 0 0 #1a0000,
+                0 0 4px rgba(255,23,68,0.5),
+                19px 0 4px rgba(255,23,68,0.5);
         }
-        /* Torso (torn shirt with holes), arms, and legs */
         .zombie::after {
             content: '';
             position: absolute;
-            width: 28px;
-            height: 18px;
-            top: 20px;
-            left: 11px;
+            width: 28px; height: 8px;
             background:
-                /* Holes in shirt revealing green skin */
-                radial-gradient(ellipse at 62% 30%, #5a8a4a 3px, transparent 3.5px),
-                radial-gradient(ellipse at 28% 58%, #4a7a3a 2px, transparent 2.5px),
-                radial-gradient(ellipse at 75% 70%, #4a7a3a 1.5px, transparent 2px),
-                /* Torn fabric texture */
-                repeating-linear-gradient(155deg, transparent, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px),
-                /* Shirt base - dirty grey-brown */
-                linear-gradient(180deg, #6b5d52, #5a4e42 50%, #4a3f35);
-            border-radius: 4px 4px 2px 2px;
+                linear-gradient(180deg, #5d4037 0%, #3e2723 100%);
+            border-radius: 2px 2px 4px 4px;
+            bottom: 10px; left: 11px;
             box-shadow:
-                /* Left arm - green skin segments */
-                -7px 1px 0 1.5px #5a7f4c,
-                -8px 5px 0 1.5px #4a6f3c,
-                -7px 9px 0 1px #3a5f2c,
-                /* Right arm */
-                28px 0 0 1.5px #5a7f4c,
-                29px 4px 0 1.5px #4a6f3c,
-                28px 8px 0 1px #3a5f2c,
-                /* Left leg - torn brown pants + green foot */
-                4px 18px 0 2.5px #4a3f35,
-                4px 24px 0 2px #3d342c,
-                4px 28px 0 1.5px #3a5f2c,
-                /* Right leg */
-                17px 18px 0 2.5px #4a3f35,
-                17px 24px 0 2px #3d342c,
-                17px 28px 0 1.5px #3a5f2c,
-                /* Torso depth */
-                inset -2px -2px 3px rgba(0,0,0,0.3),
-                0 1px 2px rgba(0,0,0,0.3);
+                inset 0 -2px 3px rgba(0,0,0,0.4),
+                -3px 3px 0 -1px #4a6d3c,
+                25px 3px 0 -1px #4a6d3c,
+                -3px 7px 0 -1px #3e2723,
+                25px 7px 0 -1px #3e2723;
         }
         .zombie.slowed {
-            filter: brightness(0.85) saturate(0.5) hue-rotate(180deg) drop-shadow(0 0 8px rgba(129,212,250,0.6));
+            box-shadow: inset -3px -4px 6px rgba(0,0,0,0.4), inset 2px 2px 4px rgba(129,212,250,0.4), 0 0 10px rgba(129,212,250,0.6), 0 0 20px rgba(129,212,250,0.3);
+            filter: brightness(0.85) saturate(0.6) hue-rotate(180deg);
         }
 
         /* ===== PROJECTILE ===== */
@@ -620,39 +587,28 @@
             }
             /* Zombie */
             .zombie {
-                top: 3px; left: 8px;
+                top: 3px; left: 3px;
                 width: 30px; height: 30px;
             }
             .zombie::before {
-                width: 15px; height: 15px;
-                top: -1px; left: 8px;
+                width: 7px; height: 8px;
+                top: 6px; left: 4px;
                 box-shadow:
-                    3px 5px 0 1px #ff1744,
-                    3px 6px 0 0 #1a0000,
-                    3px 5px 2px rgba(255,23,68,0.3),
-                    8px 5px 0 1px #ff1744,
-                    8px 6px 0 0 #1a0000,
-                    8px 5px 2px rgba(255,23,68,0.3),
-                    4px 10px 0 0 #2d4a22,
-                    6px 9px 0 0 #2d4a22,
-                    8px 10px 0 0 #2d4a22,
-                    inset -1px -2px 3px rgba(0,0,0,0.3);
+                    12px 0 0 0 #ff1744,
+                    2px 2px 0 0 #1a0000,
+                    14px 2px 0 0 #1a0000,
+                    0 0 3px rgba(255,23,68,0.5),
+                    12px 0 3px rgba(255,23,68,0.5);
             }
             .zombie::after {
-                width: 17px; height: 11px;
-                top: 12px; left: 7px;
+                width: 17px; height: 5px;
+                bottom: 6px; left: 7px;
                 box-shadow:
-                    -4px 1px 0 1px #5a7f4c,
-                    -5px 4px 0 1px #4a6f3c,
-                    17px 0 0 1px #5a7f4c,
-                    18px 3px 0 1px #4a6f3c,
-                    2px 11px 0 1.5px #4a3f35,
-                    2px 15px 0 1px #3d342c,
-                    2px 18px 0 1px #3a5f2c,
-                    10px 11px 0 1.5px #4a3f35,
-                    10px 15px 0 1px #3d342c,
-                    10px 18px 0 1px #3a5f2c,
-                    inset -1px -1px 2px rgba(0,0,0,0.3);
+                    inset 0 -1px 2px rgba(0,0,0,0.4),
+                    -2px 2px 0 -1px #4a6d3c,
+                    15px 2px 0 -1px #4a6d3c,
+                    -2px 4px 0 -1px #3e2723,
+                    15px 4px 0 -1px #3e2723;
             }
             .projectile { width: 10px; height: 10px; }
             .sun-drop { width: 20px; height: 20px; }
@@ -711,32 +667,24 @@
                 bottom: 5px; left: 7px;
             }
             .zombie {
-                top: 2px; left: 6px;
+                top: 2px; left: 2px;
                 width: 24px; height: 24px;
             }
             .zombie::before {
-                width: 12px; height: 12px;
-                top: -1px; left: 6px;
+                width: 6px; height: 6px;
+                top: 4px; left: 3px;
                 box-shadow:
-                    2px 4px 0 1px #ff1744,
-                    2px 5px 0 0 #1a0000,
-                    7px 4px 0 1px #ff1744,
-                    7px 5px 0 0 #1a0000,
-                    3px 8px 0 0 #2d4a22,
-                    5px 8px 0 0 #2d4a22,
-                    inset -1px -1px 2px rgba(0,0,0,0.3);
+                    9px 0 0 0 #ff1744,
+                    1px 2px 0 0 #1a0000,
+                    10px 2px 0 0 #1a0000;
             }
             .zombie::after {
-                width: 14px; height: 9px;
-                top: 10px; left: 5px;
+                width: 14px; height: 4px;
+                bottom: 4px; left: 5px;
                 box-shadow:
-                    -3px 1px 0 1px #5a7f4c,
-                    14px 0 0 1px #5a7f4c,
-                    2px 9px 0 1.5px #4a3f35,
-                    2px 12px 0 1px #3a5f2c,
-                    8px 9px 0 1.5px #4a3f35,
-                    8px 12px 0 1px #3a5f2c,
-                    inset -1px -1px 2px rgba(0,0,0,0.3);
+                    inset 0 -1px 1px rgba(0,0,0,0.4),
+                    -2px 2px 0 -1px #4a6d3c,
+                    12px 2px 0 -1px #4a6d3c;
             }
             .projectile { width: 8px; height: 8px; }
             .sun-drop { width: 16px; height: 16px; }

@@ -24,6 +24,7 @@
         .hud-coins { color: lime; margin-left: 10px; }
         .hud-followers { color: #e94560; margin-left: 10px; }
         .hud-rank { color: #9c27b0; margin-left: 10px; }
+        .hud-time { color: #ffab40; margin-left: 10px; }
         #hud-right { pointer-events: auto; }
         #hud-right a {
             color: #aaa; font-size: 13px; text-decoration: none; margin-left: 10px; cursor: pointer;
@@ -250,6 +251,7 @@
             <span class="hud-coins">Coins: <span class="val" id="d-coins">0</span></span>
             <span class="hud-followers">Followers: <span class="val" id="d-followers">0</span></span>
             <span class="hud-rank">Rank: <span class="val" id="d-rank">Newbie</span></span>
+            <span class="hud-time"><span class="val" id="d-time">☀ 12:00</span></span>
         </div>
         <div id="hud-right">
             <a href="/games/01/home.html">Home</a>
@@ -421,6 +423,10 @@ let craftOpen = false;
 let craftGrid = [null,null,null,null,null,null,null,null,null]; // 9 slots, row-major
 let selectedCraftItem = null; // item type currently held to place in grid
 
+
+// Day/night cycle — one full day = 10 real minutes (600s)
+const DAY_DURATION = 600; // seconds per full day
+let gameTime = 0.25; // 0-1, 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
 
 // Movement state
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
@@ -1183,6 +1189,121 @@ function updateChickens(delta) {
 }
 
 // ============================================
+// DAY/NIGHT CYCLE
+// ============================================
+// Stars — small white dots scattered across a large sphere
+let starsMesh = null;
+
+function createStars() {
+    const count = 300;
+    const geo = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    const rng = mulberry32(999);
+    for (let i = 0; i < count; i++) {
+        // Random point on a sphere, only upper hemisphere
+        const theta = rng() * Math.PI * 2;
+        const phi = rng() * Math.PI * 0.45; // above horizon
+        const r = 55;
+        positions[i * 3]     = Math.sin(phi) * Math.cos(theta) * r + WORLD_SIZE / 2;
+        positions[i * 3 + 1] = Math.cos(phi) * r + 5;
+        positions[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * r + WORLD_SIZE / 2;
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.4, sizeAttenuation: true });
+    starsMesh = new THREE.Points(geo, mat);
+    starsMesh.visible = false;
+    scene.add(starsMesh);
+}
+
+// Color interpolation helpers
+function lerpColor(c1, c2, t) {
+    const r1 = (c1 >> 16) & 0xff, g1 = (c1 >> 8) & 0xff, b1 = c1 & 0xff;
+    const r2 = (c2 >> 16) & 0xff, g2 = (c2 >> 8) & 0xff, b2 = c2 & 0xff;
+    const r = Math.round(r1 + (r2 - r1) * t);
+    const g = Math.round(g1 + (g2 - g1) * t);
+    const b = Math.round(b1 + (b2 - b1) * t);
+    return (r << 16) | (g << 8) | b;
+}
+
+// Sky color keyframes: [gameTime, skyColor]
+// 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
+const SKY_KEYS = [
+    { t: 0.00, sky: 0x0a0a2e, fog: 0x0a0a2e, ambient: 0.15, dir: 0.05, dirColor: 0x8888aa },
+    { t: 0.20, sky: 0x1a1a3e, fog: 0x1a1a3e, ambient: 0.2,  dir: 0.1,  dirColor: 0x9999bb },
+    { t: 0.25, sky: 0xff7733, fog: 0xff9955, ambient: 0.4,  dir: 0.3,  dirColor: 0xffaa66 },
+    { t: 0.30, sky: 0xffaa55, fog: 0xffbb77, ambient: 0.5,  dir: 0.5,  dirColor: 0xffe0a0 },
+    { t: 0.35, sky: 0x87CEEB, fog: 0x87CEEB, ambient: 0.6,  dir: 0.8,  dirColor: 0xffffff },
+    { t: 0.50, sky: 0x87CEEB, fog: 0x87CEEB, ambient: 0.6,  dir: 0.8,  dirColor: 0xffffff },
+    { t: 0.65, sky: 0x87CEEB, fog: 0x87CEEB, ambient: 0.6,  dir: 0.8,  dirColor: 0xffffff },
+    { t: 0.70, sky: 0xffaa55, fog: 0xffbb77, ambient: 0.5,  dir: 0.5,  dirColor: 0xffe0a0 },
+    { t: 0.75, sky: 0xff6633, fog: 0xff8844, ambient: 0.4,  dir: 0.3,  dirColor: 0xff8844 },
+    { t: 0.80, sky: 0x1a1a3e, fog: 0x1a1a3e, ambient: 0.2,  dir: 0.1,  dirColor: 0x9999bb },
+    { t: 1.00, sky: 0x0a0a2e, fog: 0x0a0a2e, ambient: 0.15, dir: 0.05, dirColor: 0x8888aa },
+];
+
+function updateDayNight(delta) {
+    gameTime += delta / DAY_DURATION;
+    if (gameTime >= 1) gameTime -= 1;
+
+    // Find the two keyframes we're between
+    let k0 = SKY_KEYS[SKY_KEYS.length - 1], k1 = SKY_KEYS[0];
+    for (let i = 0; i < SKY_KEYS.length - 1; i++) {
+        if (gameTime >= SKY_KEYS[i].t && gameTime < SKY_KEYS[i + 1].t) {
+            k0 = SKY_KEYS[i];
+            k1 = SKY_KEYS[i + 1];
+            break;
+        }
+    }
+
+    const range = k1.t - k0.t;
+    const t = range > 0 ? (gameTime - k0.t) / range : 0;
+
+    const skyColor = lerpColor(k0.sky, k1.sky, t);
+    const fogColor = lerpColor(k0.fog, k1.fog, t);
+    const dirColor = lerpColor(k0.dirColor, k1.dirColor, t);
+    const ambientIntensity = k0.ambient + (k1.ambient - k0.ambient) * t;
+    const dirIntensity = k0.dir + (k1.dir - k0.dir) * t;
+
+    scene.background.setHex(skyColor);
+    scene.fog.color.setHex(fogColor);
+    ambientLight.intensity = ambientIntensity;
+    dirLight.intensity = dirIntensity;
+    dirLight.color.setHex(dirColor);
+
+    // Rotate sun direction around the world
+    const sunAngle = gameTime * Math.PI * 2;
+    dirLight.position.set(
+        WORLD_SIZE / 2 + Math.cos(sunAngle) * 30,
+        Math.sin(sunAngle) * 30 + 10,
+        WORLD_SIZE / 2
+    );
+
+    // Stars visible at night (gameTime < 0.2 or > 0.8)
+    if (starsMesh) {
+        const isNight = gameTime < 0.22 || gameTime > 0.78;
+        starsMesh.visible = isNight;
+        if (isNight) {
+            // Fade stars near dawn/dusk
+            let starAlpha = 1;
+            if (gameTime > 0.78) starAlpha = Math.min(1, (gameTime - 0.78) / 0.04);
+            else if (gameTime < 0.22) starAlpha = Math.min(1, (0.22 - gameTime) / 0.04);
+            starsMesh.material.opacity = starAlpha;
+            starsMesh.material.transparent = starAlpha < 1;
+        }
+    }
+
+    // Update HUD clock
+    // gameTime 0=midnight (00:00), 0.5=noon (12:00)
+    const totalMinutes = Math.floor(gameTime * 24 * 60);
+    const hours = Math.floor(totalMinutes / 60) % 24;
+    const minutes = totalMinutes % 60;
+    const timeStr = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+    const isDay = gameTime > 0.25 && gameTime < 0.75;
+    const icon = isDay ? '\u2600' : '\u263E'; // sun or moon
+    document.getElementById('d-time').textContent = icon + ' ' + timeStr;
+}
+
+// ============================================
 // INVENTORY & HOTBAR
 // ============================================
 function addToInventory(type, count) {
@@ -1663,6 +1784,7 @@ function saveState() {
         pickaxeLevel: pickaxeLevel,
         camPos: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
         camRot: { x: euler.x, y: euler.y },
+        gameTime: gameTime,
     };
     localStorage.setItem('blogcraft3d', JSON.stringify(s));
 }
@@ -1681,6 +1803,7 @@ function loadState() {
     inventory = s.inventory || {};
     followers = s.followers || 0;
     pickaxeLevel = s.pickaxeLevel || 0;
+    if (s.gameTime !== undefined) gameTime = s.gameTime;
 
     if (s.camPos) camera.position.set(s.camPos.x, s.camPos.y, s.camPos.z);
     if (s.camRot) {
@@ -2051,6 +2174,7 @@ function animate() {
 
     updatePhysics(delta);
     updateChickens(delta);
+    updateDayNight(delta);
 
     // Mining progress (hold to mine - desktop & mobile)
     if (isMining && !craftOpen) {
@@ -2141,6 +2265,7 @@ function init() {
     genTextures();
     initInstanced();
     genCrackTextures();
+    createStars();
     const loaded = loadState();
     if (!loaded) generateWorld();
     // Also clear old tab-based state
