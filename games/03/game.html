@@ -321,7 +321,7 @@
 <!-- Chat -->
 <button id="chat-btn" onclick="openChat()">Chat (Q)</button>
 <div id="chat-box">
-    <div id="chat-header">Press <span>Escape</span> to close chat</div>
+    <div id="chat-header">Press <span>Escape</span> to close chat <button onclick="closeChat()" style="margin-left:12px;background:#e94560;border:none;color:#fff;padding:3px 12px;border-radius:3px;cursor:pointer;font-size:11px;">Close</button></div>
     <div id="chat-messages"></div>
     <div id="chat-input-row">
         <input id="chat-input" type="text" placeholder="Type a message..." maxlength="120" autocomplete="off">
@@ -2093,10 +2093,8 @@ function openChat() {
 function closeChat() {
     if (!chatOpen) return;
     chatOpen = false;
-    chatQuitStart = 0;
-    document.getElementById('chat-quit-fill').style.width = '0%';
     document.getElementById('chat-box').classList.remove('open');
-    if (chatQuitRAF) { cancelAnimationFrame(chatQuitRAF); chatQuitRAF = null; }
+    document.getElementById('start-overlay').classList.add('hidden');
     // Re-lock pointer after closing
     try { renderer.domElement.requestPointerLock(); } catch(e) {}
 }
@@ -2337,10 +2335,11 @@ let lockTimestamp = 0; // time pointer lock was acquired
 
 document.addEventListener('pointerlockchange', () => {
     isPointerLocked = document.pointerLockElement === canvas;
-    // Record the time so we can ignore all spurious deltas for the first 150ms —
-    // browsers deliver accumulated mouse movement as a burst of events right after lock
     if (isPointerLocked) lockTimestamp = performance.now();
-    document.getElementById('start-overlay').classList.toggle('hidden', isPointerLocked);
+    // Don't show start overlay when chat or craft is open
+    if (!chatOpen && !craftOpen) {
+        document.getElementById('start-overlay').classList.toggle('hidden', isPointerLocked);
+    }
 });
 
 document.addEventListener('mousemove', (e) => {
