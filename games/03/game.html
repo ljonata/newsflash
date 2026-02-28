@@ -1223,33 +1223,39 @@ function createStars() {
 }
 
 function createSunSprite() {
-    const size = 64;
+    const size = 128;
     const c = document.createElement('canvas');
     c.width = size; c.height = size;
     const ctx = c.getContext('2d');
+    const cx = size / 2, cy = size / 2;
+
+    // Large radial glow — white center fading to orange then transparent
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, size / 2);
+    glow.addColorStop(0, 'rgba(255,255,255,0.9)');
+    glow.addColorStop(0.15, 'rgba(255,250,220,0.7)');
+    glow.addColorStop(0.3, 'rgba(255,200,80,0.35)');
+    glow.addColorStop(0.5, 'rgba(255,160,30,0.12)');
+    glow.addColorStop(0.7, 'rgba(255,120,0,0.04)');
+    glow.addColorStop(1, 'rgba(255,100,0,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, size, size);
+
+    // Bright white square in the center
+    const sqSize = 22;
+    const sqX = cx - sqSize / 2, sqY = cy - sqSize / 2;
+    // Solid white fill
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(sqX, sqY, sqSize, sqSize);
+    // Subtle warm tint near edges
     const rng = mulberry32(555);
-    const cx = size / 2, cy = size / 2, r = size / 2 - 2;
-
-    // Square sun — Minecraft style
-    const pad = 10;
-    const sq = size - pad * 2;
-
-    // Outer glow behind square
-    ctx.shadowColor = 'rgba(255,200,50,0.8)';
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = 'rgba(255,220,80,0.15)';
-    ctx.fillRect(pad - 4, pad - 4, sq + 8, sq + 8);
-    ctx.shadowBlur = 0;
-
-    // Pixelated square sun face — bright yellow/orange noisy pixels
-    for (let y = pad; y < pad + sq; y++) {
-        for (let x = pad; x < pad + sq; x++) {
-            const v = Math.floor((rng() - 0.5) * 25);
-            const pr = Math.min(255, 255 + v);
-            const pg = Math.min(255, Math.max(0, 220 + v));
-            const pb = Math.max(0, 60 + v);
-            ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
-            ctx.fillRect(x, y, 1, 1);
+    for (let y = sqY; y < sqY + sqSize; y++) {
+        for (let x = sqX; x < sqX + sqSize; x++) {
+            const edgeDist = Math.min(x - sqX, sqX + sqSize - 1 - x, y - sqY, sqY + sqSize - 1 - y);
+            if (edgeDist <= 2) {
+                const v = Math.floor(rng() * 15);
+                ctx.fillStyle = `rgba(255,${240 - v},${180 - v * 3},0.4)`;
+                ctx.fillRect(x, y, 1, 1);
+            }
         }
     }
 
@@ -1258,7 +1264,7 @@ function createSunSprite() {
     tex.minFilter = THREE.NearestFilter;
     const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
     sunSprite = new THREE.Sprite(mat);
-    sunSprite.scale.set(12, 12, 1);
+    sunSprite.scale.set(18, 18, 1);
     sunSprite.renderOrder = 1;
     skyScene.add(sunSprite);
 }
