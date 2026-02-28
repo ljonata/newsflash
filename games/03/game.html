@@ -1265,7 +1265,7 @@ function createSunSprite() {
     tex.minFilter = THREE.NearestFilter;
     const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
     sunSprite = new THREE.Sprite(mat);
-    sunSprite.scale.set(18, 18, 1);
+    sunSprite.scale.set(24, 24, 1);
     sunSprite.renderOrder = 1;
     skyScene.add(sunSprite);
 }
@@ -1330,7 +1330,7 @@ function createMoonSprite() {
     tex.minFilter = THREE.NearestFilter;
     const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
     moonSprite = new THREE.Sprite(mat);
-    moonSprite.scale.set(14, 14, 1);
+    moonSprite.scale.set(24, 24, 1);
     moonSprite.renderOrder = 1;
     skyScene.add(moonSprite);
 }
