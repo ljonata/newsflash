@@ -420,6 +420,13 @@
                 -2px 5px 0 -1px #3e2723,
                 18px 5px 0 -1px #3e2723;
         }
+        .zombie.chomping {
+            animation: chomp 0.4s infinite;
+        }
+        @keyframes chomp {
+            0%, 100% { border-radius: 10px 10px 6px 6px; transform: scaleY(1); }
+            50% { border-radius: 10px 10px 10px 10px; transform: scaleY(0.82); }
+        }
         .zombie.slowed {
             box-shadow: inset -3px -4px 6px rgba(0,0,0,0.4), inset 2px 2px 4px rgba(129,212,250,0.4), 0 0 10px rgba(129,212,250,0.6), 0 0 20px rgba(129,212,250,0.3);
             filter: brightness(0.85) saturate(0.6) hue-rotate(180deg);
@@ -1004,6 +1011,7 @@
             if (plant.sunProgressRAF) cancelAnimationFrame(plant.sunProgressRAF);
             plant.element.remove();
             plants = plants.filter(p => p !== plant);
+            updateChompingState();
         }
 
         // ========== SUN LOGIC ==========
@@ -1160,6 +1168,13 @@
             zombiesSpawned++;
         }
 
+        function updateChompingState() {
+            for (const zombie of zombies) {
+                const onPlant = plants.some(p => p.row === zombie.row && p.col === zombie.col);
+                zombie.element.classList.toggle('chomping', onPlant);
+            }
+        }
+
         function moveZombies() {
             if (gameOver) return;
 
@@ -1198,6 +1213,8 @@
 
                 grid[zombie.row][zombie.col].appendChild(zombie.element);
             }
+
+            updateChompingState();
         }
 
         function killZombie(zombie) {
