@@ -31,6 +31,47 @@
         }
         #hud-right a:hover { color: #fff; }
 
+        /* Chat */
+        #chat-btn {
+            position: fixed; top: 8px; left: 50%; transform: translateX(-50%);
+            z-index: 105; pointer-events: auto;
+            background: rgba(0,0,0,0.5); color: #aaa; border: 1px solid #555;
+            border-radius: 4px; padding: 4px 14px; font-size: 12px;
+            cursor: pointer; font-family: Arial, sans-serif;
+        }
+        #chat-btn:hover { color: #fff; border-color: #888; }
+        #chat-box {
+            position: fixed; bottom: 70px; left: 12px;
+            width: 340px; max-height: 220px;
+            background: rgba(0,0,0,0.65); border-radius: 6px;
+            z-index: 105; display: none; flex-direction: column;
+            font-family: Arial, sans-serif;
+        }
+        #chat-box.open { display: flex; }
+        #chat-messages {
+            flex: 1; overflow-y: auto; padding: 8px 10px;
+            max-height: 170px; font-size: 13px; color: #fff;
+            line-height: 1.5;
+        }
+        #chat-messages .chat-msg { margin-bottom: 2px; }
+        #chat-messages .chat-name { color: gold; font-weight: bold; }
+        #chat-input-row {
+            display: flex; border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        #chat-input {
+            flex: 1; background: rgba(0,0,0,0.4); border: none;
+            color: #fff; padding: 6px 10px; font-size: 13px;
+            outline: none; border-radius: 0 0 0 6px;
+            font-family: Arial, sans-serif;
+        }
+        #chat-input::placeholder { color: #666; }
+        #chat-send {
+            background: rgba(255,255,255,0.1); border: none; color: #aaa;
+            padding: 6px 12px; cursor: pointer; font-size: 13px;
+            border-radius: 0 0 6px 0;
+        }
+        #chat-send:hover { color: #fff; background: rgba(255,255,255,0.2); }
+
         /* Crosshair */
         #crosshair {
             position: fixed; top: 50%; left: 50%;
@@ -257,6 +298,16 @@
             <a href="/games/01/home.html">Home</a>
             <a onclick="handleLogout()">Logout</a>
         </div>
+    </div>
+</div>
+
+<!-- Chat -->
+<button id="chat-btn" onclick="toggleChat()">Chat (Q)</button>
+<div id="chat-box">
+    <div id="chat-messages"></div>
+    <div id="chat-input-row">
+        <input id="chat-input" type="text" placeholder="Type a message..." maxlength="120" autocomplete="off">
+        <button id="chat-send" onclick="sendChat()">Send</button>
     </div>
 </div>
 
@@ -2004,6 +2055,38 @@ function syncCoins() {
 }
 
 // ============================================
+// CHAT
+// ============================================
+let chatOpen = false;
+
+function toggleChat() {
+    chatOpen = !chatOpen;
+    document.getElementById('chat-box').classList.toggle('open', chatOpen);
+    if (chatOpen) {
+        document.getElementById('chat-input').focus();
+        if (isPointerLocked) document.exitPointerLock();
+    }
+}
+
+function sendChat() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    const name = (currentUser && currentUser.name) || 'Guest';
+    addChatMessage(name, text);
+}
+
+function addChatMessage(name, text) {
+    const msgs = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    div.className = 'chat-msg';
+    div.innerHTML = '<span class="chat-name">' + name.replace(/</g, '&lt;') + ':</span> ' + text.replace(/</g, '&lt;');
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ============================================
 // SAVE / LOAD
 // ============================================
 function saveState() {
@@ -2067,7 +2150,7 @@ function isColliding(px, py, pz) {
 }
 
 function updatePhysics(delta) {
-    if (craftOpen) return;
+    if (craftOpen || chatOpen) return;
 
     // Gravity
     velocity.y -= 20 * delta;
@@ -2129,6 +2212,12 @@ function updatePhysics(delta) {
 // CONTROLS - KEYBOARD
 // ============================================
 document.addEventListener('keydown', (e) => {
+    // Chat input captures all keys when open
+    if (chatOpen) {
+        if (e.code === 'Escape') toggleChat();
+        else if (e.code === 'Enter') sendChat();
+        return;
+    }
     if (craftOpen) {
         if (e.code === 'KeyE' || e.code === 'Escape') toggleCraft();
         return;
@@ -2143,6 +2232,7 @@ document.addEventListener('keydown', (e) => {
             if (canJump) { velocity.y = 8; canJump = false; }
             break;
         case 'KeyE': toggleCraft(); break;
+        case 'KeyQ': toggleChat(); break;
         case 'Escape':
             if (craftOpen) toggleCraft();
             break;
@@ -2218,7 +2308,7 @@ function stopMining() {
 canvas.addEventListener('mousedown', (e) => {
     if (!isPointerLocked) return;
     e.preventDefault();
-    if (craftOpen) return;
+    if (craftOpen || chatOpen) return;
 
     if (e.button === 0) {
         // Left click - start mining
