@@ -425,6 +425,26 @@
             filter: brightness(0.85) saturate(0.6) hue-rotate(180deg);
         }
 
+        /* ===== SUN PROGRESS BAR ===== */
+        .sun-progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 0 0 2px 2px;
+            overflow: hidden;
+            z-index: 5;
+        }
+        .sun-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ffeb3b, #ff9800);
+            border-radius: 0 0 2px 2px;
+            transition: width 0.25s linear;
+        }
+
         /* ===== PROJECTILE ===== */
         .projectile {
             position: absolute;
@@ -719,7 +739,7 @@
             <div id="plant-panel">
                 <div id="sun-display">
                     <span id="sun-icon">&#9728;</span>
-                    <span id="sun-count">50</span>
+                    <span id="sun-count">100</span>
                 </div>
                 <!-- Plant options populated by JS -->
             </div>
@@ -839,10 +859,10 @@
         const ZOMBIE_SLOW_MOVE_INTERVAL = 12000; // slowed zombies
         const PROJECTILE_MOVE_INTERVAL = 400;
         const ZOMBIE_SPAWN_INTERVAL = 5000;
-        const SUN_PRODUCE_INTERVAL = 10000;
+        const SUN_PRODUCE_INTERVAL = 15000;
 
         let gameOver = false;
-        let suns = 50;
+        let suns = 100;
         let selectedPlantType = null; // index into PLANT_TYPES
         let plants = []; // { row, col, element, type, hp, shootInterval, sunInterval }
         let zombies = []; // { row, col, element, hp, slowed, slowTimer, moveCounter }
@@ -970,9 +990,10 @@
 
             // Set up sun production for sunflowers
             if (type.special === 'sun_producer') {
+                setupSunProgress(plant);
                 plant.sunInterval = setInterval(() => {
                     if (gameOver) return;
-                    dropSun(row, col);
+                    autoGenerateSun(plant);
                 }, SUN_PRODUCE_INTERVAL);
             }
 
@@ -982,30 +1003,50 @@
         function removePlant(plant) {
             if (plant.shootInterval) clearInterval(plant.shootInterval);
             if (plant.sunInterval) clearInterval(plant.sunInterval);
+            if (plant.sunProgressRAF) cancelAnimationFrame(plant.sunProgressRAF);
             plant.element.remove();
             plants = plants.filter(p => p !== plant);
         }
 
         // ========== SUN LOGIC ==========
-        function dropSun(row, col) {
-            if (!grid[row] || !grid[row][col]) return;
+        let sunProgressTimers = []; // track animation frames for cleanup
 
-            const sunEl = document.createElement('div');
-            sunEl.className = 'sun-drop';
-            grid[row][col].appendChild(sunEl);
+        function setupSunProgress(plant) {
+            // Add progress bar to plant element
+            const bar = document.createElement('div');
+            bar.className = 'sun-progress-bar';
+            const fill = document.createElement('div');
+            fill.className = 'sun-progress-fill';
+            bar.appendChild(fill);
+            plant.element.appendChild(bar);
+            plant.sunFill = fill;
+            plant.sunStart = performance.now();
 
-            // Click to collect
-            sunEl.addEventListener('click', (e) => {
-                e.stopPropagation();
-                suns += 25;
-                sunEl.remove();
-                updatePlantPanel();
-            });
+            // Animate progress bar
+            function updateBar() {
+                if (gameOver || !plant.element.parentNode) return;
+                const elapsed = performance.now() - plant.sunStart;
+                const pct = Math.min(100, (elapsed / SUN_PRODUCE_INTERVAL) * 100);
+                fill.style.width = pct + '%';
+                if (pct < 100) {
+                    plant.sunProgressRAF = requestAnimationFrame(updateBar);
+                }
+            }
+            plant.sunProgressRAF = requestAnimationFrame(updateBar);
+        }
 
-            // Auto-disappear after 8 seconds
+        function autoGenerateSun(plant) {
+            if (gameOver) return;
+            suns += 25;
+            updatePlantPanel();
+            // Flash the plant briefly to indicate sun generated
+            plant.element.style.filter = 'brightness(1.5)';
             setTimeout(() => {
-                if (sunEl.parentNode) sunEl.remove();
-            }, 8000);
+                if (plant.element.parentNode) plant.element.style.filter = '';
+            }, 300);
+            // Reset progress bar
+            plant.sunStart = performance.now();
+            if (plant.sunFill) plant.sunFill.style.width = '0%';
         }
 
         // ========== PROJECTILE LOGIC ==========
@@ -1228,6 +1269,7 @@
             for (const plant of plants) {
                 if (plant.shootInterval) clearInterval(plant.shootInterval);
                 if (plant.sunInterval) clearInterval(plant.sunInterval);
+                if (plant.sunProgressRAF) cancelAnimationFrame(plant.sunProgressRAF);
             }
             for (const zombie of zombies) {
                 if (zombie.slowTimer) clearTimeout(zombie.slowTimer);
@@ -1245,7 +1287,7 @@
             projectiles = [];
             kills = 0;
             wave = 1;
-            suns = 50;
+            suns = 100;
             zombiesSpawned = 0;
             zombiesPerWave = 5;
             gameOver = false;
