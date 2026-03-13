@@ -292,7 +292,7 @@
     <div class="controls-help controls-help-desktop">
         WASD - Move | S+W - Sprint | Mouse - Look | Space - Jump<br>
         Left Click - Mine | Right Click - Place<br>
-        1-9 - Select Slot | E - Crafting
+        1-9 - Select Slot | E - Crafting | F2 - Home
     </div>
     <div class="controls-help controls-help-mobile">
         Left Joystick - Move | Right Side - Look<br>
@@ -2296,6 +2296,11 @@ document.addEventListener('keydown', (e) => {
         case 'KeyQ': openChat(); break;
         case 'Escape':
             if (craftOpen) toggleCraft();
+            break;
+        case 'F2':
+            e.preventDefault();
+            saveState();
+            window.location.href = 'home.html';
             break;
         case 'Digit1': case 'Digit2': case 'Digit3': case 'Digit4': case 'Digit5':
         case 'Digit6': case 'Digit7': case 'Digit8': case 'Digit9':
