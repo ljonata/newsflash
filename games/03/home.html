@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlogCraft - Home</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0a0a1a;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        /* Animated background blocks */
+        .bg-blocks {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0; overflow: hidden; pointer-events: none;
+        }
+        .bg-block {
+            position: absolute;
+            border-radius: 4px;
+            opacity: 0.08;
+            animation: floatBlock 20s linear infinite;
+        }
+        @keyframes floatBlock {
+            0% { transform: translateY(110vh) rotate(0deg); }
+            100% { transform: translateY(-20vh) rotate(360deg); }
+        }
+
+        /* Top bar */
+        #top-bar {
+            position: fixed; top: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            padding: 10px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 300;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        #user-info { color: #fff; font-size: 14px; }
+        #user-info .username { color: gold; font-weight: bold; }
+        #user-info .coins { color: lime; margin-left: 15px; }
+        .top-link {
+            color: #aaa; font-size: 14px; text-decoration: none; cursor: pointer; margin-left: 15px;
+        }
+        .top-link:hover { color: #fff; text-decoration: underline; }
+
+        /* Main container */
+        .container {
+            position: relative; z-index: 1;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            min-height: 100vh; padding: 20px; padding-top: 80px;
+        }
+
+        /* Logo area */
+        .logo-area { text-align: center; margin-bottom: 40px; }
+        .logo-icon {
+            width: 80px; height: 80px; margin: 0 auto 16px;
+            background: linear-gradient(135deg, #1a237e, #5c6bc0);
+            border-radius: 16px; display: flex; align-items: center; justify-content: center;
+            font-size: 40px; box-shadow: 0 8px 32px rgba(92,107,192,0.4);
+            animation: logoGlow 3s ease-in-out infinite alternate;
+        }
+        @keyframes logoGlow {
+            0% { box-shadow: 0 8px 32px rgba(92,107,192,0.3); }
+            100% { box-shadow: 0 8px 48px rgba(92,107,192,0.6); }
+        }
+        h1 {
+            color: gold; font-size: 48px; text-shadow: 2px 2px 4px #000;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #8888aa; font-size: 16px; letter-spacing: 1px;
+        }
+
+        /* Stats bar */
+        .stats-bar {
+            display: flex; gap: 24px; margin-bottom: 40px;
+            flex-wrap: wrap; justify-content: center;
+        }
+        .stat-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px; padding: 12px 20px;
+            text-align: center; min-width: 100px;
+        }
+        .stat-value { color: #fff; font-size: 20px; font-weight: bold; }
+        .stat-label { color: #666; font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-value.coins-val { color: lime; }
+        .stat-value.followers-val { color: #e94560; }
+        .stat-value.rank-val { color: #9c27b0; }
+
+        /* Menu buttons */
+        .menu-buttons {
+            display: flex; flex-direction: column;
+            gap: 12px; width: 100%; max-width: 320px;
+        }
+        .menu-btn {
+            padding: 18px 40px; font-size: 20px; font-weight: bold;
+            border: none; border-radius: 10px; cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none; text-align: center; display: block;
+            position: relative; overflow: hidden;
+        }
+        .menu-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        .menu-btn:active { transform: scale(0.98); }
+
+        .btn-play {
+            background: linear-gradient(135deg, #1a237e, #5c6bc0);
+            color: #fff; font-size: 22px;
+        }
+        .btn-play:hover { background: linear-gradient(135deg, #283593, #7986cb); }
+
+        .btn-continue {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: #fff; font-size: 22px;
+        }
+        .btn-continue:hover { background: linear-gradient(135deg, #5CBF60, #55b059); }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #b71c1c, #e53935);
+            color: #fff;
+        }
+        .btn-delete:hover { background: linear-gradient(135deg, #c62828, #ef5350); }
+
+        .btn-controls {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: #fff;
+        }
+        .btn-controls:hover { background: linear-gradient(135deg, #ffa726, #fb8c00); }
+
+        .btn-back {
+            background: linear-gradient(135deg, #333, #555);
+            color: #fff;
+        }
+        .btn-back:hover { background: linear-gradient(135deg, #444, #666); }
+
+        .btn-hidden { display: none; }
+
+        /* Controls modal */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8); z-index: 400;
+            display: none; align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: #1a1a2e; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px; padding: 30px; max-width: 420px; width: 90%;
+            color: #fff;
+        }
+        .modal-box h2 { color: gold; text-align: center; margin-bottom: 20px; font-size: 22px; }
+        .controls-section { margin-bottom: 16px; }
+        .controls-section h3 { color: #5c6bc0; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .control-row {
+            display: flex; justify-content: space-between; padding: 4px 0;
+            font-size: 14px; color: #aaa;
+        }
+        .control-key { color: #fff; font-weight: bold; }
+        .modal-close {
+            display: block; width: 100%; margin-top: 20px;
+            padding: 12px; background: #5c6bc0; color: #fff;
+            border: none; border-radius: 8px; font-size: 16px;
+            cursor: pointer; font-weight: bold;
+        }
+        .modal-close:hover { background: #7986cb; }
+
+        /* Confirm dialog */
+        .confirm-box {
+            text-align: center;
+        }
+        .confirm-box p { color: #ccc; font-size: 16px; margin-bottom: 20px; line-height: 1.5; }
+        .confirm-box p strong { color: #e94560; }
+        .confirm-btns { display: flex; gap: 12px; }
+        .confirm-btns button {
+            flex: 1; padding: 12px; border: none; border-radius: 8px;
+            font-size: 16px; cursor: pointer; font-weight: bold;
+        }
+        .cbtn-cancel { background: #333; color: #fff; }
+        .cbtn-cancel:hover { background: #444; }
+        .cbtn-delete { background: #e53935; color: #fff; }
+        .cbtn-delete:hover { background: #ef5350; }
+
+        /* Phone */
+        @media (max-width: 480px) {
+            h1 { font-size: 36px; }
+            .subtitle { font-size: 13px; }
+            .logo-icon { width: 64px; height: 64px; font-size: 32px; border-radius: 12px; }
+            .menu-btn { padding: 15px 30px; font-size: 18px; }
+            .btn-play, .btn-continue { font-size: 20px; }
+            .stats-bar { gap: 12px; }
+            .stat-item { padding: 8px 14px; min-width: 80px; }
+            .stat-value { font-size: 16px; }
+            #top-bar { padding: 8px 15px; }
+            #user-info { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Floating background blocks -->
+<div class="bg-blocks" id="bg-blocks"></div>
+
+<!-- Top bar -->
+<div id="top-bar">
+    <div id="user-info">
+        Welcome, <span class="username" id="display-name"></span>
+        <span class="coins" id="display-coins"></span>
+    </div>
+    <div>
+        <a class="top-link" href="/games/01/home.html">All Games</a>
+        <a class="top-link" onclick="handleLogout()">Logout</a>
+    </div>
+</div>
+
+<!-- Main content -->
+<div class="container">
+    <div class="logo-area">
+        <div class="logo-icon">&#9961;</div>
+        <h1>BlogCraft</h1>
+        <p class="subtitle">Mine, Craft & Blog in a 3D Voxel World</p>
+    </div>
+
+    <div class="stats-bar" id="stats-bar" style="display:none;">
+        <div class="stat-item">
+            <div class="stat-value coins-val" id="s-coins">0</div>
+            <div class="stat-label">Coins</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value followers-val" id="s-followers">0</div>
+            <div class="stat-label">Followers</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value rank-val" id="s-rank">-</div>
+            <div class="stat-label">Rank</div>
+        </div>
+    </div>
+
+    <div class="menu-buttons">
+        <a href="game.html" class="menu-btn btn-continue btn-hidden" id="btn-continue">Continue World</a>
+        <a href="game.html" class="menu-btn btn-play" id="btn-play">New World</a>
+        <button class="menu-btn btn-delete btn-hidden" id="btn-delete" onclick="showDeleteConfirm()">Delete World</button>
+        <button class="menu-btn btn-controls" onclick="showControls()">Controls</button>
+        <a href="/games/01/home.html" class="menu-btn btn-back">Back to Games</a>
+    </div>
+</div>
+
+<!-- Controls modal -->
+<div class="modal-overlay" id="controls-modal">
+    <div class="modal-box">
+        <h2>Controls</h2>
+        <div class="controls-section">
+            <h3>Movement</h3>
+            <div class="control-row"><span>Walk</span><span class="control-key">W A S D</span></div>
+            <div class="control-row"><span>Sprint</span><span class="control-key">S + W</span></div>
+            <div class="control-row"><span>Jump</span><span class="control-key">Space</span></div>
+        </div>
+        <div class="controls-section">
+            <h3>Actions</h3>
+            <div class="control-row"><span>Mine</span><span class="control-key">Left Click (hold)</span></div>
+            <div class="control-row"><span>Place Block</span><span class="control-key">Right Click</span></div>
+            <div class="control-row"><span>Crafting</span><span class="control-key">E</span></div>
+            <div class="control-row"><span>Chat</span><span class="control-key">Q</span></div>
+        </div>
+        <div class="controls-section">
+            <h3>Inventory</h3>
+            <div class="control-row"><span>Select Slot</span><span class="control-key">1 - 9</span></div>
+            <div class="control-row"><span>Look Around</span><span class="control-key">Mouse</span></div>
+        </div>
+        <div class="controls-section">
+            <h3>Mobile</h3>
+            <div class="control-row"><span>Move</span><span class="control-key">Left Joystick</span></div>
+            <div class="control-row"><span>Look</span><span class="control-key">Right Side</span></div>
+            <div class="control-row"><span>Build</span><span class="control-key">Tap</span></div>
+            <div class="control-row"><span>Mine</span><span class="control-key">Hold</span></div>
+        </div>
+        <button class="modal-close" onclick="hideControls()">Got it</button>
+    </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal-overlay" id="delete-modal">
+    <div class="modal-box confirm-box">
+        <h2>Delete World</h2>
+        <p>Are you sure you want to delete your saved world?<br>This will erase all blocks, inventory, and progress.<br><strong>This cannot be undone.</strong></p>
+        <div class="confirm-btns">
+            <button class="cbtn-cancel" onclick="hideDeleteConfirm()">Cancel</button>
+            <button class="cbtn-delete" onclick="deleteWorld()">Delete</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Auth check
+    function checkAuth() {
+        const userStr = localStorage.getItem('user');
+        const token = localStorage.getItem('token');
+        if (!userStr || !token) {
+            window.location.href = '/games/01/login.html';
+            return;
+        }
+        const user = JSON.parse(userStr);
+        document.getElementById('display-name').textContent = user.name;
+        document.getElementById('display-coins').textContent = 'Coins: ' + (user.coins || 0);
+    }
+
+    function handleLogout() {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        window.location.href = '/games/01/login.html';
+    }
+
+    // Check for saved world
+    function checkSavedWorld() {
+        const raw = localStorage.getItem('blogcraft3d');
+        if (raw) {
+            try {
+                const s = JSON.parse(raw);
+                // Show continue button and stats
+                document.getElementById('btn-continue').classList.remove('btn-hidden');
+                document.getElementById('btn-delete').classList.remove('btn-hidden');
+                document.getElementById('stats-bar').style.display = 'flex';
+
+                document.getElementById('s-coins').textContent = s.coins || 0;
+                document.getElementById('s-followers').textContent = s.followers || 0;
+                document.getElementById('s-rank').textContent = s.rank || 'Newbie';
+
+                // Change New World to secondary style
+                document.getElementById('btn-play').textContent = 'New World';
+                document.getElementById('btn-play').onclick = function(e) {
+                    e.preventDefault();
+                    if (confirm('Start a new world? Your current saved world will be overwritten when you save.')) {
+                        localStorage.removeItem('blogcraft3d');
+                        window.location.href = 'game.html';
+                    }
+                };
+            } catch(e) {
+                // corrupted save, ignore
+            }
+        }
+    }
+
+    // Controls modal
+    function showControls() {
+        document.getElementById('controls-modal').classList.add('open');
+    }
+    function hideControls() {
+        document.getElementById('controls-modal').classList.remove('open');
+    }
+
+    // Delete confirm
+    function showDeleteConfirm() {
+        document.getElementById('delete-modal').classList.add('open');
+    }
+    function hideDeleteConfirm() {
+        document.getElementById('delete-modal').classList.remove('open');
+    }
+    function deleteWorld() {
+        localStorage.removeItem('blogcraft3d');
+        // Also clear IndexedDB if used
+        try {
+            const req = indexedDB.deleteDatabase('blogcraft3d');
+            req.onsuccess = function() {};
+        } catch(e) {}
+        hideDeleteConfirm();
+        // Reload to refresh UI
+        window.location.reload();
+    }
+
+    // Close modals on overlay click
+    document.getElementById('controls-modal').addEventListener('click', function(e) {
+        if (e.target === this) hideControls();
+    });
+    document.getElementById('delete-modal').addEventListener('click', function(e) {
+        if (e.target === this) hideDeleteConfirm();
+    });
+
+    // Animated background blocks
+    function createBgBlocks() {
+        const container = document.getElementById('bg-blocks');
+        const colors = ['#5c6bc0', '#1a237e', '#4CAF50', '#8d6e63', '#78909c', '#ffab40', '#e94560'];
+        for (let i = 0; i < 20; i++) {
+            const block = document.createElement('div');
+            block.className = 'bg-block';
+            const size = 20 + Math.random() * 40;
+            block.style.width = size + 'px';
+            block.style.height = size + 'px';
+            block.style.left = Math.random() * 100 + '%';
+            block.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            block.style.animationDuration = (15 + Math.random() * 20) + 's';
+            block.style.animationDelay = (-Math.random() * 20) + 's';
+            container.appendChild(block);
+        }
+    }
+
+    // Init
+    window.onload = function() {
+        checkAuth();
+        checkSavedWorld();
+        createBgBlocks();
+    };
+</script>
+</body>
+</html>
