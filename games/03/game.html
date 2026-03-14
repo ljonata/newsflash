@@ -231,6 +231,75 @@
             font-size: 14px; cursor: pointer;
         }
 
+        /* Character Panel */
+        #char-panel {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20,20,40,0.97);
+            border: 2px solid #555; border-radius: 10px;
+            padding: 20px; z-index: 150;
+            min-width: 360px; max-width: 420px; max-height: 85vh; overflow-y: auto;
+            display: none;
+        }
+        #char-panel.open { display: block; }
+        #char-panel h2 { color: gold; text-align: center; margin-bottom: 14px; font-size: 18px; }
+        #char-skin-area {
+            display: flex; justify-content: center; margin-bottom: 16px;
+        }
+        #char-skin-canvas {
+            background: rgba(0,0,0,0.3); border: 2px solid #444; border-radius: 8px;
+            image-rendering: pixelated;
+        }
+        #char-stats {
+            display: flex; gap: 12px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .char-stat {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px; padding: 6px 12px; text-align: center;
+        }
+        .char-stat .cs-val { color: #fff; font-size: 14px; font-weight: bold; }
+        .char-stat .cs-lbl { color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .char-stat .cs-val.gold { color: gold; }
+        .char-stat .cs-val.lime { color: lime; }
+        .char-stat .cs-val.pink { color: #e94560; }
+        #char-recipes-title {
+            color: #5c6bc0; font-size: 13px; text-transform: uppercase;
+            letter-spacing: 1px; text-align: center; margin-bottom: 10px;
+        }
+        .recipe-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px; margin-bottom: 6px;
+            background: rgba(0,0,0,0.3); border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .recipe-row.craftable { border-color: rgba(76,175,80,0.4); }
+        .recipe-grid {
+            display: grid; gap: 1px; flex-shrink: 0;
+        }
+        .recipe-cell {
+            width: 16px; height: 16px; border-radius: 2px;
+            background: rgba(255,255,255,0.05); image-rendering: pixelated; background-size: cover;
+        }
+        .recipe-arrow { color: gold; font-size: 16px; flex-shrink: 0; }
+        .recipe-result {
+            display: flex; align-items: center; gap: 6px; flex: 1;
+        }
+        .recipe-result-swatch {
+            width: 24px; height: 24px; border-radius: 3px;
+            image-rendering: pixelated; background-size: cover; flex-shrink: 0;
+        }
+        .recipe-name { color: #fff; font-size: 13px; }
+        .recipe-info { color: #888; font-size: 11px; }
+        .recipe-status { font-size: 11px; margin-left: auto; flex-shrink: 0; }
+        .recipe-status.can { color: #4CAF50; }
+        .recipe-status.cant { color: #e94560; }
+        #char-close {
+            display: block; margin: 12px auto 0; padding: 8px 20px;
+            background: #e94560; color: #fff; border: none; border-radius: 5px;
+            font-size: 14px; cursor: pointer;
+        }
+        #char-close:hover { background: #ff5a7a; }
+
         /* Notification */
         .notif {
             position: fixed; top: 50px; left: 50%; transform: translateX(-50%);
@@ -292,7 +361,7 @@
     <div class="controls-help controls-help-desktop">
         WASD - Move | S+W - Sprint | Mouse - Look | Space - Jump<br>
         Left Click - Mine | Right Click - Place<br>
-        1-9 - Select Slot | E - Crafting | F2 - Home
+        1-9 - Select Slot | E - Crafting | Tab - Character | F2 - Home
     </div>
     <div class="controls-help controls-help-mobile">
         Left Joystick - Move | Right Side - Look<br>
@@ -358,6 +427,22 @@
         <div id="craft-inv-list"></div>
     </div>
     <button id="craft-close" onclick="toggleCraft()">Close (E)</button>
+</div>
+
+<!-- Character Panel -->
+<div id="char-panel">
+    <h2>Character</h2>
+    <div id="char-skin-area">
+        <canvas id="char-skin-canvas" width="64" height="128"></canvas>
+    </div>
+    <div id="char-stats">
+        <div class="char-stat"><div class="cs-val gold" id="cp-name">-</div><div class="cs-lbl">Name</div></div>
+        <div class="char-stat"><div class="cs-val lime" id="cp-coins">0</div><div class="cs-lbl">Coins</div></div>
+        <div class="char-stat"><div class="cs-val pink" id="cp-followers">0</div><div class="cs-lbl">Followers</div></div>
+    </div>
+    <div id="char-recipes-title">Recipe Book</div>
+    <div id="char-recipes"></div>
+    <button id="char-close" onclick="toggleCharPanel()">Close</button>
 </div>
 
 <!-- Mobile Controls -->
@@ -1705,6 +1790,15 @@ function renderHotbar() {
         }
         bar.appendChild(slot);
     }
+    // Character button slot (10th slot)
+    const charSlot = document.createElement('div');
+    charSlot.className = 'hotbar-slot' + (charPanelOpen ? ' selected' : '');
+    charSlot.style.borderColor = '#9c27b0';
+    charSlot.style.marginLeft = '4px';
+    charSlot.onclick = () => { toggleCharPanel(); renderHotbar(); };
+    // Draw a mini character icon
+    charSlot.innerHTML = '<div style="font-size:22px;line-height:1;">🧑</div>';
+    bar.appendChild(charSlot);
 }
 
 // ============================================
@@ -2047,6 +2141,198 @@ function getRankIndex() {
 }
 
 // ============================================
+// CHARACTER PANEL
+// ============================================
+let charPanelOpen = false;
+
+function toggleCharPanel() {
+    charPanelOpen = !charPanelOpen;
+    document.getElementById('char-panel').classList.toggle('open', charPanelOpen);
+    if (charPanelOpen) {
+        drawCharSkin();
+        renderCharStats();
+        renderRecipeBook();
+    }
+}
+
+function drawCharSkin() {
+    const c = document.getElementById('char-skin-canvas');
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, 64, 128);
+
+    // Colors
+    const skin = '#D4A574';
+    const skinShade = '#C4955A';
+    const hair = '#5D4037';
+    const shirtMain = '#4CAF50';
+    const shirtShade = '#388E3C';
+    const pants = '#1565C0';
+    const pantsShade = '#0D47A1';
+    const shoes = '#333';
+    const eyeWhite = '#fff';
+    const eyePupil = '#222';
+    const mouth = '#8B5E3C';
+
+    // Scale: each "pixel" = 4px
+    const s = 4;
+    function rect(x, y, w, h, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x * s, y * s, w * s, h * s);
+    }
+
+    // HEAD (16x16 area, centered at x=0)
+    // Hair top
+    rect(4, 0, 8, 2, hair);
+    rect(3, 1, 1, 3, hair);
+    rect(12, 1, 1, 3, hair);
+    // Face
+    rect(4, 2, 8, 6, skin);
+    rect(3, 3, 1, 4, skin);
+    rect(12, 3, 1, 4, skin);
+    // Shade on face
+    rect(4, 7, 8, 1, skinShade);
+    // Eyes
+    rect(5, 4, 2, 1, eyeWhite);
+    rect(9, 4, 2, 1, eyeWhite);
+    rect(6, 4, 1, 1, eyePupil);
+    rect(10, 4, 1, 1, eyePupil);
+    // Mouth
+    rect(7, 6, 2, 1, mouth);
+
+    // BODY / TORSO (y=8 to y=18)
+    rect(4, 8, 8, 10, shirtMain);
+    rect(4, 8, 1, 10, shirtShade);
+    rect(11, 8, 1, 10, shirtShade);
+    // Collar
+    rect(6, 8, 4, 1, shirtShade);
+
+    // ARMS (beside body)
+    // Left arm
+    rect(1, 8, 3, 9, shirtMain);
+    rect(1, 8, 1, 9, shirtShade);
+    rect(1, 17, 3, 2, skin);
+    rect(1, 18, 3, 1, skinShade);
+    // Right arm
+    rect(12, 8, 3, 9, shirtMain);
+    rect(14, 8, 1, 9, shirtShade);
+    rect(12, 17, 3, 2, skin);
+    rect(12, 18, 3, 1, skinShade);
+
+    // LEGS (y=18 to y=28)
+    // Left leg
+    rect(4, 18, 4, 10, pants);
+    rect(4, 18, 1, 10, pantsShade);
+    // Right leg
+    rect(8, 18, 4, 10, pants);
+    rect(11, 18, 1, 10, pantsShade);
+
+    // SHOES (y=28 to y=30)
+    rect(4, 28, 4, 2, shoes);
+    rect(8, 28, 4, 2, shoes);
+}
+
+function renderCharStats() {
+    document.getElementById('cp-name').textContent = currentUser.name || '-';
+    document.getElementById('cp-coins').textContent = currentUser.coins || 0;
+    document.getElementById('cp-followers').textContent = followers || 0;
+}
+
+function renderRecipeBook() {
+    const container = document.getElementById('char-recipes');
+    container.innerHTML = '';
+    RECIPES.forEach(function(recipe) {
+        const row = document.createElement('div');
+        row.className = 'recipe-row';
+
+        // Determine grid size from pattern
+        const rows = recipe.pattern.length;
+        const cols = Math.max(...recipe.pattern.map(r => r.length));
+
+        // Mini grid
+        const grid = document.createElement('div');
+        grid.className = 'recipe-grid';
+        grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'recipe-cell';
+                const type = recipe.pattern[r][c];
+                if (type) {
+                    const texKey = (type === 'grass') ? 'grass_top' : (type === 'wood') ? 'wood' : type;
+                    if (blockTextures[texKey] && blockTextures[texKey].image) {
+                        if (!texDataURLCache[texKey]) texDataURLCache[texKey] = blockTextures[texKey].image.toDataURL();
+                        cell.style.backgroundImage = 'url(' + texDataURLCache[texKey] + ')';
+                        cell.style.backgroundSize = 'cover';
+                    } else if (BLOCKS[type]) {
+                        cell.style.background = '#' + BLOCKS[type].color.toString(16).padStart(6, '0');
+                    }
+                }
+                grid.appendChild(cell);
+            }
+        }
+        row.appendChild(grid);
+
+        // Arrow
+        const arrow = document.createElement('span');
+        arrow.className = 'recipe-arrow';
+        arrow.textContent = '\u27A1';
+        row.appendChild(arrow);
+
+        // Result
+        const result = document.createElement('div');
+        result.className = 'recipe-result';
+        if (recipe.output) {
+            const sw = document.createElement('div');
+            sw.className = 'recipe-result-swatch';
+            const oType = recipe.output.type;
+            const oTexKey = (oType === 'grass') ? 'grass_top' : (oType === 'wood') ? 'wood' : oType;
+            if (blockTextures[oTexKey] && blockTextures[oTexKey].image) {
+                if (!texDataURLCache[oTexKey]) texDataURLCache[oTexKey] = blockTextures[oTexKey].image.toDataURL();
+                sw.style.backgroundImage = 'url(' + texDataURLCache[oTexKey] + ')';
+                sw.style.backgroundSize = 'cover';
+            } else if (BLOCKS[oType]) {
+                sw.style.background = '#' + BLOCKS[oType].color.toString(16).padStart(6, '0');
+            }
+            result.appendChild(sw);
+            const nameEl = document.createElement('div');
+            nameEl.innerHTML = '<div class="recipe-name">' + recipe.name + ' x' + recipe.output.count + '</div>';
+            result.appendChild(nameEl);
+        } else {
+            const nameEl = document.createElement('div');
+            nameEl.innerHTML = '<div class="recipe-name">' + recipe.name + '</div>' +
+                '<div class="recipe-info">' + (recipe.resultText || '') + '</div>';
+            result.appendChild(nameEl);
+        }
+        row.appendChild(result);
+
+        // Can craft?
+        const canCraft = checkCanCraftRecipe(recipe);
+        const status = document.createElement('div');
+        status.className = 'recipe-status ' + (canCraft ? 'can' : 'cant');
+        status.textContent = canCraft ? '\u2714' : '\u2718';
+        if (canCraft) row.classList.add('craftable');
+        row.appendChild(status);
+
+        container.appendChild(row);
+    });
+}
+
+function checkCanCraftRecipe(recipe) {
+    // Count required items
+    const needed = {};
+    for (let r = 0; r < recipe.pattern.length; r++) {
+        for (let c = 0; c < recipe.pattern[r].length; c++) {
+            const t = recipe.pattern[r][c];
+            if (t) needed[t] = (needed[t] || 0) + 1;
+        }
+    }
+    for (const type in needed) {
+        if (countItem(type) < needed[type]) return false;
+    }
+    return true;
+}
+
+// ============================================
 // HUD
 // ============================================
 function updateHUD() {
@@ -2296,6 +2582,12 @@ document.addEventListener('keydown', (e) => {
         case 'KeyQ': openChat(); break;
         case 'Escape':
             if (craftOpen) toggleCraft();
+            if (charPanelOpen) toggleCharPanel();
+            break;
+        case 'Tab':
+            e.preventDefault();
+            toggleCharPanel();
+            renderHotbar();
             break;
         case 'F2':
             e.preventDefault();
