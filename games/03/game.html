@@ -2180,16 +2180,14 @@ function drawCharSkin() {
         ctx.fillRect(x * s, y * s, w * s, h * s);
     }
 
-    // HEAD (16x16 area, centered at x=0)
+    // HEAD (square 8x8 block)
+    rect(4, 0, 8, 8, skin);
     // Hair top
     rect(4, 0, 8, 2, hair);
-    rect(3, 1, 1, 3, hair);
-    rect(12, 1, 1, 3, hair);
-    // Face
-    rect(4, 2, 8, 6, skin);
-    rect(3, 3, 1, 4, skin);
-    rect(12, 3, 1, 4, skin);
-    // Shade on face
+    // Hair sides
+    rect(4, 2, 1, 1, hair);
+    rect(11, 2, 1, 1, hair);
+    // Shade bottom
     rect(4, 7, 8, 1, skinShade);
     // Eyes
     rect(5, 4, 2, 1, eyeWhite);
