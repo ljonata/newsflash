@@ -16,8 +16,9 @@ This repository contains a Flask monolith serving two applications plus four bro
 | 02 | **Plant Defense** | `/games/02/` | Plants vs. Zombies-style tower defense. 5×10 grid; place Peashooter, Sunflower, Wall-nut, Snow Pea, or Repeater plants to stop zombie waves. |
 | 03 | **BlogCraft** | `/games/03/` | 3D voxel building game with Three.js. Mine blocks, craft items, write blog posts. Day/night cycle, chickens, ranking system. |
 | 04 | **Elf Quest** | `/games/04/` | Top-down action RPG with pixel-art elf on 2D canvas. 40×30 tile overworld, house interiors, 12 missions, Socket.IO multiplayer (up to 4 players). |
+| 05 | **Floor is Lava** | `/games/05/` | Arcade platformer on 2D canvas. Jump between rising blocks as lava rises from below. Pixel-art character, procedural block generation, increasing speed. |
 
-Games 02–04 are standalone HTML/JS with no dedicated Flask API. They optionally link to `/games/01/login.html` for shared auth.
+Games 02–05 are standalone HTML/JS with no dedicated Flask API. They optionally link to `/games/01/login.html` for shared auth.
 
 ## Development Commands
 
@@ -168,6 +169,25 @@ Single-file top-down action RPG (`game.html`, ~2688 lines). 2D canvas rendering 
 - Mobile: D-pad, A/B action buttons, toggleable BAG/QUEST sidebars
 
 **Code sections:** Device Detection → Auth (JWT + coin sync) → Multiplayer (Socket.IO room logic, remote player interpolation) → Constants (tile size, map dimensions, tile IDs) → Map (`createMap()`) → House Interiors (4 maps) → Tile Rendering (`genTileSprite()` for 20+ types) → Elf Sprite → Items → Game State → Camera & Rendering (tile drawing, remote players, night overlay) → Movement & Input → Keyboard/Mobile Controls → Backpack → Missions (12 with conditions/rewards) → HUD → Notifications → Interaction Prompt → Save/Load → Game Loop → Init
+
+### Game 05 — Floor is Lava (`games/05/`)
+
+Single-file arcade platformer (`game.html`). 2D canvas with pixel-art rendering, Enduro/arcade style.
+
+**Technical details:**
+- 480×640 base resolution, scaled to fit window with pixelated rendering
+- Procedurally generated blocks (stone, brick, mossy, cracked) with pixel-art textures
+- Lava rises continuously from below at increasing speed (`SCROLL_SPEED_BASE` + 3 per 10 score)
+- Player: 16×24 pixel-art character with walk animation, arm swing, hair, eyes
+- Physics: gravity (1800), jump velocity (-620), horizontal move speed (220)
+- Block collision: top-only landing (no wall/ceiling collision)
+- Lava rendering: gradient fill with sine-wave surface, bright highlights, glow effect
+- Floating ember particles in background; death particles on lava contact
+- Score = height climbed / 10; hi-score saved to localStorage (`lavaHiScore`)
+- Mobile: touch buttons for left/right/jump
+- Camera follows player with upward bias (40% from top)
+
+**Code sections:** Auth → Canvas Setup → Constants → Game State → Input → Block Generation → Drawing (Lava, Blocks, Player, Particles, Background, Score) → HUD → Start/End Game → Game Loop
 
 ### Game API Endpoints
 All under `/games/01/api/`:
