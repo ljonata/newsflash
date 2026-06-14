@@ -580,6 +580,35 @@ function updateDoors(dt) {
     }
 }
 
+// Procedural "cool" wallpaper for the interior walls — cool-toned vertical
+// stripes with diamond motifs and accent seams (tiles seamlessly).
+function makeWallpaperTexture() {
+    const cv = document.createElement('canvas');
+    cv.width = 128; cv.height = 128;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#cdd9e6'; ctx.fillRect(0, 0, 128, 128);   // base
+    ctx.fillStyle = '#b7cadd';                                  // alternating stripes
+    ctx.fillRect(0, 0, 32, 128); ctx.fillRect(64, 0, 32, 128);
+    ctx.fillStyle = 'rgba(108,140,185,0.55)';                   // diamond motifs
+    for (let x = 16; x < 128; x += 32) {
+        for (let y = 16; y < 128; y += 32) {
+            ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4);
+            ctx.fillRect(-5, -5, 10, 10); ctx.restore();
+        }
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1;  // seams between stripes
+    for (let x = 0; x <= 128; x += 32) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 128); ctx.stroke(); }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+function wallMesh(w, h, d, x, z, widthUnits) {
+    const tex = makeWallpaperTexture();
+    tex.repeat.set(Math.max(1, Math.round(widthUnits / 4)), 2);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ map: tex }));
+    m.position.set(x, h / 2, z); scene.add(m); return m;
+}
+
 function buildInterior() {
     // Floor + ceiling
     box(INT_HW * 2, 0.3, INT_HD * 2, 0x8a5a3a, INT_CX, -0.15, INT_CZ);   // wood floor (top at y=0)
@@ -590,12 +619,11 @@ function buildInterior() {
     scene.add(houseLamp);
     box(1.2, 0.3, 1.2, 0xfff3c0, INT_CX, WALL_H - 0.2, INT_CZ, true);   // light fixture
 
-    // Walls (registered as footprints so the player can't walk through them)
-    const wallCol = 0xe9ddc7;
-    box(INT_HW * 2, WALL_H, 0.4, wallCol, INT_CX, WALL_H / 2, INT_CZ - INT_HD);  // back
-    box(INT_HW * 2, WALL_H, 0.4, wallCol, INT_CX, WALL_H / 2, INT_CZ + INT_HD);  // front (with door)
-    box(0.4, WALL_H, INT_HD * 2, wallCol, INT_CX - INT_HW, WALL_H / 2, INT_CZ);  // left
-    box(0.4, WALL_H, INT_HD * 2, wallCol, INT_CX + INT_HW, WALL_H / 2, INT_CZ);  // right
+    // Wallpapered walls (registered as footprints so the player can't walk through them)
+    wallMesh(INT_HW * 2, WALL_H, 0.4, INT_CX, INT_CZ - INT_HD, INT_HW * 2);  // back
+    wallMesh(INT_HW * 2, WALL_H, 0.4, INT_CX, INT_CZ + INT_HD, INT_HW * 2);  // front (with door)
+    wallMesh(0.4, WALL_H, INT_HD * 2, INT_CX - INT_HW, INT_CZ, INT_HD * 2);  // left
+    wallMesh(0.4, WALL_H, INT_HD * 2, INT_CX + INT_HW, INT_CZ, INT_HD * 2);  // right
     registerFootprint(INT_CX, INT_CZ - INT_HD, INT_HW * 2, 0.4);
     registerFootprint(INT_CX, INT_CZ + INT_HD, INT_HW * 2, 0.4);
     registerFootprint(INT_CX - INT_HW, INT_CZ, 0.4, INT_HD * 2);
