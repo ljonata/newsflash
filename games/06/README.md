@@ -35,30 +35,40 @@ mood drain faster. Each action also advances the in-game clock and day/night cyc
 
 ## Buildings
 
-The city has a 4×4 grid of blocks. The four corner blocks are interactive:
+The city has a 4×4 grid of blocks with five interactive buildings:
 
 | Building | Action | Effect |
 |----------|--------|--------|
-| 🏠 Home | **Enter the house** | Step inside a furnished room (see below) |
+| 🏠 Home | **Enter the house** | Open the door and step into a furnished room (see below) |
 | 🏢 Office | Work a shift | +$40–60, costs energy/hunger, +3 hours |
 | 🍔 Diner | Eat ($15) | Hunger → 100, small mood/energy boost |
 | 🌳 Park | Relax | +22 mood, small energy cost |
+| 🛒 Market | Buy food | Stock your fridge — buy 🍎🥪🥗🍕 for cash |
 
-The remaining blocks are decorative high-rise towers with lit windows.
+Walk up to any building and press **E**. The remaining blocks are decorative
+high-rise towers with lit windows.
 
 ### Inside your house
 
-Press **E** on the Home building to step inside. The interior is a cozy room
-(deliberately roomier than the building looks from outside) with walls, a wood
-floor, ceiling and a warm light. Three pieces of furniture are interactive:
+Press **E** on the Home to open the front door and step inside. The interior is a
+cozy room (deliberately roomier than the building looks from outside) with brick
+exterior walls, a wood floor, ceiling, warm light, **windows, a carpet, and a
+table with a chair**. Interactive pieces:
 
 | Furniture | Action | Effect |
 |-----------|--------|--------|
 | 🛏️ Bed | Sleep | Energy → 100, advances to next 07:00 |
-| 🧊 Fridge | Eat (free) | Hunger → 100, small mood/energy boost |
+| 🧊 Fridge | Open & eat | Choose a food to eat — restores hunger/mood |
 | 🛋️ Sofa | Relax | +18 mood, small energy boost |
 
-Walk to the 🚪 door and press **E** to leave and return to the city.
+Walk to the 🚪 door and press **E** to open it and return to the city.
+
+### Food & the fridge
+
+The fridge holds a limited stock of foods (🍎 Apple, 🥪 Sandwich, 🥗 Salad,
+🍕 Pizza). Each restores different amounts of hunger and mood. **Stock runs out**
+as you eat — when it does, head to the 🛒 **Market** to buy more for cash. Fridge
+stock is saved between sessions.
 
 ## Multiplayer
 

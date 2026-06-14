@@ -74,6 +74,15 @@
     .btn-secondary { background: rgba(255,255,255,0.12); color: #fff; }
     .btn:active { transform: translateY(1px); }
     #room-error { color: #ff8a8a; font-size: 13px; margin-top: 10px; min-height: 16px; }
+    /* Food / market panel */
+    .food-row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+                padding: 9px 11px; margin: 7px 0; background: rgba(255,255,255,0.06); border-radius: 9px; }
+    .food-row .fl { font-size: 15px; }
+    .food-row .fmeta { font-size: 11px; color: #9aa6bf; margin-top: 2px; }
+    .food-row button { width: auto; margin: 0; padding: 8px 16px; border: none; border-radius: 7px;
+                       font-weight: 700; cursor: pointer; background: linear-gradient(135deg,#7CFC9B,#4fd07a); color: #06121a; }
+    .food-row button:disabled { opacity: 0.4; cursor: default; background: #5a5a5a; color: #bbb; }
+    #food-cash { color: #7CFC9B; font-weight: 700; }
     .help { font-size: 12px; color: #8b95ac; margin-top: 16px; line-height: 1.5; }
     .help b { color: #cfd6e6; }
 
@@ -138,9 +147,19 @@
         <div id="room-error"></div>
         <div class="help">
             <b>Goal:</b> earn money, keep your energy, hunger and mood up.<br>
-            🏢 <b>Office</b> — work for cash &nbsp; 🏠 <b>Home</b> — sleep<br>
-            🍔 <b>Diner</b> — eat &nbsp; 🌳 <b>Park</b> — relax
+            🏢 <b>Office</b> — work &nbsp; 🏠 <b>Home</b> — sleep/eat &nbsp; 🛒 <b>Market</b> — buy food<br>
+            🍔 <b>Diner</b> — eat out &nbsp; 🌳 <b>Park</b> — relax
         </div>
+    </div>
+</div>
+
+<!-- Fridge / Market panel -->
+<div class="overlay hidden" id="food-overlay">
+    <div class="panel">
+        <h1 id="food-title">Fridge</h1>
+        <p class="sub" id="food-sub"></p>
+        <div id="food-list"></div>
+        <button class="btn btn-secondary" id="food-close">Close</button>
     </div>
 </div>
 
@@ -223,6 +242,17 @@ const WALL_H = 6;                      // interior wall/ceiling height
 // GAME STATE
 // ============================================
 const stats = { cash: 50, energy: 100, hunger: 100, mood: 70 };
+
+// Food: eaten from the fridge (limited stock) and restocked at the Market
+const foodTypes = [
+    { key: 'apple',    label: '🍎 Apple',    hunger: 18, mood: 3,  price: 5  },
+    { key: 'sandwich', label: '🥪 Sandwich', hunger: 40, mood: 6,  price: 12 },
+    { key: 'salad',    label: '🥗 Salad',    hunger: 32, mood: 9,  price: 14 },
+    { key: 'pizza',    label: '🍕 Pizza',    hunger: 65, mood: 12, price: 22 },
+];
+let fridgeStock = { apple: 2, sandwich: 1, salad: 1, pizza: 1 };
+let menuOpen = false;        // fridge/market panel open — pauses movement
+let foodMode = 'fridge';     // 'fridge' (eat) or 'market' (buy)
 let gameMinutes = 7 * 60;   // 07:00
 let dayCount = 1;
 let lastDayMark = 7 * 60;
@@ -237,6 +267,9 @@ let nearBuilding = null;
 let lastActionTime = -999;
 let insideHouse = false;
 let savedCity = null;        // { x, z, camYaw } remembered while indoors
+let transitioning = false;   // true mid enter/exit (door swinging) — blocks re-trigger
+const doors = [];            // animated hinged doors: { pivot, angle, target }
+let homeDoor = null, exitDoor = null;
 
 // ============================================
 // THREE.JS SETUP
@@ -283,6 +316,7 @@ function buildCity() {
     special[`${GRID - 1},0`] = { type: 'office', label: '🏢 Office', color: 0x5577aa };
     special[`0,${GRID - 1}`] = { type: 'diner', label: '🍔 Diner', color: 0xcc5544 };
     special[`${GRID - 1},${GRID - 1}`] = { type: 'park', label: '🌳 Park', color: 0x4a8a3a };
+    special[`2,0`] = { type: 'market', label: '🛒 Market', color: 0x2e7d4f };   // supermarket — buy food
 
     for (let i = 0; i < GRID; i++) {
         for (let j = 0; j < GRID; j++) {
@@ -380,6 +414,7 @@ function placeSpecialBuilding(cx, cz, def, rng) {
     if (def.type === 'home') h = 7;
     else if (def.type === 'office') h = 24;
     else if (def.type === 'diner') h = 6;
+    else if (def.type === 'market') h = 8;
     else h = 0; // park: no building
 
     if (h > 0) {
@@ -400,13 +435,18 @@ function placeSpecialBuilding(cx, cz, def, rng) {
         scene.add(mesh);
         addWindows(mesh, w, h, d, def.color);
 
-        // Glowing doorway marker
-        const door = new THREE.Mesh(
-            new THREE.BoxGeometry(2.2, 3, 0.3),
-            new THREE.MeshBasicMaterial({ color: 0xffe08a })
-        );
-        door.position.set(cx, 1.9, cz + d / 2 + 0.16);
-        scene.add(door);
+        if (def.type === 'home') {
+            // Real hinged front door (opens/closes when entering)
+            homeDoor = makeDoor(cx, cz + d / 2 + 0.12);
+        } else {
+            // Glowing doorway marker
+            const door = new THREE.Mesh(
+                new THREE.BoxGeometry(2.2, 3, 0.3),
+                new THREE.MeshBasicMaterial({ color: 0xffe08a })
+            );
+            door.position.set(cx, 1.9, cz + d / 2 + 0.16);
+            scene.add(door);
+        }
 
         // Roof / sign label
         addLabelSprite(def.label, cx, h + 3.2, cz, 7);
@@ -512,6 +552,33 @@ function box(w, h, d, color, x, y, z, basic) {
     return m;
 }
 
+// Hinged wooden door on a +z-facing wall, centered at (x,z). Swings on a left-side hinge.
+function makeDoor(x, z) {
+    const pivot = new THREE.Group();
+    pivot.position.set(x - 1.1, 0, z);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.2, 0.18),
+        new THREE.MeshLambertMaterial({ color: 0x6b4a2a }));
+    panel.position.set(1.1, 1.7, 0);            // offset so the hinge edge sits at the pivot
+    pivot.add(panel);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0xffe08a }));
+    knob.position.set(2.0, 1.6, 0.16);
+    pivot.add(knob);
+    scene.add(pivot);
+    const door = { pivot, angle: 0, target: 0 };
+    doors.push(door);
+    return door;
+}
+function setDoorOpen(door, open) { if (door) door.target = open ? -Math.PI * 0.55 : 0; }
+function updateDoors(dt) {
+    for (const d of doors) {
+        if (Math.abs(d.angle - d.target) > 0.005) {
+            d.angle += (d.target - d.angle) * Math.min(1, dt * 8);
+            d.pivot.rotation.y = d.angle;
+        }
+    }
+}
+
 function buildInterior() {
     // Floor + ceiling
     box(INT_HW * 2, 0.3, INT_HD * 2, 0x8a5a3a, INT_CX, -0.15, INT_CZ);   // wood floor (top at y=0)
@@ -533,9 +600,8 @@ function buildInterior() {
     registerFootprint(INT_CX - INT_HW, INT_CZ, 0.4, INT_HD * 2);
     registerFootprint(INT_CX + INT_HW, INT_CZ, 0.4, INT_HD * 2);
 
-    // Exit door on the front wall
-    box(2.2, 3.4, 0.25, 0x6b4a2a, INT_CX, 1.7, INT_CZ + INT_HD - 0.1);
-    box(0.25, 0.25, 0.3, 0xffe08a, INT_CX + 0.7, 1.7, INT_CZ + INT_HD - 0.25, true);  // knob
+    // Exit door on the front wall (hinged, opens when leaving)
+    exitDoor = makeDoor(INT_CX, INT_CZ + INT_HD - 0.1);
     interior.push({ type: 'exit', label: '🚪 Door', cx: INT_CX, cz: INT_CZ + INT_HD - 1.3 });
 
     // --- Bed (left-back corner) ---
@@ -563,22 +629,70 @@ function buildInterior() {
     box(0.5, 1.1, 1.8, 0x4361a4, soX + 1.85, 0.95, soZ);        // right arm
     registerFootprint(soX, soZ, 4.2, 1.9);
     interior.push({ type: 'sofa', label: '🛋️ Sofa', cx: soX, cz: soZ });
+
+    // --- Windows on the back wall (frame + glowing sky pane) ---
+    function addWindow(wx) {
+        const z = INT_CZ - INT_HD;
+        box(2.7, 2.2, 0.12, 0x5a4636, wx, 3.0, z + 0.16);          // frame
+        box(2.3, 1.8, 0.06, 0xaee4ff, wx, 3.0, z + 0.24, true);   // glass (sky)
+        box(0.12, 1.8, 0.07, 0x5a4636, wx, 3.0, z + 0.26);        // mullion (vertical)
+        box(2.3, 0.12, 0.07, 0x5a4636, wx, 3.0, z + 0.26);        // mullion (horizontal)
+    }
+    addWindow(INT_CX + 0.5);
+    addWindow(INT_CX + 4.5);
+
+    // --- Carpet ---
+    box(7, 0.06, 4.6, 0x9c3b3b, INT_CX - 0.5, 0.04, INT_CZ + 0.5);     // rug
+    box(6, 0.07, 3.6, 0xb5564f, INT_CX - 0.5, 0.05, INT_CZ + 0.5);     // inner pattern
+
+    // --- Table + chair (front-left) ---
+    const tX = INT_CX - 3.2, tZ = INT_CZ + 2.2;
+    box(2.4, 0.18, 1.4, 0x7a5230, tX, 1.45, tZ);                  // table top
+    const legY = 0.72;
+    for (const sx of [-1.0, 1.0]) for (const sz of [-0.5, 0.5])
+        box(0.18, 1.45, 0.18, 0x5e3f25, tX + sx, legY, tZ + sz); // 4 legs
+    registerFootprint(tX, tZ, 2.4, 1.4);
+    // chair (south side, facing the table)
+    const chX = tX, chZ = tZ + 1.5;
+    box(0.95, 0.16, 0.95, 0x8a5e38, chX, 0.95, chZ);             // seat
+    box(0.95, 1.1, 0.16, 0x8a5e38, chX, 1.5, chZ + 0.4);        // backrest
+    for (const sx of [-0.38, 0.38]) for (const sz of [-0.38, 0.38])
+        box(0.12, 0.95, 0.12, 0x6b4a2a, chX + sx, 0.47, chZ + sz); // chair legs
+    registerFootprint(chX, chZ, 0.95, 0.95);
 }
 
 function enterHouse() {
+    if (transitioning) return;
+    transitioning = true;
     savedCity = { x: player.x, z: player.z, camYaw };
-    insideHouse = true;
-    player.x = INT_CX; player.z = INT_CZ + INT_HD - 2.2;   // just inside the door
-    camYaw = Math.PI;                                       // face into the room (toward -z)
-    showNotif('🏠 Welcome home');
-    updateNearBuilding();
+    setDoorOpen(homeDoor, true);          // open the front door
+    showNotif('🚪 Opening the door…');
+    setTimeout(() => {
+        insideHouse = true;
+        player.x = INT_CX; player.z = INT_CZ + INT_HD - 2.2;   // just inside the door
+        camYaw = Math.PI;                                       // face into the room (toward -z)
+        setDoorOpen(homeDoor, false);     // close it behind you
+        setDoorOpen(exitDoor, false);
+        transitioning = false;
+        showNotif('🏠 Welcome home');
+        updateNearBuilding();
+    }, 500);
 }
 
 function exitHouse() {
-    insideHouse = false;
-    if (savedCity) { player.x = savedCity.x; player.z = savedCity.z; camYaw = savedCity.camYaw; }
-    savedCity = null;
-    updateNearBuilding();
+    if (transitioning) return;
+    transitioning = true;
+    setDoorOpen(exitDoor, true);          // open the interior door
+    showNotif('🚪 Opening the door…');
+    setTimeout(() => {
+        insideHouse = false;
+        if (savedCity) { player.x = savedCity.x; player.z = savedCity.z; camYaw = savedCity.camYaw; }
+        savedCity = null;
+        setDoorOpen(exitDoor, false);
+        setDoorOpen(homeDoor, false);
+        transitioning = false;
+        updateNearBuilding();
+    }, 500);
 }
 
 // ============================================
@@ -816,7 +930,72 @@ function advanceTime(minutes) {
     dayCount = 1 + Math.floor(gameMinutes / 1440);
 }
 
+// ============================================
+// FOOD: FRIDGE (eat) + MARKET (buy)
+// ============================================
+function openFoodPanel(mode) {
+    foodMode = mode;
+    menuOpen = true;
+    renderFoodPanel();
+    document.getElementById('food-overlay').classList.remove('hidden');
+}
+function closeFoodPanel() {
+    menuOpen = false;
+    document.getElementById('food-overlay').classList.add('hidden');
+}
+function renderFoodPanel() {
+    const buying = foodMode === 'market';
+    document.getElementById('food-title').textContent = buying ? '🛒 Market' : '🧊 Fridge';
+    document.getElementById('food-sub').innerHTML = buying
+        ? `Buy food to stock your fridge. Cash: <span id="food-cash">$${Math.round(stats.cash)}</span>`
+        : `Choose what to eat. Stock runs out — restock at the 🛒 Market.`;
+    const list = document.getElementById('food-list');
+    list.innerHTML = '';
+    for (const f of foodTypes) {
+        const stock = fridgeStock[f.key] || 0;
+        const row = document.createElement('div');
+        row.className = 'food-row';
+        const info = document.createElement('div');
+        info.innerHTML = `<div class="fl">${f.label}</div>` +
+            `<div class="fmeta">+${f.hunger} hunger · +${f.mood} mood · ` +
+            (buying ? `$${f.price}` : `in fridge: <b>${stock}</b>`) + `</div>`;
+        const btn = document.createElement('button');
+        if (buying) {
+            btn.textContent = `Buy $${f.price}`;
+            btn.disabled = stats.cash < f.price;
+            btn.onclick = () => buyFood(f.key);
+        } else {
+            btn.textContent = 'Eat';
+            btn.disabled = stock <= 0;
+            btn.onclick = () => eatFromFridge(f.key);
+        }
+        row.appendChild(info);
+        row.appendChild(btn);
+        list.appendChild(row);
+    }
+}
+function eatFromFridge(key) {
+    const f = foodTypes.find(t => t.key === key);
+    if (!f || (fridgeStock[key] || 0) <= 0) return;
+    fridgeStock[key]--;
+    stats.hunger = clamp(stats.hunger + f.hunger, 0, 100);
+    stats.mood = clamp(stats.mood + f.mood, 0, 100);
+    advanceTime(20);
+    showNotif(`${f.label} — yum! (${fridgeStock[key]} left)`);
+    updateHUD(); saveState(); renderFoodPanel();
+}
+function buyFood(key) {
+    const f = foodTypes.find(t => t.key === key);
+    if (!f || stats.cash < f.price) return;
+    stats.cash -= f.price;
+    fridgeStock[key] = (fridgeStock[key] || 0) + 1;
+    advanceTime(5);
+    showNotif(`Bought ${f.label} (fridge: ${fridgeStock[key]})`);
+    updateHUD(); syncCash(); saveState(); renderFoodPanel();
+}
+
 function doAction() {
+    if (transitioning || menuOpen) return;
     if (!nearBuilding) return;
     const now = performance.now();
     if (now - lastActionTime < 400) return;
@@ -828,16 +1007,18 @@ function doAction() {
     } else if (nearBuilding.type === 'exit') {
         exitHouse();
         return;
+    } else if (nearBuilding.type === 'fridge') {
+        openFoodPanel('fridge');
+        return;
+    } else if (nearBuilding.type === 'market') {
+        openFoodPanel('market');
+        return;
     } else if (nearBuilding.type === 'bed') {
         stats.energy = 100; stats.mood = clamp(stats.mood + 8, 0, 100); stats.hunger -= 20;
         const cur = gameMinutes % 1440;
         const toMorning = (cur <= 7 * 60) ? (7 * 60 - cur) : (1440 - cur + 7 * 60);
         advanceTime(toMorning);
         showNotif('😴 Slept until morning — energy restored');
-    } else if (nearBuilding.type === 'fridge') {
-        stats.hunger = 100; stats.mood = clamp(stats.mood + 5, 0, 100); stats.energy = clamp(stats.energy + 5, 0, 100);
-        advanceTime(30);
-        showNotif('🧊 Ate from the fridge — hunger full');
     } else if (nearBuilding.type === 'sofa') {
         stats.mood = clamp(stats.mood + 18, 0, 100); stats.energy = clamp(stats.energy + 3, 0, 100);
         advanceTime(45);
@@ -868,21 +1049,36 @@ function doAction() {
     saveState();
 }
 
+function distToFootprint(x, z, f) {
+    const dx = Math.max(f.minX - x, 0, x - f.maxX);
+    const dz = Math.max(f.minZ - z, 0, z - f.maxZ);
+    return Math.hypot(dx, dz);
+}
+
 function updateNearBuilding() {
-    const list = insideHouse ? interior : buildings;
-    const reach = insideHouse ? 3.2 * 3.2 : 7 * 7;
-    let found = null, best = reach;
-    for (const b of list) {
-        const dx = player.x - b.cx, dz = player.z - b.cz;
-        const d2 = dx * dx + dz * dz;
-        if (d2 < best) { best = d2; found = b; }
+    let found = null;
+    if (insideHouse) {
+        // interior items: nearest center within reach
+        let best = 3.2 * 3.2;
+        for (const b of interior) {
+            const dx = player.x - b.cx, dz = player.z - b.cz;
+            const d2 = dx * dx + dz * dz;
+            if (d2 < best) { best = d2; found = b; }
+        }
+    } else {
+        // city buildings: nearest within ~3 units of the building's edge (works at any wall/corner)
+        let best = 3.4;
+        for (const b of buildings) {
+            const dd = distToFootprint(player.x, player.z, b.footprint);
+            if (dd < best) { best = dd; found = b; }
+        }
     }
     nearBuilding = found;
     const prompt = document.getElementById('prompt');
     if (found) {
         const verb = {
-            office: 'work', home: 'enter', diner: 'eat ($15)', park: 'relax',
-            bed: 'sleep', fridge: 'eat', sofa: 'relax', exit: 'leave'
+            office: 'work', home: 'enter', diner: 'eat ($15)', park: 'relax', market: 'shop',
+            bed: 'sleep', fridge: 'open', sofa: 'relax', exit: 'leave'
         }[found.type];
         const k = isTouchDevice ? 'the <b>E</b> button' : '<b>E</b>';
         prompt.innerHTML = `${found.label} — press ${k} to ${verb}`;
@@ -916,7 +1112,7 @@ function inBounds(x, z) {
 
 function updatePlayer(dt) {
     let mx = 0, mz = 0, sprint = false;
-    if (!chatOpen) {
+    if (!chatOpen && !menuOpen) {
         if (keys['w'] || keys['arrowup']) mz += 1;        // walk forward
         if (keys['s']) { mz += 1; sprint = true; }        // sprint forward
         if (keys['arrowdown']) mz -= 1;                   // step back
@@ -995,7 +1191,7 @@ function saveState() {
     try {
         localStorage.setItem('citylife_state', JSON.stringify({
             cash: stats.cash, energy: stats.energy, hunger: stats.hunger, mood: stats.mood,
-            gameMinutes, dayCount
+            gameMinutes, dayCount, fridgeStock
         }));
     } catch (e) {}
 }
@@ -1007,6 +1203,7 @@ function loadState() {
         stats.cash = s.cash ?? 50; stats.energy = s.energy ?? 100;
         stats.hunger = s.hunger ?? 100; stats.mood = s.mood ?? 70;
         gameMinutes = s.gameMinutes ?? 7 * 60; dayCount = s.dayCount ?? 1;
+        if (s.fridgeStock) for (const k in fridgeStock) if (typeof s.fridgeStock[k] === 'number') fridgeStock[k] = s.fridgeStock[k];
     } catch (e) {}
 }
 
@@ -1015,6 +1212,10 @@ function loadState() {
 // ============================================
 window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
+    if (menuOpen) {
+        if (e.key === 'Escape' || k === 'e') closeFoodPanel();
+        return;
+    }
     if (chatOpen) {
         if (e.key === 'Enter') sendChat();
         else if (e.key === 'Escape') closeChat();
@@ -1123,6 +1324,7 @@ function loop() {
     updatePlayer(dt);
     updateCamera();
     updateRemotes(dt);
+    updateDoors(dt);
     updateNearBuilding();
     emitState();
 
@@ -1181,6 +1383,7 @@ document.getElementById('btn-join').addEventListener('click', () => {
     connectMultiplayer(code);   // startGame() fires on city_room_state
 });
 document.getElementById('btn-solo').addEventListener('click', () => { startGame(); });
+document.getElementById('food-close').addEventListener('click', closeFoodPanel);
 document.getElementById('room-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('btn-join').click(); });
 
 // Boot
