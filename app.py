@@ -18,6 +18,10 @@ socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 # rooms[roomCode] = { players: {sid: {username,x,y,dir,frame,hasSword}}, openedChests: set, cutBushes: set }
 elf_rooms = {}
 
+# In-memory room state for City Life (game 06) multiplayer
+# city_rooms[roomCode] = { players: {sid: {username,x,z,ry,moving,colorSlot}} }
+city_rooms = {}
+
 # JWT secret for game authentication
 GAME_JWT_SECRET = os.getenv('GAME_JWT_SECRET', 'labyrinth-game-secret-key-change-in-production')
 
@@ -253,6 +257,13 @@ GAME_05_DIR = os.path.join(os.path.dirname(__file__), 'games', '05')
 @app.route('/games/05/<path:filename>')
 def serve_game_05(filename='game.html'):
     return send_from_directory(GAME_05_DIR, filename)
+
+GAME_06_DIR = os.path.join(os.path.dirname(__file__), 'games', '06')
+
+@app.route('/games/06/')
+@app.route('/games/06/<path:filename>')
+def serve_game_06(filename='game.html'):
+    return send_from_directory(GAME_06_DIR, filename)
 
 # Game JWT authentication decorator
 def game_token_required(f):
@@ -676,8 +687,7 @@ def game_select_avatar():
 
 @socketio.on('elf_join_room')
 def on_elf_join_room(data):
-    from flask_socketio import request as sio_request
-    sid = sio_request.sid
+    sid = request.sid
     room = str(data.get('room', '')).strip().lower()[:12]
     username = str(data.get('username', 'Guest'))[:32]
     x = int(data.get('x', 19))
@@ -725,8 +735,7 @@ def on_elf_join_room(data):
 
 @socketio.on('elf_player_update')
 def on_elf_player_update(data):
-    from flask_socketio import request as sio_request
-    sid = sio_request.sid
+    sid = request.sid
     # Find which room this sid is in
     for room, r in elf_rooms.items():
         if sid in r['players']:
@@ -743,8 +752,7 @@ def on_elf_player_update(data):
 
 @socketio.on('elf_world_event')
 def on_elf_world_event(data):
-    from flask_socketio import request as sio_request
-    sid = sio_request.sid
+    sid = request.sid
     event_type = data.get('type')
     key = str(data.get('key', ''))
     for room, r in elf_rooms.items():
@@ -761,16 +769,95 @@ def on_elf_world_event(data):
             break
 
 
+# ============================================
+# City Life (game 06) multiplayer
+# ============================================
+CITY_MAX_PLAYERS = 8
+
+@socketio.on('city_join_room')
+def on_city_join_room(data):
+    sid = request.sid
+    room = str(data.get('room', '')).strip().lower()[:12]
+    username = str(data.get('username', 'Guest'))[:32]
+    x = float(data.get('x', 0))
+    z = float(data.get('z', 0))
+    ry = float(data.get('ry', 0))
+    if not room:
+        return
+
+    if room not in city_rooms:
+        city_rooms[room] = {'players': {}}
+
+    r = city_rooms[room]
+    if len(r['players']) >= CITY_MAX_PLAYERS and sid not in r['players']:
+        emit('city_room_full')
+        return
+
+    # Assign the lowest unused color slot (0..CITY_MAX_PLAYERS-1)
+    used_slots = {p.get('colorSlot', 0) for p in r['players'].values()}
+    color_slot = next(i for i in range(CITY_MAX_PLAYERS) if i not in used_slots)
+
+    r['players'][sid] = {
+        'username': username, 'x': x, 'z': z, 'ry': ry,
+        'moving': False, 'colorSlot': color_slot
+    }
+    sio_join_room(room)
+
+    emit('city_room_state', {
+        'sid': sid,
+        'myColorSlot': color_slot,
+        'players': {s: p for s, p in r['players'].items() if s != sid},
+    })
+
+    emit('city_player_joined', {
+        'sid': sid, 'username': username,
+        'x': x, 'z': z, 'ry': ry, 'colorSlot': color_slot
+    }, to=room, include_self=False)
+
+
+@socketio.on('city_player_update')
+def on_city_player_update(data):
+    sid = request.sid
+    for room, r in city_rooms.items():
+        if sid in r['players']:
+            p = r['players'][sid]
+            p['x'] = data.get('x', p['x'])
+            p['z'] = data.get('z', p['z'])
+            p['ry'] = data.get('ry', p['ry'])
+            p['moving'] = data.get('moving', p['moving'])
+            emit('city_remote_update', {'sid': sid, **p}, to=room, include_self=False)
+            break
+
+
+@socketio.on('city_chat')
+def on_city_chat(data):
+    sid = request.sid
+    msg = str(data.get('msg', ''))[:200]
+    if not msg.strip():
+        return
+    for room, r in city_rooms.items():
+        if sid in r['players']:
+            username = r['players'][sid].get('username', 'Guest')
+            emit('city_chat', {'sid': sid, 'username': username, 'msg': msg}, to=room)
+            break
+
+
 @socketio.on('disconnect')
-def on_disconnect():
-    from flask_socketio import request as sio_request
-    sid = sio_request.sid
+def on_disconnect(reason=None):
+    sid = request.sid
     for room, r in list(elf_rooms.items()):
         if sid in r['players']:
             del r['players'][sid]
             emit('elf_player_left', {'sid': sid}, to=room)
             if not r['players']:
                 del elf_rooms[room]
+            break
+    for room, r in list(city_rooms.items()):
+        if sid in r['players']:
+            del r['players'][sid]
+            emit('city_player_left', {'sid': sid}, to=room)
+            if not r['players']:
+                del city_rooms[room]
             break
 
 

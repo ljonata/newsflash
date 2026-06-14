@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This repository contains a Flask monolith serving two applications plus five browser games:
+This repository contains a Flask monolith serving two applications plus six browser games:
 
 1. **Newsflash** - Keyword-based authentication system with journalism-focused data collection forms. Users access via `?key=keyword` URLs without login/password.
 
-2. **Five browser games** served from `games/` — all share the same Flask server; game 01 has a full Flask backend API, games 02–05 are standalone HTML/JS:
+2. **Six browser games** served from `games/` — all share the same Flask server; game 01 has a full Flask backend API, while games 04 and 06 add Socket.IO multiplayer handlers in `app.py`:
 
 | # | Title | Path | Description |
 |---|-------|------|-------------|
@@ -17,8 +17,9 @@ This repository contains a Flask monolith serving two applications plus five bro
 | 03 | **BlogCraft** | `/games/03/` | 3D voxel building game with Three.js. Mine blocks, craft items, write blog posts. Day/night cycle, chickens, ranking system. |
 | 04 | **Elf Quest** | `/games/04/` | Top-down action RPG with pixel-art elf on 2D canvas. 40×30 tile overworld, house interiors, 12 missions, Socket.IO multiplayer (up to 4 players). |
 | 05 | **Floor is Lava** | `/games/05/` | Arcade platformer on 2D canvas. Jump between rising blocks as lava rises from below. Pixel-art character, procedural block generation, increasing speed. |
+| 06 | **City Life** | `/games/06/` | 3D walk-around life sim with Three.js. Third-person character in a shared seeded city; work/sleep/eat/relax to manage cash, energy, hunger, mood. Socket.IO multiplayer (up to 8 players) with chat. |
 
-Games 02–05 are standalone HTML/JS with no dedicated Flask API. They optionally link to `/games/01/login.html` for shared auth.
+Games 02, 03 and 05 are standalone HTML/JS with no dedicated Flask API. Games 04 and 06 are HTML/JS clients backed by Socket.IO room handlers in `app.py`. All games optionally link to `/games/01/login.html` for shared JWT auth.
 
 ## Development Commands
 
@@ -47,7 +48,7 @@ gunicorn app:app --workers 3 --threads 2 --bind 0.0.0.0:$PORT --timeout 120
 ### Single Flask Application (`app.py`)
 The entire system runs as one Flask app with two distinct sections:
 - **Newsflash routes**: keyword authentication, dashboard, forms A/B/C, records view
-- **Game routes**: static file serving for all five games, JWT auth API for game 01
+- **Game routes**: static file serving for all six games, JWT auth API for game 01, and Socket.IO room handlers for games 04 (`elf_*`) and 06 (`city_*`)
 
 `config.py` handles environment loading and normalizes `DATABASE_URL` to psycopg3 dialect (handles `postgres://`, `postgresql://`, and `postgresql+psycopg2://` variants automatically).
 
@@ -189,6 +190,30 @@ Single-file arcade platformer (`game.html`). 2D canvas with pixel-art rendering,
 - Camera follows player with upward bias (40% from top)
 
 **Code sections:** Auth → Canvas Setup → Constants → Game State → Input → Block Generation → Drawing (Lava, Blocks, Player, Particles, Background, Score) → HUD → Start/End Game → Game Loop
+
+### Game 06 — City Life (`games/06/`)
+
+Single-file 3D walk-around life sim (`game.html`). Three.js r128 + Socket.IO 4.7.5, both via CDN.
+
+**Technical details:**
+- Third-person camera: WASD moves relative to camera yaw; mouse drag (or right-half touch drag) orbits; wheel/`camDist` zooms; arrow Left/Right also rotate yaw
+- City is **deterministic** — generated from a fixed seed (`CITY_SEED`) via `mulberry32()` so every player in a room sees the same layout. Do not introduce `Math.random()` into city generation or layouts will desync across clients
+- `GRID`×`GRID` blocks (4×4) separated by roads; each block has a building. Four corner blocks are the interactive ones: 🏠 Home, 🏢 Office, 🍔 Diner, 🌳 Park. Other blocks are decorative towers with lit-window planes
+- Avatars are box-built humanoids (body/head/arms/legs) color-coded by `colorSlot`; walk animation swings limbs via `walkPhaseFor()`. `makeAvatar()` is shared by the local player and remotes; a `THREE.Sprite` canvas texture renders the floating name label
+- Collision: axis-separated AABB rejection against building/tree `footprints` (allows sliding), plus a `CITY_LIMIT` boundary clamp
+- Life-sim stats: `cash`, `energy`, `hunger`, `mood`. Stats decay over time in the loop; hitting 0 hunger accelerates energy/mood loss; mood drifts toward neutral. `doAction()` near a building applies effects and advances in-game time (work earns cash, sleep restores energy to next 07:00, eat costs $15, relax boosts mood)
+- Day/night cycle: `DAY_SECONDS` real seconds per in-game day; `updateDayNight()` lerps sky/fog color, sun arc and light intensities, and lights street lamps at night
+- Cash maps to the shared backend `coins` (debounced `syncCash()` PUT to `/games/01/api/user/coins`); works as Guest with no token. Single-player progress also saved to localStorage (`citylife_state`)
+- Multiplayer (Socket.IO rooms, up to 8 players):
+  - Start overlay: "Join City" (room code) or "Play Solo"; `startGame()` fires on `city_room_state`
+  - Client events: `city_join_room`, `city_player_update` (~20Hz: x/z/ry/moving), `city_chat`
+  - Server→client: `city_room_state`, `city_player_joined`, `city_remote_update`, `city_player_left`, `city_chat`, `city_room_full`
+  - Remote players interpolated toward target position/rotation; server holds room state in the `city_rooms` dict in `app.py`
+- Mobile: on-screen joystick (left), action `E` button + `CHAT` button (right), right-half drag to orbit camera
+
+**Code sections:** Device Detection → Auth (JWT + cash/coin sync) → Seeded RNG → Constants → Game State → Three.js Setup (renderer, scene, fog, lights) → City Generation (`buildCity()`, towers, special buildings, trees, lamps, label sprites) → Avatar (`makeAvatar()`, walk anim) → Multiplayer (`connectMultiplayer()`, remote players) → Chat → Day/Night → HUD → Interactions (`doAction()`, `updateNearBuilding()`) → Movement & Collision → Camera → Remote Interpolation & Emit → Save/Load → Input (keyboard, mouse, touch) → Mobile Controls → Game Loop → Start/Init
+
+**Socket.IO server note:** handlers obtain the session id via `sid = request.sid` (Flask-SocketIO sets `request.sid` on the standard `flask.request`; it does **not** export its own `request`). The shared `on_disconnect(reason=None)` accepts an optional arg for newer python-socketio. `python-socketio`/`python-engineio` are unpinned in `requirements.txt`.
 
 ### Game API Endpoints
 All under `/games/01/api/`:
