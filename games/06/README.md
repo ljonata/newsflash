@@ -1,7 +1,7 @@
 # Game 06 - City Life
 
-A 3D walk-around life simulator rendered with Three.js. Control a third-person
-character living in a shared city — go to work for cash, sleep at home, grab a
+A 3D walk-around life simulator rendered with Three.js. Explore a shared city
+from a first-person view — go to work for cash, sleep at home, grab a
 meal, and relax in the park while keeping your energy, hunger and mood up. Play
 solo or hang out with up to 8 players in a Socket.IO room, complete with chat.
 
@@ -9,8 +9,7 @@ solo or hang out with up to 8 players in a Socket.IO room, complete with chat.
 
 ### Desktop
 - **Move**: WASD (relative to where the camera is facing)
-- **Look around**: drag the mouse; arrow Left/Right also rotate the camera
-- **Zoom**: mouse wheel
+- **Look around**: drag the mouse (first-person view); arrow Left/Right also turn
 - **Interact**: E (work / sleep / eat / relax near a building)
 - **Chat**: Enter to open, Enter to send, Esc to cancel (multiplayer rooms only)
 
@@ -62,8 +61,9 @@ The remaining blocks are decorative high-rise towers with lit windows.
 
 - **Three.js 3D city** — seeded procedural generation (roads, towers, trees,
   street lamps) so all players see an identical world
-- **Third-person avatar** — box-built humanoid with a walk animation, color-coded
-  per player, shared by local and remote players
+- **First-person view** — eye-level camera with mouse/touch look; your own body
+  is hidden locally. Other players appear as box-built humanoid avatars with a
+  walk animation, color-coded per player, with floating name labels
 - **Life-sim stats** — cash, energy, hunger, mood with decay, drift and building-driven recovery
 - **Day/night cycle** — sky/fog colors, sun arc and light intensity shift over the
   day; street lamps glow at night

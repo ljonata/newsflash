@@ -17,7 +17,7 @@ This repository contains a Flask monolith serving two applications plus six brow
 | 03 | **BlogCraft** | `/games/03/` | 3D voxel building game with Three.js. Mine blocks, craft items, write blog posts. Day/night cycle, chickens, ranking system. |
 | 04 | **Elf Quest** | `/games/04/` | Top-down action RPG with pixel-art elf on 2D canvas. 40×30 tile overworld, house interiors, 12 missions, Socket.IO multiplayer (up to 4 players). |
 | 05 | **Floor is Lava** | `/games/05/` | Arcade platformer on 2D canvas. Jump between rising blocks as lava rises from below. Pixel-art character, procedural block generation, increasing speed. |
-| 06 | **City Life** | `/games/06/` | 3D walk-around life sim with Three.js. Third-person character in a shared seeded city; work/sleep/eat/relax to manage cash, energy, hunger, mood. Socket.IO multiplayer (up to 8 players) with chat. |
+| 06 | **City Life** | `/games/06/` | 3D walk-around life sim with Three.js. First-person view in a shared seeded city; work/sleep/eat/relax to manage cash, energy, hunger, mood. Socket.IO multiplayer (up to 8 players) with chat. |
 
 Games 02, 03 and 05 are standalone HTML/JS with no dedicated Flask API. Games 04 and 06 are HTML/JS clients backed by Socket.IO room handlers in `app.py`. All games optionally link to `/games/01/login.html` for shared JWT auth.
 
@@ -196,7 +196,7 @@ Single-file arcade platformer (`game.html`). 2D canvas with pixel-art rendering,
 Single-file 3D walk-around life sim (`game.html`). Three.js r128 + Socket.IO 4.7.5, both via CDN.
 
 **Technical details:**
-- Third-person camera: WASD moves relative to camera yaw; mouse drag (or right-half touch drag) orbits; wheel/`camDist` zooms; arrow Left/Right also rotate yaw
+- First-person camera (`updateCamera()` places the camera at `EYE_HEIGHT` looking along `camYaw`/`camPitch`): WASD moves relative to camera yaw; mouse drag (or right-half touch drag) looks around (`camPitch` clamped ±1.3, 0 = horizon); arrow Left/Right also rotate yaw. The local player's own avatar is set `visible = false` so the body never blocks the view; remote clients still render it
 - City is **deterministic** — generated from a fixed seed (`CITY_SEED`) via `mulberry32()` so every player in a room sees the same layout. Do not introduce `Math.random()` into city generation or layouts will desync across clients
 - `GRID`×`GRID` blocks (4×4) separated by roads; each block has a building. Four corner blocks are the interactive ones: 🏠 Home, 🏢 Office, 🍔 Diner, 🌳 Park. Other blocks are decorative towers with lit-window planes
 - Avatars are box-built humanoids (body/head/arms/legs) color-coded by `colorSlot`; walk animation swings limbs via `walkPhaseFor()`. `makeAvatar()` is shared by the local player and remotes; a `THREE.Sprite` canvas texture renders the floating name label
