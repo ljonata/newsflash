@@ -755,6 +755,8 @@ def on_elf_world_event(data):
                 r['cutBushes'].append(key)
             elif event_type == 'tree' and key not in r['cutTrees']:
                 r['cutTrees'].append(key)
+            elif event_type == 'bush_regrow':
+                r['cutBushes'] = []
             emit('elf_world_event', {'type': event_type, 'key': key}, to=room, include_self=False)
             break
 

@@ -496,6 +496,7 @@ function connectMultiplayer(roomCode) {
         if (data.type === 'chest') openedChests.add(data.key);
         else if (data.type === 'bush') cutBushes.add(data.key);
         else if (data.type === 'tree') cutTrees.add(data.key);
+        else if (data.type === 'bush_regrow') regrowBushes(false);
     });
 
     socket.on('disconnect', () => {
@@ -1685,6 +1686,8 @@ let playerHP = 3;
 let maxHP = 3;
 let playerCoins = 0;
 let gameTimeMinutes = 420; // start at 07:00 (1 real second = 1 game minute)
+let dayCount = 0;          // full game days elapsed; cut bushes regrow every BUSH_REGROW_DAYS
+const BUSH_REGROW_DAYS = 2;
 let inventory = { sword: 1, shield: 0, key: 0, potion: 0, coins: 0 };
 let selectedItem = 'sword';
 
@@ -2411,6 +2414,18 @@ function getDayNightAlpha() {
     return (1 - lightLevel) * 0.72;                // max 0.72 alpha at midnight
 }
 
+// Bushes grow back every BUSH_REGROW_DAYS game days (fires at the midnight rollover).
+// broadcast=false when triggered by a remote regrow event, to avoid an echo loop.
+function regrowBushes(broadcast = true) {
+    if (cutBushes.size === 0) return;
+    cutBushes.clear();
+    showNotif('The bushes have grown back!');
+    if (broadcast && socket && socket.connected) {
+        socket.emit('elf_world_event', { type: 'bush_regrow', key: '' });
+    }
+    saveState();
+}
+
 function updateHUD() {
     document.getElementById('d-coins').textContent = `Coins: ${playerCoins}`;
     inventory.coins = playerCoins;
@@ -2495,7 +2510,8 @@ function saveState() {
         crossedBridge: crossedBridge,
         hasSwum: hasSwum,
         housesVisited: [...housesVisited],
-        gameTimeMinutes: gameTimeMinutes
+        gameTimeMinutes: gameTimeMinutes,
+        dayCount: dayCount
     };
     localStorage.setItem('elfquest_state', JSON.stringify(state));
 }
@@ -2524,6 +2540,7 @@ function loadState() {
         hasSwum = s.hasSwum || false;
         housesVisited = new Set(s.housesVisited || []);
         if (s.gameTimeMinutes != null) gameTimeMinutes = s.gameTimeMinutes;
+        dayCount = s.dayCount || 0;
         return true;
     } catch(e) { return false; }
 }
@@ -2629,7 +2646,11 @@ function gameLoop(time) {
 
     // Advance game time (10 real seconds = 1 game minute)
     gameTimeMinutes += delta * 6;
-    if (gameTimeMinutes >= 1440) gameTimeMinutes -= 1440;
+    if (gameTimeMinutes >= 1440) {
+        gameTimeMinutes -= 1440;
+        dayCount++;
+        if (dayCount % BUSH_REGROW_DAYS === 0) regrowBushes();
+    }
     document.getElementById('d-time').textContent = formatGameTime(gameTimeMinutes);
 
     // Advance remote player interpolation

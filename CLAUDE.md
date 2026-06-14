@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This repository contains a Flask monolith serving two applications plus four browser games:
+This repository contains a Flask monolith serving two applications plus five browser games:
 
 1. **Newsflash** - Keyword-based authentication system with journalism-focused data collection forms. Users access via `?key=keyword` URLs without login/password.
 
-2. **Four browser games** served from `games/` — all share the same Flask server; game 01 has a full Flask backend API, games 02–04 are standalone HTML/JS:
+2. **Five browser games** served from `games/` — all share the same Flask server; game 01 has a full Flask backend API, games 02–05 are standalone HTML/JS:
 
 | # | Title | Path | Description |
 |---|-------|------|-------------|
@@ -47,7 +47,7 @@ gunicorn app:app --workers 3 --threads 2 --bind 0.0.0.0:$PORT --timeout 120
 ### Single Flask Application (`app.py`)
 The entire system runs as one Flask app with two distinct sections:
 - **Newsflash routes**: keyword authentication, dashboard, forms A/B/C, records view
-- **Game routes**: static file serving for all four games, JWT auth API for game 01
+- **Game routes**: static file serving for all five games, JWT auth API for game 01
 
 `config.py` handles environment loading and normalizes `DATABASE_URL` to psycopg3 dialect (handles `postgres://`, `postgresql://`, and `postgresql+psycopg2://` variants automatically).
 
@@ -123,7 +123,7 @@ Single-file tower defense game (`game.html`, ~1370 lines). 5×10 DOM grid with C
 
 ### Game 03 — BlogCraft (`games/03/`)
 
-Single-file 3D voxel game (`game.html`, ~2681 lines). Three.js r128 with InstancedMesh rendering.
+3D voxel game on Three.js r128 with InstancedMesh rendering. Two files: `game.html` (~2976 lines, the game) and `home.html` (dedicated home screen with save management — "Continue World" / "New World" buttons, world stats, and a controls reference; reachable in-game via F2).
 
 **Technical details:**
 - 18 block types (dirt, grass, stone, wood, leaves, sand, cobblestone, planks, glass, iron/diamond/gold ore, paper, blog post, iron/diamond/gold ingot, bookshelf)
@@ -132,6 +132,7 @@ Single-file 3D voxel game (`game.html`, ~2681 lines). Three.js r128 with Instanc
 - Hidden-face culling: blocks surrounded on all 6 sides are not rendered
 - Progressive mining with 4-stage crack overlay (hold to mine); pickaxe crafted from iron speeds mining 50%
 - 3×3 shape-based crafting grid — recipes must match exact spatial pattern
+- Character Panel (Tab): displays the player's pixel-art skin on a canvas plus a Recipe Book listing every recipe as a mini spatial grid (`renderRecipeBook()` iterates `RECIPES`)
 - Blog publishing: craft blog posts → auto-publish every 30s → earn coins and followers → rank up (8 tiers: Newbie → Star Reporter)
 - Day/night cycle: 10 real minutes = 1 game day; separate sky scene for sun, moon, 200 stars; sky color interpolation across 8 keyframes; fog color synced
 - Animated cloud layer drifting across the sky
@@ -142,7 +143,7 @@ Single-file 3D voxel game (`game.html`, ~2681 lines). Three.js r128 with Instanc
 - Save/load: localStorage metadata + IndexedDB for world block data
 - Mobile: virtual joystick, tap to place, hold to mine, dedicated buttons
 
-**Code sections:** Device Detection → Auth → Block Types (`BLOCKS`) → Recipes → Ranks → Game State → Three.js Setup (scene, camera, lighting, fog, sky scene, hand scene) → World Generation → Textures (`genTextures()`) → Instanced Meshes → Crack Overlays → Chickens → Day/Night Cycle (sun/moon sprites, stars, sky colors, clouds) → Inventory & Hotbar → Block Interaction (mine/place via raycaster) → Crafting → HUD → Chat → Save/Load → Physics/Movement → Controls (keyboard, mouse pointer lock, touch) → Game Loop → Init
+**Code sections:** Device Detection → Auth → Block Types (`BLOCKS`) → Recipes → Ranks → Game State → Three.js Setup (scene, camera, lighting, fog, sky scene, hand scene) → World Generation → Textures (`genTextures()`) → Instanced Meshes → Crack Overlays → Chickens → Day/Night Cycle (sun/moon sprites, stars, sky colors, clouds) → Inventory & Hotbar → Block Interaction (mine/place via raycaster) → Crafting → Character Panel (`toggleCharPanel()`, `drawCharSkin()`, `renderRecipeBook()`) → HUD → Chat → Save/Load → Physics/Movement → Controls (keyboard incl. Tab=Character / F2=Home, mouse pointer lock, touch) → Game Loop → Init
 
 ### Game 04 — Elf Quest (`games/04/`)
 
@@ -156,12 +157,12 @@ Single-file top-down action RPG (`game.html`, ~2688 lines). 2D canvas rendering 
 - Star Wars-style iris wipe transitions when entering/exiting houses
 - 12 progressive missions with coin rewards (First Steps through Completionist)
 - Inventory: sword, shield, key, potion, coins — displayed in backpack sidebar
-- Day/night cycle: 10 real seconds = 1 game minute; dark overlay at night
+- Day/night cycle: 10 real seconds = 1 game minute; dark overlay at night. `dayCount` increments at each midnight rollover; every `BUSH_REGROW_DAYS` (2) days `regrowBushes()` clears `cutBushes` so cut bushes grow back (and re-drop keys/coins)
 - Water mechanics: slower movement (0.45× speed), animated wave highlights
 - Tile-based movement with smooth interpolation (`moveProgress` advanced by `MOVE_SPEED * delta`)
 - Socket.IO multiplayer (up to 4 players per named room):
   - Room join overlay on launch; "Join Room" or "Play Solo"
-  - Events: `elf_join_room`, `elf_player_update` (20Hz), `elf_world_event` (chest/bush/tree sync), `elf_player_joined`, `elf_player_left`, `elf_room_state`
+  - Events: `elf_join_room`, `elf_player_update` (20Hz), `elf_world_event` (chest/bush/tree sync, plus `bush_regrow` which clears the room's cut-bush list), `elf_player_joined`, `elf_player_left`, `elf_room_state`
   - Remote players rendered with interpolated movement and color-coded sprites
   - Shared world state: opened chests, cut bushes, cut trees synced across all players
   - Server holds room state in memory dict in `app.py`
