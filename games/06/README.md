@@ -39,12 +39,26 @@ The city has a 4×4 grid of blocks. The four corner blocks are interactive:
 
 | Building | Action | Effect |
 |----------|--------|--------|
-| 🏠 Home | Sleep | Energy → 100, advances to next 07:00 |
+| 🏠 Home | **Enter the house** | Step inside a furnished room (see below) |
 | 🏢 Office | Work a shift | +$40–60, costs energy/hunger, +3 hours |
 | 🍔 Diner | Eat ($15) | Hunger → 100, small mood/energy boost |
 | 🌳 Park | Relax | +22 mood, small energy cost |
 
 The remaining blocks are decorative high-rise towers with lit windows.
+
+### Inside your house
+
+Press **E** on the Home building to step inside. The interior is a cozy room
+(deliberately roomier than the building looks from outside) with walls, a wood
+floor, ceiling and a warm light. Three pieces of furniture are interactive:
+
+| Furniture | Action | Effect |
+|-----------|--------|--------|
+| 🛏️ Bed | Sleep | Energy → 100, advances to next 07:00 |
+| 🧊 Fridge | Eat (free) | Hunger → 100, small mood/energy boost |
+| 🛋️ Sofa | Relax | +18 mood, small energy boost |
+
+Walk to the 🚪 door and press **E** to leave and return to the city.
 
 ## Multiplayer
 
@@ -61,6 +75,8 @@ The remaining blocks are decorative high-rise towers with lit windows.
 
 - **Three.js 3D city** — seeded procedural generation (roads, towers, trees,
   street lamps) so all players see an identical world
+- **Enterable house** — step inside the Home for a furnished room (walls, floor,
+  ceiling, bed, fridge, sofa); bigger on the inside than the exterior footprint
 - **First-person view** — eye-level camera with mouse/touch look; your own body
   is hidden locally. Other players appear as box-built humanoid avatars with a
   walk animation, color-coded per player, with floating name labels

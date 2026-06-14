@@ -213,6 +213,12 @@ const MIN_PER_SEC = 1440 / DAY_SECONDS;
 
 const PLAYER_COLORS = [0x4fd07a, 0x4f9bff, 0xff5b5b, 0xc06bff, 0xffc04f, 0x4fe0e0, 0xff7ad0, 0xa0e84f];
 
+// House interior — built off in the distance (fog hides it from the city and vice-versa).
+// Deliberately roomier than the exterior footprint ("bigger on the inside").
+const INT_CX = 300, INT_CZ = 300;     // interior room center (far from the city)
+const INT_HW = 8, INT_HD = 7;          // interior half-width / half-depth (16 × 14 floor)
+const WALL_H = 6;                      // interior wall/ceiling height
+
 // ============================================
 // GAME STATE
 // ============================================
@@ -225,9 +231,12 @@ let lastDayMark = 7 * 60;
 const player = { x: -HALF + PITCH / 2, z: -HALF + PITCH / 2, ry: 0, moving: false };
 let camYaw = Math.PI / 4, camPitch = 0;   // first-person look (pitch 0 = horizon); start facing downtown
 
-const buildings = [];        // { type, label, cx, cz, footprint:{minX,maxX,minZ,maxZ}, action }
+const buildings = [];        // city interactables: { type, label, cx, cz, footprint }
+const interior = [];         // house-interior interactables: { type, label, cx, cz }
 let nearBuilding = null;
 let lastActionTime = -999;
+let insideHouse = false;
+let savedCity = null;        // { x, z, camYaw } remembered while indoors
 
 // ============================================
 // THREE.JS SETUP
@@ -456,6 +465,86 @@ function roundRect(ctx, x, y, w, h, r) {
     ctx.arcTo(x, y + h, x, y, r);
     ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
+}
+
+// ============================================
+// HOUSE INTERIOR
+// ============================================
+function box(w, h, d, color, x, y, z, basic) {
+    const mat = basic ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshLambertMaterial({ color });
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x, y, z);
+    scene.add(m);
+    return m;
+}
+
+function buildInterior() {
+    // Floor + ceiling
+    box(INT_HW * 2, 0.3, INT_HD * 2, 0x8a5a3a, INT_CX, -0.15, INT_CZ);   // wood floor (top at y=0)
+    box(INT_HW * 2 + 0.4, 0.3, INT_HD * 2 + 0.4, 0xece3d2, INT_CX, WALL_H, INT_CZ);  // ceiling
+    // Cozy ceiling light (range limited so it never reaches the city)
+    const lamp = new THREE.PointLight(0xfff0d0, 0.9, 26);
+    lamp.position.set(INT_CX, WALL_H - 0.6, INT_CZ);
+    scene.add(lamp);
+    box(1.2, 0.3, 1.2, 0xfff3c0, INT_CX, WALL_H - 0.2, INT_CZ, true);   // light fixture
+
+    // Walls (registered as footprints so the player can't walk through them)
+    const wallCol = 0xe9ddc7;
+    box(INT_HW * 2, WALL_H, 0.4, wallCol, INT_CX, WALL_H / 2, INT_CZ - INT_HD);  // back
+    box(INT_HW * 2, WALL_H, 0.4, wallCol, INT_CX, WALL_H / 2, INT_CZ + INT_HD);  // front (with door)
+    box(0.4, WALL_H, INT_HD * 2, wallCol, INT_CX - INT_HW, WALL_H / 2, INT_CZ);  // left
+    box(0.4, WALL_H, INT_HD * 2, wallCol, INT_CX + INT_HW, WALL_H / 2, INT_CZ);  // right
+    registerFootprint(INT_CX, INT_CZ - INT_HD, INT_HW * 2, 0.4);
+    registerFootprint(INT_CX, INT_CZ + INT_HD, INT_HW * 2, 0.4);
+    registerFootprint(INT_CX - INT_HW, INT_CZ, 0.4, INT_HD * 2);
+    registerFootprint(INT_CX + INT_HW, INT_CZ, 0.4, INT_HD * 2);
+
+    // Exit door on the front wall
+    box(2.2, 3.4, 0.25, 0x6b4a2a, INT_CX, 1.7, INT_CZ + INT_HD - 0.1);
+    box(0.25, 0.25, 0.3, 0xffe08a, INT_CX + 0.7, 1.7, INT_CZ + INT_HD - 0.25, true);  // knob
+    interior.push({ type: 'exit', label: '🚪 Door', cx: INT_CX, cz: INT_CZ + INT_HD - 1.3 });
+
+    // --- Bed (left-back corner) ---
+    const bedX = INT_CX - INT_HW + 2.2, bedZ = INT_CZ - INT_HD + 2.6;
+    box(2.6, 0.7, 4.4, 0x6b4a2a, bedX, 0.35, bedZ);                 // frame
+    box(2.3, 0.4, 3.9, 0xf2efe6, bedX, 0.85, bedZ + 0.2);          // mattress
+    box(2.1, 0.35, 0.9, 0xff9bb0, bedX, 1.05, bedZ - 1.7);        // pillow
+    box(2.2, 0.25, 2.6, 0x5a7bd0, bedX, 0.98, bedZ + 0.9);        // blanket
+    registerFootprint(bedX, bedZ, 2.6, 4.4);
+    interior.push({ type: 'bed', label: '🛏️ Bed', cx: bedX, cz: bedZ });
+
+    // --- Fridge (right-back corner) ---
+    const frX = INT_CX + INT_HW - 1.3, frZ = INT_CZ - INT_HD + 1.5;
+    box(1.7, 3.4, 1.5, 0xd8dde2, frX, 1.7, frZ);                   // body
+    box(1.72, 0.12, 1.52, 0xb9c0c8, frX, 2.0, frZ);              // door split
+    box(0.18, 1.1, 0.18, 0x8a9099, frX - 0.7, 1.4, frZ + 0.7, true); // handle
+    registerFootprint(frX, frZ, 1.7, 1.5);
+    interior.push({ type: 'fridge', label: '🧊 Fridge', cx: frX, cz: frZ });
+
+    // --- Sofa (front-right, facing into the room) ---
+    const soX = INT_CX + INT_HW - 3, soZ = INT_CZ + INT_HD - 2;
+    box(4.2, 0.9, 1.8, 0x4f6db0, soX, 0.55, soZ);                 // seat base
+    box(4.2, 1.3, 0.5, 0x4361a4, soX, 1.25, soZ + 0.65);        // backrest
+    box(0.5, 1.1, 1.8, 0x4361a4, soX - 1.85, 0.95, soZ);        // left arm
+    box(0.5, 1.1, 1.8, 0x4361a4, soX + 1.85, 0.95, soZ);        // right arm
+    registerFootprint(soX, soZ, 4.2, 1.9);
+    interior.push({ type: 'sofa', label: '🛋️ Sofa', cx: soX, cz: soZ });
+}
+
+function enterHouse() {
+    savedCity = { x: player.x, z: player.z, camYaw };
+    insideHouse = true;
+    player.x = INT_CX; player.z = INT_CZ + INT_HD - 2.2;   // just inside the door
+    camYaw = Math.PI;                                       // face into the room (toward -z)
+    showNotif('🏠 Welcome home');
+    updateNearBuilding();
+}
+
+function exitHouse() {
+    insideHouse = false;
+    if (savedCity) { player.x = savedCity.x; player.z = savedCity.z; camYaw = savedCity.camYaw; }
+    savedCity = null;
+    updateNearBuilding();
 }
 
 // ============================================
@@ -699,20 +788,33 @@ function doAction() {
     if (now - lastActionTime < 400) return;
     lastActionTime = now;
 
-    if (nearBuilding.type === 'office') {
+    if (nearBuilding.type === 'home') {
+        enterHouse();
+        return;
+    } else if (nearBuilding.type === 'exit') {
+        exitHouse();
+        return;
+    } else if (nearBuilding.type === 'bed') {
+        stats.energy = 100; stats.mood = clamp(stats.mood + 8, 0, 100); stats.hunger -= 20;
+        const cur = gameMinutes % 1440;
+        const toMorning = (cur <= 7 * 60) ? (7 * 60 - cur) : (1440 - cur + 7 * 60);
+        advanceTime(toMorning);
+        showNotif('😴 Slept until morning — energy restored');
+    } else if (nearBuilding.type === 'fridge') {
+        stats.hunger = 100; stats.mood = clamp(stats.mood + 5, 0, 100); stats.energy = clamp(stats.energy + 5, 0, 100);
+        advanceTime(30);
+        showNotif('🧊 Ate from the fridge — hunger full');
+    } else if (nearBuilding.type === 'sofa') {
+        stats.mood = clamp(stats.mood + 18, 0, 100); stats.energy = clamp(stats.energy + 3, 0, 100);
+        advanceTime(45);
+        showNotif('🛋️ Relaxed on the sofa — mood boosted');
+    } else if (nearBuilding.type === 'office') {
         if (stats.energy < 20) { showNotif('Too tired to work — get some sleep!'); return; }
         const pay = 40 + Math.floor(Math.random() * 20);
         stats.cash += pay; stats.energy -= 25; stats.hunger -= 15; stats.mood -= 5;
         advanceTime(180);
         showNotif(`💼 Worked a shift — earned $${pay}`);
         syncCash();
-    } else if (nearBuilding.type === 'home') {
-        stats.energy = 100; stats.mood = clamp(stats.mood + 8, 0, 100); stats.hunger -= 20;
-        // sleep to next 07:00
-        const cur = gameMinutes % 1440;
-        const toMorning = (cur <= 7 * 60) ? (7 * 60 - cur) : (1440 - cur + 7 * 60);
-        advanceTime(toMorning);
-        showNotif('😴 Slept until morning — energy restored');
     } else if (nearBuilding.type === 'diner') {
         const cost = 15;
         if (stats.cash < cost) { showNotif('Not enough cash to eat ($15)'); return; }
@@ -733,8 +835,10 @@ function doAction() {
 }
 
 function updateNearBuilding() {
-    let found = null, best = 7 * 7;
-    for (const b of buildings) {
+    const list = insideHouse ? interior : buildings;
+    const reach = insideHouse ? 3.2 * 3.2 : 7 * 7;
+    let found = null, best = reach;
+    for (const b of list) {
         const dx = player.x - b.cx, dz = player.z - b.cz;
         const d2 = dx * dx + dz * dz;
         if (d2 < best) { best = d2; found = b; }
@@ -742,7 +846,10 @@ function updateNearBuilding() {
     nearBuilding = found;
     const prompt = document.getElementById('prompt');
     if (found) {
-        const verb = { office: 'work', home: 'sleep', diner: 'eat ($15)', park: 'relax' }[found.type];
+        const verb = {
+            office: 'work', home: 'enter', diner: 'eat ($15)', park: 'relax',
+            bed: 'sleep', fridge: 'eat', sofa: 'relax', exit: 'leave'
+        }[found.type];
         const k = isTouchDevice ? 'the <b>E</b> button' : '<b>E</b>';
         prompt.innerHTML = `${found.label} — press ${k} to ${verb}`;
         prompt.style.display = 'block';
@@ -763,6 +870,14 @@ function collides(x, z) {
             z > f.minZ - PLAYER_RADIUS && z < f.maxZ + PLAYER_RADIUS) return true;
     }
     return false;
+}
+
+// Hard outer bounds — city limits outdoors, room walls do the work indoors (generous box)
+function inBounds(x, z) {
+    if (insideHouse) {
+        return Math.abs(x - INT_CX) < INT_HW + 3 && Math.abs(z - INT_CZ) < INT_HD + 3;
+    }
+    return Math.abs(x) < CITY_LIMIT && Math.abs(z) < CITY_LIMIT;
 }
 
 function updatePlayer(dt) {
@@ -790,8 +905,8 @@ function updatePlayer(dt) {
         const nx = player.x + dirX * speed;
         const nz = player.z + dirZ * speed;
         // axis-separated for sliding
-        if (!collides(nx, player.z) && Math.abs(nx) < CITY_LIMIT) player.x = nx;
-        if (!collides(player.x, nz) && Math.abs(nz) < CITY_LIMIT) player.z = nz;
+        if (!collides(nx, player.z) && inBounds(nx, player.z)) player.x = nx;
+        if (!collides(player.x, nz) && inBounds(player.x, nz)) player.z = nz;
 
         moving = true;
     }
@@ -832,6 +947,7 @@ function updateRemotes(dt) {
 
 function emitState() {
     if (!socket || !socket.connected) return;
+    if (insideHouse) return;   // stay put for others while in your private interior
     const now = performance.now();
     if (now - lastEmitTime < 50) return;   // ~20Hz
     lastEmitTime = now;
@@ -1003,6 +1119,7 @@ function startGame() {
 
 function initWorld() {
     buildCity();
+    buildInterior();
     // Safety: never start the player inside a building footprint (would freeze movement)
     if (collides(player.x, player.z)) {
         outer:
