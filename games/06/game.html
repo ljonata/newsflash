@@ -349,6 +349,31 @@ function placeTower(cx, cz, rng) {
     registerFootprint(cx, cz, w, d);
 }
 
+// Procedural brick texture for the Home exterior walls
+function makeBrickTexture() {
+    const cv = document.createElement('canvas');
+    cv.width = 128; cv.height = 128;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#5e554c';                 // mortar
+    ctx.fillRect(0, 0, 128, 128);
+    const bw = 32, bh = 16, gap = 2;
+    for (let row = 0; row * bh < 128; row++) {
+        const y = row * bh;
+        const off = (row % 2) ? bw / 2 : 0;
+        for (let x = -bw; x < 128 + bw; x += bw) {
+            const s = 0.82 + Math.random() * 0.36;   // per-brick shade variation
+            const r = Math.min(255, Math.floor(156 * s));
+            const g = Math.min(255, Math.floor(72 * s));
+            const b = Math.min(255, Math.floor(52 * s));
+            ctx.fillStyle = `rgb(${r},${g},${b})`;
+            ctx.fillRect(x + off + gap / 2, y + gap / 2, bw - gap, bh - gap);
+        }
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
 function placeSpecialBuilding(cx, cz, def, rng) {
     const w = BLOCK * 0.62, d = BLOCK * 0.62;
     let h;
@@ -358,10 +383,19 @@ function placeSpecialBuilding(cx, cz, def, rng) {
     else h = 0; // park: no building
 
     if (h > 0) {
-        const mesh = new THREE.Mesh(
-            new THREE.BoxGeometry(w, h, d),
-            new THREE.MeshLambertMaterial({ color: def.color })
-        );
+        let mesh;
+        if (def.type === 'home') {
+            // Brick walls + a roof on top (BoxGeometry face order: +x,-x,+y,-y,+z,-z → index 2 = top)
+            const brick = makeBrickTexture();
+            brick.repeat.set(Math.max(1, Math.round(w / 4)), Math.max(1, Math.round(h / 4)));
+            const brickMat = new THREE.MeshLambertMaterial({ map: brick });
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x7a3b2a });
+            mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
+                [brickMat, brickMat, roofMat, brickMat, brickMat, brickMat]);
+        } else {
+            mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
+                new THREE.MeshLambertMaterial({ color: def.color }));
+        }
         mesh.position.set(cx, h / 2 + 0.4, cz);
         scene.add(mesh);
         addWindows(mesh, w, h, d, def.color);
