@@ -109,7 +109,7 @@
     <div class="stat-card" id="players-card" style="display:none">Solo</div>
 </div>
 
-<div class="hint" id="desk-hint">WASD move &nbsp;·&nbsp; drag mouse to look &nbsp;·&nbsp; E interact &nbsp;·&nbsp; Enter chat</div>
+<div class="hint" id="desk-hint">W move &nbsp;·&nbsp; S sprint &nbsp;·&nbsp; A/D strafe &nbsp;·&nbsp; drag mouse to look &nbsp;·&nbsp; E interact &nbsp;·&nbsp; Enter chat</div>
 <div id="prompt"></div>
 <div id="notifs"></div>
 
@@ -207,6 +207,7 @@ const HALF = (GRID - 1) * PITCH / 2;   // center the grid on origin
 const CITY_LIMIT = HALF + PITCH / 2 + 2;
 const PLAYER_RADIUS = 1.2;
 const MOVE_SPEED = 9;      // units/sec
+const SPRINT_MULT = 1.9;   // S = sprint multiplier
 const DAY_SECONDS = 360;   // real seconds per in-game day
 const MIN_PER_SEC = 1440 / DAY_SECONDS;
 
@@ -220,8 +221,9 @@ let gameMinutes = 7 * 60;   // 07:00
 let dayCount = 1;
 let lastDayMark = 7 * 60;
 
-const player = { x: -HALF, z: -HALF + 5, ry: 0, moving: false };
-let camYaw = 0, camPitch = 0;   // first-person look: pitch 0 = horizon, + looks up
+// Spawn on the road intersection just outside the Home corner (NOT inside a building footprint)
+const player = { x: -HALF + PITCH / 2, z: -HALF + PITCH / 2, ry: 0, moving: false };
+let camYaw = Math.PI / 4, camPitch = 0;   // first-person look (pitch 0 = horizon); start facing downtown
 
 const buildings = [];        // { type, label, cx, cz, footprint:{minX,maxX,minZ,maxZ}, action }
 let nearBuilding = null;
@@ -764,12 +766,13 @@ function collides(x, z) {
 }
 
 function updatePlayer(dt) {
-    let mx = 0, mz = 0;
+    let mx = 0, mz = 0, sprint = false;
     if (!chatOpen) {
-        if (keys['w'] || keys['arrowup']) mz += 1;
-        if (keys['s'] || keys['arrowdown']) mz -= 1;
-        if (keys['a']) mx -= 1;
-        if (keys['d']) mx += 1;
+        if (keys['w'] || keys['arrowup']) mz += 1;        // walk forward
+        if (keys['s']) { mz += 1; sprint = true; }        // sprint forward
+        if (keys['arrowdown']) mz -= 1;                   // step back
+        if (keys['a']) mx -= 1;                           // strafe left
+        if (keys['d']) mx += 1;                           // strafe right
     }
     if (touchMove.active) { mx += touchMove.x; mz += touchMove.z; }
 
@@ -783,7 +786,7 @@ function updatePlayer(dt) {
         const len = Math.hypot(dirX, dirZ) || 1;
         dirX /= len; dirZ /= len;
 
-        const speed = MOVE_SPEED * dt;
+        const speed = MOVE_SPEED * (sprint ? SPRINT_MULT : 1) * dt;
         const nx = player.x + dirX * speed;
         const nz = player.z + dirZ * speed;
         // axis-separated for sliding
@@ -1000,6 +1003,19 @@ function startGame() {
 
 function initWorld() {
     buildCity();
+    // Safety: never start the player inside a building footprint (would freeze movement)
+    if (collides(player.x, player.z)) {
+        outer:
+        for (let r = 2; r <= 50; r += 2) {
+            for (let a = 0; a < 8; a++) {
+                const nx = player.x + Math.cos(a / 8 * Math.PI * 2) * r;
+                const nz = player.z + Math.sin(a / 8 * Math.PI * 2) * r;
+                if (!collides(nx, nz) && Math.abs(nx) < CITY_LIMIT && Math.abs(nz) < CITY_LIMIT) {
+                    player.x = nx; player.z = nz; break outer;
+                }
+            }
+        }
+    }
     playerAvatar = makeAvatar(myColorSlot, currentUser || 'You');
     playerAvatar.position.set(player.x, 0, player.z);
     playerAvatar.visible = false;   // first person: don't render our own body in our view

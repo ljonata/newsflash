@@ -8,7 +8,7 @@ solo or hang out with up to 8 players in a Socket.IO room, complete with chat.
 ## How to Play
 
 ### Desktop
-- **Move**: WASD (relative to where the camera is facing)
+- **Move**: W walk forward, **S sprint**, A/D strafe, ↓ step back (relative to where you're looking)
 - **Look around**: drag the mouse (first-person view); arrow Left/Right also turn
 - **Interact**: E (work / sleep / eat / relax near a building)
 - **Chat**: Enter to open, Enter to send, Esc to cancel (multiplayer rooms only)
