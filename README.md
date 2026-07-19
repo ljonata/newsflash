@@ -137,7 +137,7 @@ a Guest. See [games/06/README.md](games/06/README.md) for full details.
 - **Double jump** with a spin flourish; coyote-time + jump buffering
 - Easy / Medium / Hard difficulty; fully synthesized WebAudio sound effects with
   a mute toggle
-- iPad-friendly touch controls (D-pad + JUMP) on the right
+- iPad-friendly split touch controls: JUMP on the left, move D-pad on the right
 
 Standalone HTML/JS — no dedicated backend. Clearing a level awards coins when
 logged in; also plays as a Guest. See [games/07/README.md](games/07/README.md)

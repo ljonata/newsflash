@@ -34,11 +34,16 @@
     #hud a { pointer-events: auto; color: #90a4ae; text-decoration: none; font-size: 13px; }
     #hud a:hover { color: #fff; }
 
-    /* ── Touch controls (RIGHT side, per drawing) ── */
+    /* ── Touch controls: JUMP on the LEFT, move D-pad on the RIGHT ── */
     #controls {
         position: fixed; right: 18px; bottom: 22px; z-index: 40;
         display: none; /* toggled on for touch */
         align-items: flex-end; gap: 14px;
+    }
+    #controls-left {
+        position: fixed; left: 18px; bottom: 22px; z-index: 40;
+        display: none; /* toggled on for touch */
+        align-items: flex-end;
     }
     .pad { display: grid; grid-template-columns: 62px 62px; gap: 12px; }
     .btn {
@@ -102,9 +107,12 @@
     </div>
 </div>
 
-<!-- Movement controls on the RIGHT -->
-<div id="controls">
+<!-- JUMP on the LEFT (left hand) -->
+<div id="controls-left">
     <div class="btn jump" id="btn-jump">JUMP</div>
+</div>
+<!-- Movement D-pad on the RIGHT (right hand) -->
+<div id="controls">
     <div class="pad">
         <div class="btn" id="btn-left">◀</div>
         <div class="btn" id="btn-right">▶</div>
@@ -126,7 +134,7 @@
     </div>
     <div class="hint">
         Keyboard: ← → move · Space / ↑ jump (tap again in the air to <b>double-jump</b>)<br>
-        Touch: buttons on the right &nbsp;·&nbsp; 🔊 toggle sound in the top bar
+        Touch: JUMP on the left · move on the right &nbsp;·&nbsp; 🔊 sound in the top bar
     </div>
 </div>
 
@@ -321,9 +329,10 @@ bindHold('btn-left',  () => keys.left = true,  () => keys.left = false);
 bindHold('btn-right', () => keys.right = true, () => keys.right = false);
 bindHold('btn-jump',  () => setJump(true),     () => setJump(false));
 
-// Show touch controls on touch devices
+// Show touch controls on touch devices (JUMP left, move D-pad right)
 if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
     document.getElementById('controls').style.display = 'flex';
+    document.getElementById('controls-left').style.display = 'flex';
 }
 
 // ─── Level generation ───

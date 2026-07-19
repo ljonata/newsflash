@@ -7,8 +7,8 @@ treasures hidden inside, dodge spike beds and spinning saw blades, then reach th
 with Easy / Medium / Hard, and play with keyboard or touch.
 
 Inspired by a hand-drawn sketch: a ninja that walks a 2D map collecting items
-hidden in boxes and escaping traps, with the movement controls on the right and
-an "ESY / MYd / HARd" difficulty picker.
+hidden in boxes and escaping traps, with on-screen controls and an
+"ESY / MYd / HARd" difficulty picker.
 
 ## How to Play
 
@@ -19,8 +19,9 @@ an "ESY / MYd / HARd" difficulty picker.
 - **Sound**: 🔊 toggle in the top bar
 
 ### Mobile / iPad
-- **Move & Jump**: on-screen buttons on the **right** — ◀ ▶ to move, JUMP to leap
-  (tap JUMP again mid-air to double-jump)
+- **Jump**: JUMP button on the **left** (left hand) — tap again mid-air to
+  double-jump
+- **Move**: ◀ ▶ D-pad on the **right** (right hand)
 - Controls appear automatically on touch devices
 
 ## Goal
@@ -82,7 +83,8 @@ flickers). Lose all your hearts and it's game over.
   balance (synced to the backend when logged in); also works as a **Guest**
 - **Best times** — fastest clear per difficulty saved to localStorage
   (`ninjaDashBest`)
-- **Touch controls** — right-side D-pad + JUMP button, iPad-friendly
+- **Touch controls** — JUMP button on the left, move D-pad on the right,
+  iPad-friendly
 
 ## File Structure
 
