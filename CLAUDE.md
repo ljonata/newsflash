@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This repository contains a Flask monolith serving two applications plus six browser games:
+This repository contains a Flask monolith serving two applications plus seven browser games:
 
 1. **Newsflash** - Keyword-based authentication system with journalism-focused data collection forms. Users access via `?key=keyword` URLs without login/password.
 
@@ -49,7 +49,7 @@ gunicorn app:app --workers 3 --threads 2 --bind 0.0.0.0:$PORT --timeout 120
 ### Single Flask Application (`app.py`)
 The entire system runs as one Flask app with two distinct sections:
 - **Newsflash routes**: keyword authentication, dashboard, forms A/B/C, records view
-- **Game routes**: static file serving for all six games, JWT auth API for game 01, and Socket.IO room handlers for games 04 (`elf_*`) and 06 (`city_*`)
+- **Game routes**: static file serving for all seven games, JWT auth API for game 01, and Socket.IO room handlers for games 04 (`elf_*`) and 06 (`city_*`)
 
 `config.py` handles environment loading and normalizes `DATABASE_URL` to psycopg3 dialect (handles `postgres://`, `postgresql://`, and `postgresql+psycopg2://` variants automatically).
 

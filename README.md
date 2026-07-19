@@ -1,6 +1,6 @@
 # Newsflash + Games
 
-This repository is a Flask monolith serving two applications and four browser games.
+This repository is a Flask monolith serving two applications and seven browser games.
 
 ---
 
@@ -38,7 +38,7 @@ flask --app app run --debug
 
 ## Games
 
-Four browser games are served from `games/`. All share the same Flask process.
+Seven browser games are served from `games/`. All share the same Flask process.
 
 ### Game 01 — Labyrinth Game (`/games/01/`)
 
@@ -91,10 +91,54 @@ Standalone HTML/JS — no dedicated backend. Optional login links to game 01 acc
 
 ### Game 04 — Elf Quest (`/games/04/`)
 
-Side-scrolling action RPG with a pixel-art elf character.
+Top-down action RPG with a pixel-art elf on a 40×30 tile overworld.
 
-- Heart-based HP system (displayed in HUD)
-- Backpack/inventory panel for items
-- Coin collection and combat
+- 12 progressive missions with coin rewards
+- Enterable house interiors, day/night cycle, water mechanics
+- Heart-based HP, backpack/inventory panel
+- Socket.IO multiplayer — up to 4 players per room, shared world state
+
+Optional login links to game 01 accounts.
+
+---
+
+### Game 05 — Floor is Lava (`/games/05/`)
+
+Arcade platformer — jump up rising blocks while lava climbs from below.
+
+- Procedurally generated blocks; lava rises at increasing speed
+- Pixel-art character with walk animation
+- Score = height climbed; hi-score saved to localStorage
 
 Standalone HTML/JS — no dedicated backend. Optional login links to game 01 accounts.
+
+---
+
+### Game 06 — City Life (`/games/06/`)
+
+3D walk-around life sim rendered with Three.js. First-person view in a shared,
+seeded city — work, sleep, eat and relax to manage cash, energy, hunger and mood.
+
+- Deterministic (seeded) city so every player sees the same layout
+- Enterable, furnished house; day/night cycle; buy food at the market
+- Socket.IO multiplayer — up to 8 players per room, with chat
+
+Cash maps to the game-wide `coins` balance (synced when logged in); also plays as
+a Guest. See [games/06/README.md](games/06/README.md) for full details.
+
+---
+
+### Game 07 — Ninja Dash (`/games/07/`)
+
+2D side-scrolling platformer with a pixel-art ninja.
+
+- Break floating mystery boxes for hidden treasures; dodge spike and saw traps,
+  then reach the ⛩️ gate once you've collected everything
+- **Double jump** with a spin flourish; coyote-time + jump buffering
+- Easy / Medium / Hard difficulty; fully synthesized WebAudio sound effects with
+  a mute toggle
+- iPad-friendly touch controls (D-pad + JUMP) on the right
+
+Standalone HTML/JS — no dedicated backend. Clearing a level awards coins when
+logged in; also plays as a Guest. See [games/07/README.md](games/07/README.md)
+for full details.
