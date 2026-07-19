@@ -224,7 +224,7 @@ document.getElementById('sound-link').textContent = muted ? '🔇 Sound' : '🔊
 // ─── Canvas / scaling ───
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const WORLD_H = 480;              // world units tall; width is camera-scrolled
+const WORLD_H = 340;              // world units tall; width is camera-scrolled (smaller = more zoomed-in / bigger ninja)
 let scale = 1, viewW = 800, dpr = 1;
 
 function resize() {
@@ -359,24 +359,28 @@ function buildLevel() {
         }
     }
 
-    // Floating platforms
+    // Floating platforms — kept within a double-jump of the ground so they're
+    // reachable stepping stones (not floating out of reach)
     const floatCount = Math.round(worldW / 320);
     for (let i = 0; i < floatCount; i++) {
         const pw = rand(90, 170);
         const px = rand(360, worldW - 260);
-        const py = rand(GROUND_Y - 210, GROUND_Y - 80);
+        const py = rand(GROUND_Y - 118, GROUND_Y - 55);
         solids.push({ x: px, y: py, w: pw, h: 16 });
         platformCandidates.push({ x: px, y: py, w: pw, ground: false });
     }
 
-    // Mystery boxes — hide one item each, placed above a surface within jump reach
-    const usableSurfaces = platformCandidates.filter(s => s.x > 300);
+    // Mystery boxes — one item each. Floated in a band that's always within a
+    // SINGLE jump of the ground beneath them, so every box is reachable.
+    const jumpApex = (JUMP_VEL * JUMP_VEL) / (2 * GRAVITY);   // single-jump peak height
+    const boxHi = jumpApex + player.h + 6;                    // highest reachable box top above ground
+    const groundSegs = platformCandidates.filter(s => s.ground && s.x > 300 && s.w > 80);
     itemsTotal = cfg.boxes;
     for (let i = 0; i < cfg.boxes; i++) {
-        const s = pick(usableSurfaces);
+        const s = pick(groundSegs);
         const bw = 30;
-        const bx = Math.max(s.x + 8, Math.min(s.x + rand(10, s.w - 40), s.x + s.w - 40));
-        const by = s.y - rand(46, 70);
+        const bx = s.x + rand(20, Math.max(24, s.w - 50));
+        const by = GROUND_Y - rand(58, boxHi);
         boxes.push({
             x: bx, y: by, w: bw, h: bw, broken: false,
             item: ITEMS[i % ITEMS.length], bob: Math.random() * Math.PI * 2,
