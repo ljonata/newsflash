@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Ninja Dash</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+        width: 100%; height: 100%;
+        background: #0a0e1a;
+        font-family: 'Trebuchet MS', Arial, sans-serif;
+        overflow: hidden;
+        user-select: none; -webkit-user-select: none;
+        touch-action: none;
+    }
+    #game { display: block; position: absolute; top: 0; left: 0; }
+
+    /* ── HUD ── */
+    #hud {
+        position: fixed; top: 0; left: 0; right: 0;
+        height: 44px; z-index: 30;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0 12px;
+        background: linear-gradient(#000a, #0000);
+        color: #fff; font-size: 14px;
+        pointer-events: none;
+    }
+    #hud .grp { display: flex; align-items: center; gap: 10px; }
+    #hearts { font-size: 18px; letter-spacing: 2px; }
+    .hud-user { color: #ffd54f; font-weight: bold; max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #items { color: #7ee0ff; font-weight: bold; }
+    #timer { color: #cfd8dc; }
+    #hud a { pointer-events: auto; color: #90a4ae; text-decoration: none; font-size: 13px; }
+    #hud a:hover { color: #fff; }
+
+    /* ── Touch controls (RIGHT side, per drawing) ── */
+    #controls {
+        position: fixed; right: 18px; bottom: 22px; z-index: 40;
+        display: none; /* toggled on for touch */
+        align-items: flex-end; gap: 14px;
+    }
+    .pad { display: grid; grid-template-columns: 62px 62px; gap: 12px; }
+    .btn {
+        width: 62px; height: 62px; border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #3a4a6b, #1b2438);
+        border: 2px solid #5a6b8c;
+        color: #eaf2ff; font-size: 26px; font-weight: bold;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 10px #0007, inset 0 2px 4px #ffffff22;
+    }
+    .btn.jump {
+        width: 78px; height: 78px; font-size: 15px;
+        background: radial-gradient(circle at 35% 30%, #c62828, #7b1616);
+        border-color: #ff6b6b;
+    }
+    .btn:active { transform: translateY(2px) scale(0.96); filter: brightness(1.3); }
+
+    /* ── Overlay (start / win / lose) ── */
+    #overlay {
+        position: fixed; inset: 0; z-index: 60;
+        background: radial-gradient(circle at 50% 30%, #16233f, #060a14 75%);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        text-align: center; color: #fff; padding: 20px;
+    }
+    #overlay.hidden { display: none; }
+    #overlay h1 {
+        font-size: clamp(34px, 9vw, 64px);
+        color: #ff5252;
+        text-shadow: 0 0 18px #ff525288, 0 3px 0 #000;
+        letter-spacing: 2px; margin-bottom: 4px;
+    }
+    #overlay .sub { color: #7ee0ff; margin-bottom: 22px; font-size: clamp(14px,3.6vw,18px); }
+    #overlay .msg { color: #cfd8dc; margin-bottom: 20px; font-size: clamp(13px,3.4vw,16px); line-height: 1.5; max-width: 460px; }
+    .diff-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-bottom: 8px; }
+    .diff {
+        min-width: 96px; padding: 16px 20px; border-radius: 14px;
+        font-size: 20px; font-weight: bold; color: #fff; cursor: pointer;
+        border: 3px solid #fff3; box-shadow: 0 6px 0 #0006; transition: transform .08s;
+    }
+    .diff:active { transform: translateY(4px); box-shadow: 0 2px 0 #0006; }
+    .diff small { display: block; font-size: 11px; font-weight: normal; opacity: .85; margin-top: 4px; }
+    .diff.easy { background: linear-gradient(135deg,#2e7d32,#66bb6a); }
+    .diff.med  { background: linear-gradient(135deg,#ef6c00,#ffb300); }
+    .diff.hard { background: linear-gradient(135deg,#b71c1c,#ff5252); }
+    .hint { margin-top: 18px; color: #607d8b; font-size: 12px; line-height:1.6; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+    <div class="grp">
+        <span class="hud-user" id="d-name">Ninja</span>
+        <span id="hearts">❤️❤️❤️</span>
+    </div>
+    <div class="grp">
+        <span id="items">🎁 0/0</span>
+        <span id="timer">0.0s</span>
+        <a id="sound-link" onclick="toggleMute()">🔊 Sound</a>
+        <a id="menu-link" onclick="backToMenu()">☰ Menu</a>
+    </div>
+</div>
+
+<!-- Movement controls on the RIGHT -->
+<div id="controls">
+    <div class="btn jump" id="btn-jump">JUMP</div>
+    <div class="pad">
+        <div class="btn" id="btn-left">◀</div>
+        <div class="btn" id="btn-right">▶</div>
+    </div>
+</div>
+
+<div id="overlay">
+    <h1>NINJA DASH</h1>
+    <div class="sub">Sneak · Collect · Escape</div>
+    <div class="msg" id="ov-msg">
+        Break the floating boxes to grab the hidden treasures,<br>
+        dodge the spikes &amp; saw blades, then reach the ⛩️ gate.<br>
+        Collect <b>every</b> item to win!
+    </div>
+    <div class="diff-row">
+        <div class="diff easy" onclick="startGame('easy')">ESY<small>3 lives · calm</small></div>
+        <div class="diff med"  onclick="startGame('med')">MYd<small>2 lives · tricky</small></div>
+        <div class="diff hard" onclick="startGame('hard')">HARd<small>1 life · deadly</small></div>
+    </div>
+    <div class="hint">
+        Keyboard: ← → move · Space / ↑ jump (tap again in the air to <b>double-jump</b>)<br>
+        Touch: buttons on the right &nbsp;·&nbsp; 🔊 toggle sound in the top bar
+    </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  NINJA DASH — Game 07
+//  Single-file 2D platformer. Runs as guest; syncs coins if logged in.
+// ══════════════════════════════════════════════════════════════
+
+// ─── Auth (optional / guest-friendly) ───
+let currentUser = null, token = null;
+try {
+    const us = localStorage.getItem('user');
+    token = localStorage.getItem('token');
+    if (us) currentUser = JSON.parse(us);
+} catch (e) {}
+const playerName = (currentUser && currentUser.name) ? currentUser.name : 'Ninja';
+document.getElementById('d-name').textContent = playerName;
+
+function backToMenu() {
+    if (currentUser) window.location.href = '/games/01/home.html';
+    else window.location.href = '/games/01/login.html';
+}
+
+// Persist earned coins to shared backend (best effort; guest = no-op).
+// The API stores an absolute `coins` total, so read the current value first.
+function syncCoins(amount) {
+    if (!token || amount <= 0) return;
+    const auth = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+    fetch('/games/01/api/user/profile', { headers: auth })
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(d => {
+            const cur = (d && d.user && typeof d.user.coins === 'number') ? d.user.coins : 0;
+            return fetch('/games/01/api/user/coins', {
+                method: 'PUT', headers: auth,
+                body: JSON.stringify({ coins: cur + amount })
+            });
+        }).catch(() => {});
+}
+
+// ─── Sound effects (WebAudio, synthesized — no asset files) ───
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let actx = null;
+let muted = false;
+try { muted = localStorage.getItem('ninjaDashMute') === '1'; } catch (e) {}
+
+function audio() {
+    if (!actx && AudioCtx) { try { actx = new AudioCtx(); } catch (e) {} }
+    if (actx && actx.state === 'suspended') actx.resume();
+    return actx;
+}
+// One enveloped oscillator "blip"; slideTo bends the pitch, delay staggers notes.
+function tone(freq, dur, type = 'square', vol = 0.2, slideTo = null, delay = 0) {
+    if (muted) return;
+    const a = audio(); if (!a) return;
+    const t0 = a.currentTime + delay;
+    const osc = a.createOscillator();
+    const g = a.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    if (slideTo) osc.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g); g.connect(a.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.03);
+}
+const sfx = {
+    jump()    { tone(340, 0.14, 'square', 0.18, 620); },
+    djump()   { tone(520, 0.16, 'square', 0.16, 940); tone(780, 0.14, 'sine', 0.10, 1180, 0.02); },
+    collect() { tone(700, 0.09, 'sine', 0.22); tone(1050, 0.13, 'sine', 0.20, null, 0.08); },
+    hurt()    { tone(300, 0.26, 'sawtooth', 0.22, 90); },
+    land()    { tone(150, 0.08, 'square', 0.12, 80); },
+    denied()  { tone(200, 0.1, 'square', 0.15, 150); tone(200, 0.1, 'square', 0.15, 150, 0.12); },
+    win()     { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'square', 0.18, null, i * 0.11)); },
+    lose()    { [400, 300, 200].forEach((f, i) => tone(f, 0.26, 'sawtooth', 0.2, null, i * 0.14)); },
+};
+function toggleMute() {
+    muted = !muted;
+    try { localStorage.setItem('ninjaDashMute', muted ? '1' : '0'); } catch (e) {}
+    const el = document.getElementById('sound-link');
+    if (el) el.textContent = muted ? '🔇 Sound' : '🔊 Sound';
+    if (!muted) sfx.collect();
+}
+document.getElementById('sound-link').textContent = muted ? '🔇 Sound' : '🔊 Sound';
+
+// ─── Canvas / scaling ───
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const WORLD_H = 480;              // world units tall; width is camera-scrolled
+let scale = 1, viewW = 800, dpr = 1;
+
+function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = window.innerWidth, h = window.innerHeight;
+    scale = h / WORLD_H;
+    viewW = w / scale;             // visible world width in world units
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    ctx.imageSmoothingEnabled = false;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── Difficulty presets ───
+const DIFF = {
+    easy: { hearts: 3, boxes: 6,  saws: 2, sawSpeed: 55,  spikeChance: 0.28, worldW: 2600, gapChance: 0.18 },
+    med:  { hearts: 2, boxes: 8,  saws: 4, sawSpeed: 90,  spikeChance: 0.45, worldW: 3200, gapChance: 0.28 },
+    hard: { hearts: 1, boxes: 10, saws: 6, sawSpeed: 135, spikeChance: 0.62, worldW: 3900, gapChance: 0.36 },
+};
+
+// ─── Physics constants ───
+const GRAVITY = 1650;
+const MOVE_SPEED = 175;
+const JUMP_VEL = -565;
+const MAX_FALL = 780;
+const COYOTE = 0.10;      // grace after leaving ground
+const JUMP_BUFFER = 0.12; // grace before landing
+const DJUMP_SPIN = 0.34;  // duration of the double-jump spin animation
+
+// ─── Item catalog (hidden in boxes) ───
+const ITEMS = [
+    { emoji: '⭐', name: 'Star Shuriken', pts: 50 },
+    { emoji: '💎', name: 'Jade Gem',      pts: 80 },
+    { emoji: '📜', name: 'Secret Scroll', pts: 60 },
+    { emoji: '🪙', name: 'Gold Coin',     pts: 40 },
+    { emoji: '🍡', name: 'Dango',         pts: 30 },
+    { emoji: '🗝️', name: 'Dojo Key',      pts: 70 },
+    { emoji: '🏮', name: 'Lantern',       pts: 45 },
+];
+
+// ─── Game state ───
+let cfg = DIFF.easy;
+let running = false;
+let solids = [];       // {x,y,w,h}  ground + platforms (full-solid)
+let boxes = [];        // {x,y,w,h, broken, item, bob}
+let spikes = [];       // {x,y,w,h}
+let saws = [];         // {x,y,r, min,max, dir, spd, ang}
+let particles = [];
+let floaters = [];     // collected item pop text
+let exitGate = null;   // {x,y,w,h}
+let worldW = 2600;
+
+const player = {
+    x: 60, y: 0, w: 20, h: 28, vx: 0, vy: 0,
+    onGround: false, facing: 1, runT: 0,
+    hearts: 3, invuln: 0, spawnX: 60, spawnY: 0,
+    jumps: 0, maxJumps: 2, spinT: 0,   // double jump + air-spin flourish
+};
+let itemsTotal = 0, itemsGot = 0, score = 0, elapsed = 0;
+let coyoteT = 0, jumpBufT = 0;
+let camX = 0;
+let bestTimes = {};
+try { bestTimes = JSON.parse(localStorage.getItem('ninjaDashBest') || '{}'); } catch (e) {}
+
+const GROUND_Y = WORLD_H - 56;   // top surface of the main ground band
+
+// ─── Input ───
+const keys = { left: false, right: false, jump: false };
+function setJump(down) {
+    if (down && !keys.jump) jumpBufT = JUMP_BUFFER; // rising edge buffers a jump
+    keys.jump = down;
+}
+window.addEventListener('keydown', e => {
+    if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
+    if (e.repeat) return;
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+    if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'w') setJump(true);
+});
+window.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+    if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'w') setJump(false);
+});
+
+// Touch buttons
+function bindHold(id, on, off) {
+    const el = document.getElementById(id);
+    const d = e => { e.preventDefault(); on(); };
+    const u = e => { e.preventDefault(); off(); };
+    el.addEventListener('touchstart', d, { passive: false });
+    el.addEventListener('touchend', u, { passive: false });
+    el.addEventListener('touchcancel', u, { passive: false });
+    el.addEventListener('mousedown', d);
+    el.addEventListener('mouseup', u);
+    el.addEventListener('mouseleave', u);
+}
+bindHold('btn-left',  () => keys.left = true,  () => keys.left = false);
+bindHold('btn-right', () => keys.right = true, () => keys.right = false);
+bindHold('btn-jump',  () => setJump(true),     () => setJump(false));
+
+// Show touch controls on touch devices
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+    document.getElementById('controls').style.display = 'flex';
+}
+
+// ─── Level generation ───
+function rand(a, b) { return a + Math.random() * (b - a); }
+function pick(arr) { return arr[(Math.random() * arr.length) | 0]; }
+
+function buildLevel() {
+    solids = []; boxes = []; spikes = []; saws = []; particles = []; floaters = [];
+    worldW = cfg.worldW;
+
+    // Ground band split into segments with occasional pits (fall = lose heart)
+    let x = 0;
+    const groundH = WORLD_H - GROUND_Y;
+    const platformCandidates = []; // surfaces {x,y,w} we can decorate
+    while (x < worldW) {
+        let segW = rand(180, 340);
+        if (x + segW > worldW) segW = worldW - x;
+        solids.push({ x, y: GROUND_Y, w: segW, h: groundH });
+        platformCandidates.push({ x, y: GROUND_Y, w: segW, ground: true });
+        x += segW;
+        // pit gap (never right at spawn or at the very end)
+        if (x < worldW - 340 && x > 420 && Math.random() < cfg.gapChance) {
+            x += rand(70, 120);
+        }
+    }
+
+    // Floating platforms
+    const floatCount = Math.round(worldW / 320);
+    for (let i = 0; i < floatCount; i++) {
+        const pw = rand(90, 170);
+        const px = rand(360, worldW - 260);
+        const py = rand(GROUND_Y - 210, GROUND_Y - 80);
+        solids.push({ x: px, y: py, w: pw, h: 16 });
+        platformCandidates.push({ x: px, y: py, w: pw, ground: false });
+    }
+
+    // Mystery boxes — hide one item each, placed above a surface within jump reach
+    const usableSurfaces = platformCandidates.filter(s => s.x > 300);
+    itemsTotal = cfg.boxes;
+    for (let i = 0; i < cfg.boxes; i++) {
+        const s = pick(usableSurfaces);
+        const bw = 30;
+        const bx = Math.max(s.x + 8, Math.min(s.x + rand(10, s.w - 40), s.x + s.w - 40));
+        const by = s.y - rand(46, 70);
+        boxes.push({
+            x: bx, y: by, w: bw, h: bw, broken: false,
+            item: ITEMS[i % ITEMS.length], bob: Math.random() * Math.PI * 2,
+        });
+    }
+
+    // Spikes — on ground segments (not the spawn segment)
+    for (const s of platformCandidates) {
+        if (s.ground && s.x > 460 && s.w > 120 && Math.random() < cfg.spikeChance) {
+            const count = 1 + ((Math.random() * 2) | 0);
+            const sw = 22;
+            const startX = s.x + rand(30, s.w - count * sw - 30);
+            for (let k = 0; k < count; k++) {
+                spikes.push({ x: startX + k * sw, y: s.y - 14, w: sw, h: 14 });
+            }
+        }
+    }
+
+    // Saw blades — patrol on wider platforms
+    const wide = platformCandidates.filter(s => s.w > 150 && s.x > 500);
+    for (let i = 0; i < cfg.saws && wide.length; i++) {
+        const s = pick(wide);
+        const r = 16;
+        saws.push({
+            x: s.x + s.w / 2, y: s.y - r - 2, r,
+            min: s.x + r + 6, max: s.x + s.w - r - 6,
+            dir: Math.random() < 0.5 ? -1 : 1, spd: cfg.sawSpeed, ang: 0,
+        });
+    }
+
+    // Exit gate on the final ground segment
+    const last = platformCandidates.filter(s => s.ground).sort((a, b) => b.x - a.x)[0];
+    exitGate = { x: last.x + last.w - 70, y: last.y - 62, w: 46, h: 62 };
+
+    // Spawn
+    player.spawnX = 60; player.spawnY = GROUND_Y - player.h;
+    player.x = player.spawnX; player.y = player.spawnY;
+    player.vx = 0; player.vy = 0; player.facing = 1; player.invuln = 0;
+    player.jumps = player.maxJumps; player.spinT = 0;
+}
+
+// ─── Start / end ───
+function startGame(diff) {
+    audio();            // unlock WebAudio on the (tap) gesture that starts the game
+    cfg = DIFF[diff];
+    curDiff = diff;
+    player.hearts = cfg.hearts;
+    itemsGot = 0; score = 0; elapsed = 0;
+    buildLevel();
+    updateHUD();
+    document.getElementById('overlay').classList.add('hidden');
+    running = true;
+    lastT = performance.now();
+    requestAnimationFrame(loop);
+}
+let curDiff = 'easy';
+
+function loseHeart() {
+    if (player.invuln > 0) return;
+    player.hearts--;
+    player.invuln = 1.4;
+    sfx.hurt();
+    // knockback
+    player.vy = -300;
+    player.vx = -player.facing * 200;
+    burst(player.x + player.w / 2, player.y + player.h / 2, '#ff5252', 14);
+    updateHUD();
+    if (player.hearts <= 0) endGame(false);
+}
+
+function respawn() {
+    // fell into a pit / off world
+    player.x = player.spawnX; player.y = player.spawnY;
+    player.vx = 0; player.vy = 0;
+    player.jumps = player.maxJumps; player.spinT = 0;
+    loseHeart();
+}
+
+function endGame(won) {
+    running = false;
+    const ov = document.getElementById('overlay');
+    const msg = document.getElementById('ov-msg');
+    document.querySelector('#overlay h1').textContent = won ? 'MISSION CLEAR!' : 'DEFEATED';
+    document.querySelector('#overlay h1').style.color = won ? '#66bb6a' : '#ff5252';
+    if (won) sfx.win(); else sfx.lose();
+    if (won) {
+        const t = elapsed;
+        let best = bestTimes[curDiff];
+        let record = '';
+        if (best == null || t < best) { bestTimes[curDiff] = t; record = ' 🏆 New best!';
+            try { localStorage.setItem('ninjaDashBest', JSON.stringify(bestTimes)); } catch (e) {}
+        }
+        const coins = 20 + itemsGot * 10 + (curDiff === 'hard' ? 60 : curDiff === 'med' ? 30 : 0);
+        syncCoins(coins);
+        msg.innerHTML = `You collected all ${itemsTotal} treasures! 🥷<br>` +
+            `Time: <b>${t.toFixed(1)}s</b>${record}<br>` +
+            `Score: <b>${score}</b> · Earned <b>🪙 ${coins}</b> coins`;
+    } else {
+        msg.innerHTML = `The ninja fell... 💀<br>` +
+            `You gathered ${itemsGot}/${itemsTotal} treasures.<br>Try again!`;
+    }
+    document.querySelector('#overlay .sub').textContent = 'Choose a difficulty to play again';
+    ov.classList.remove('hidden');
+}
+
+function updateHUD() {
+    document.getElementById('hearts').textContent = '❤️'.repeat(Math.max(0, player.hearts)) || '💔';
+    document.getElementById('items').textContent = `🎁 ${itemsGot}/${itemsTotal}`;
+}
+
+// ─── Particles / floaters ───
+function burst(x, y, color, n) {
+    for (let i = 0; i < n; i++) {
+        particles.push({ x, y, vx: rand(-160, 160), vy: rand(-220, 40),
+            life: rand(0.4, 0.9), color, size: rand(2, 5) });
+    }
+}
+function floatText(x, y, txt, color) {
+    floaters.push({ x, y, txt, color, life: 1.2 });
+}
+
+// ─── Collision helpers ───
+function aabb(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+// ─── Update ───
+function update(dt) {
+    elapsed += dt;
+
+    // horizontal intent
+    let ax = 0;
+    if (keys.left) ax -= 1;
+    if (keys.right) ax += 1;
+    player.vx = ax * MOVE_SPEED;
+    if (ax !== 0) player.facing = ax;
+
+    // timers
+    if (coyoteT > 0) coyoteT -= dt;
+    if (jumpBufT > 0) jumpBufT -= dt;
+    if (player.invuln > 0) player.invuln -= dt;
+    if (player.spinT > 0) player.spinT -= dt;
+
+    // jump (buffered): first jump off ground/coyote, then a mid-air double jump
+    const canGroundJump = player.onGround || coyoteT > 0;
+    if (jumpBufT > 0 && (canGroundJump || player.jumps > 0)) {
+        const wasFirst = canGroundJump && player.jumps === player.maxJumps;
+        player.vy = JUMP_VEL;
+        player.onGround = false;
+        player.jumps = Math.max(0, player.jumps - 1);
+        coyoteT = 0; jumpBufT = 0;
+        if (wasFirst) {
+            sfx.jump();
+            burst(player.x + player.w / 2, player.y + player.h, '#9fb4d6', 6);
+        } else {
+            // mid-air double jump: full spin + brighter puff
+            player.spinT = DJUMP_SPIN;
+            sfx.djump();
+            burst(player.x + player.w / 2, player.y + player.h, '#7ee0ff', 12);
+        }
+    }
+
+    // gravity
+    player.vy += GRAVITY * dt;
+    if (player.vy > MAX_FALL) player.vy = MAX_FALL;
+
+    // ── move X, resolve ──
+    player.x += player.vx * dt;
+    for (const s of solids) {
+        if (aabb(player, s)) {
+            if (player.vx > 0) player.x = s.x - player.w;
+            else if (player.vx < 0) player.x = s.x + s.w;
+            player.vx = 0;
+        }
+    }
+    if (player.x < 0) player.x = 0;
+    if (player.x + player.w > worldW) player.x = worldW - player.w;
+
+    // ── move Y, resolve ──
+    const wasGround = player.onGround;
+    const fallSpeed = player.vy;
+    player.onGround = false;
+    player.y += player.vy * dt;
+    for (const s of solids) {
+        if (aabb(player, s)) {
+            if (player.vy > 0) { player.y = s.y - player.h; player.onGround = true; }
+            else if (player.vy < 0) player.y = s.y + s.h;
+            player.vy = 0;
+        }
+    }
+    if (player.onGround && !wasGround) {
+        coyoteT = 0;
+        player.jumps = player.maxJumps;   // refill jumps on landing
+        player.spinT = 0;
+        if (fallSpeed > 220) { sfx.land(); burst(player.x + player.w / 2, player.y + player.h, '#9fb4d6', 5); }
+    }
+    if (!player.onGround && wasGround) coyoteT = COYOTE;
+
+    // run anim phase
+    if (player.onGround && player.vx !== 0) player.runT += dt * 12;
+    else player.runT = 0;
+
+    // fell off the world → respawn / lose heart
+    if (player.y > WORLD_H + 40) respawn();
+
+    // ── boxes ──
+    for (const b of boxes) {
+        if (b.broken) continue;
+        b.bob += dt * 3;
+        if (aabb(player, b)) {
+            b.broken = true;
+            itemsGot++;
+            score += b.item.pts;
+            sfx.collect();
+            burst(b.x + b.w / 2, b.y + b.h / 2, '#ffd54f', 16);
+            floatText(b.x + b.w / 2, b.y, b.item.emoji + ' +' + b.item.pts, '#ffe082');
+            updateHUD();
+            // tiny upward bounce reward if hit from below
+            if (player.vy < 0) player.vy = -260;
+        }
+    }
+
+    // ── spikes ──
+    for (const sp of spikes) {
+        if (aabb(player, { x: sp.x + 2, y: sp.y + 3, w: sp.w - 4, h: sp.h - 3 })) loseHeart();
+    }
+
+    // ── saws ──
+    for (const s of saws) {
+        s.x += s.dir * s.spd * dt;
+        if (s.x < s.min) { s.x = s.min; s.dir = 1; }
+        if (s.x > s.max) { s.x = s.max; s.dir = -1; }
+        s.ang += dt * 12;
+        const dx = (player.x + player.w / 2) - s.x;
+        const dy = (player.y + player.h / 2) - s.y;
+        if (dx * dx + dy * dy < (s.r + 10) * (s.r + 10)) loseHeart();
+    }
+
+    // ── exit gate ──
+    if (exitGate && aabb(player, exitGate)) {
+        if (itemsGot >= itemsTotal) endGame(true);
+        else floatGateHint();
+    }
+
+    // particles / floaters
+    for (const p of particles) {
+        p.vy += GRAVITY * 0.5 * dt;
+        p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+    }
+    particles = particles.filter(p => p.life > 0);
+    for (const f of floaters) { f.y -= 26 * dt; f.life -= dt; }
+    floaters = floaters.filter(f => f.life > 0);
+
+    // camera
+    const target = player.x + player.w / 2 - viewW / 2;
+    camX += (target - camX) * Math.min(1, dt * 8);
+    camX = Math.max(0, Math.min(worldW - viewW, camX));
+}
+
+let gateHintT = 0;
+function floatGateHint() {
+    if (gateHintT <= 0) {
+        floatText(exitGate.x + exitGate.w / 2, exitGate.y - 6,
+            `Need all ${itemsTotal}!`, '#ff8a80');
+        sfx.denied();
+        gateHintT = 1.4;
+    }
+}
+
+// ─── Rendering ───
+function drawBackground() {
+    // night sky gradient
+    const g = ctx.createLinearGradient(0, 0, 0, WORLD_H);
+    g.addColorStop(0, '#0d1b3a');
+    g.addColorStop(0.55, '#182a4f');
+    g.addColorStop(1, '#243a63');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, viewW, WORLD_H);
+
+    // moon
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = '#fdf6d8';
+    ctx.beginPath();
+    ctx.arc(viewW - 90 + camX * 0.02, 84, 34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#182a4f';
+    ctx.beginPath();
+    ctx.arc(viewW - 78 + camX * 0.02, 76, 30, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // parallax mountains
+    ctx.fillStyle = '#16233f';
+    const off = -camX * 0.3;
+    for (let i = -1; i < viewW / 220 + 2; i++) {
+        const bx = off % 220 + i * 220;
+        ctx.beginPath();
+        ctx.moveTo(bx, GROUND_Y);
+        ctx.lineTo(bx + 110, GROUND_Y - 150);
+        ctx.lineTo(bx + 220, GROUND_Y);
+        ctx.closePath();
+        ctx.fill();
+    }
+    // stars
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 40; i++) {
+        const sx = (i * 197 - camX * 0.15) % viewW;
+        const x = sx < 0 ? sx + viewW : sx;
+        ctx.globalAlpha = 0.3 + (i % 5) * 0.12;
+        ctx.fillRect(x, 30 + (i * 53) % 180, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+}
+
+function drawSolid(s) {
+    if (s.h > 30) {
+        // ground band
+        ctx.fillStyle = '#3a2a1e';
+        ctx.fillRect(s.x, s.y, s.w, s.h);
+        ctx.fillStyle = '#5a7d3a';
+        ctx.fillRect(s.x, s.y, s.w, 8);          // grass top
+        ctx.fillStyle = '#6b9147';
+        for (let i = 0; i < s.w; i += 10) ctx.fillRect(s.x + i, s.y - 2, 4, 3);
+        ctx.fillStyle = '#2c2015';
+        for (let i = 6; i < s.w; i += 26) ctx.fillRect(s.x + i, s.y + 18, 8, 4);
+    } else {
+        // floating platform (wood)
+        ctx.fillStyle = '#7a4a22';
+        ctx.fillRect(s.x, s.y, s.w, s.h);
+        ctx.fillStyle = '#5c3517';
+        for (let i = 0; i < s.w; i += 16) ctx.fillRect(s.x + i, s.y, 2, s.h);
+        ctx.fillStyle = '#8f5a2c';
+        ctx.fillRect(s.x, s.y, s.w, 3);
+    }
+}
+
+function drawBox(b) {
+    const y = b.y + Math.sin(b.bob) * 4;
+    // glow
+    ctx.save();
+    ctx.shadowColor = '#ffd54f';
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = '#c98a2e';
+    ctx.fillRect(b.x, y, b.w, b.h);
+    ctx.restore();
+    // crate detailing
+    ctx.fillStyle = '#8a5a1e';
+    ctx.fillRect(b.x, y, b.w, 4);
+    ctx.fillRect(b.x, y + b.h - 4, b.w, 4);
+    ctx.strokeStyle = '#5c3a12';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(b.x + 1, y + 1, b.w - 2, b.h - 2);
+    ctx.beginPath();
+    ctx.moveTo(b.x, y); ctx.lineTo(b.x + b.w, y + b.h);
+    ctx.moveTo(b.x + b.w, y); ctx.lineTo(b.x, y + b.h);
+    ctx.stroke();
+    // question mark
+    ctx.fillStyle = '#fff3c4';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('?', b.x + b.w / 2, y + b.h / 2 + 1);
+}
+
+function drawSpike(sp) {
+    ctx.fillStyle = '#b0bec5';
+    const n = 3, sw = sp.w / n;
+    for (let i = 0; i < n; i++) {
+        ctx.beginPath();
+        ctx.moveTo(sp.x + i * sw, sp.y + sp.h);
+        ctx.lineTo(sp.x + i * sw + sw / 2, sp.y);
+        ctx.lineTo(sp.x + (i + 1) * sw, sp.y + sp.h);
+        ctx.closePath();
+        ctx.fill();
+    }
+    ctx.fillStyle = '#78909c';
+    ctx.fillRect(sp.x, sp.y + sp.h - 3, sp.w, 3);
+}
+
+function drawSaw(s) {
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.ang);
+    ctx.fillStyle = '#cfd8dc';
+    const teeth = 8;
+    ctx.beginPath();
+    for (let i = 0; i < teeth * 2; i++) {
+        const a = (i / (teeth * 2)) * Math.PI * 2;
+        const rr = i % 2 === 0 ? s.r : s.r - 6;
+        ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#607d8b';
+    ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#455a64'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0, 0, s.r - 3, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+}
+
+function drawGate(g) {
+    const ready = itemsGot >= itemsTotal;
+    ctx.fillStyle = ready ? '#e53935' : '#7a2f2f';
+    // pillars
+    ctx.fillRect(g.x, g.y + 12, 8, g.h - 12);
+    ctx.fillRect(g.x + g.w - 8, g.y + 12, 8, g.h - 12);
+    // top beams
+    ctx.fillRect(g.x - 8, g.y, g.w + 16, 9);
+    ctx.fillRect(g.x - 4, g.y + 16, g.w + 8, 6);
+    ctx.fillStyle = ready ? '#212121' : '#111';
+    ctx.fillRect(g.x - 8, g.y - 5, g.w + 16, 6);
+    if (ready) {
+        ctx.save();
+        ctx.shadowColor = '#ffd54f'; ctx.shadowBlur = 18;
+        ctx.fillStyle = '#fff3c4';
+        ctx.font = '20px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('⛩️', g.x + g.w / 2, g.y - 8);
+        ctx.restore();
+    }
+}
+
+function drawNinja() {
+    const p = player;
+    // flicker while invulnerable
+    if (p.invuln > 0 && Math.floor(p.invuln * 20) % 2 === 0) return;
+    ctx.save();
+    ctx.translate(p.x + p.w / 2, p.y);
+    ctx.scale(p.facing, 1);
+    // mid-air double-jump spin (full 360 around the body center)
+    if (p.spinT > 0) {
+        const prog = 1 - p.spinT / DJUMP_SPIN;
+        ctx.translate(0, 15); ctx.rotate(prog * Math.PI * 2); ctx.translate(0, -15);
+    }
+    const legSwing = p.onGround && p.vx !== 0 ? Math.sin(p.runT) * 5 : 0;
+    const airborne = !p.onGround;
+
+    // body (dark gi)
+    ctx.fillStyle = '#1c2230';
+    ctx.fillRect(-8, 8, 16, 14);           // torso
+    // belt
+    ctx.fillStyle = '#c62828';
+    ctx.fillRect(-8, 18, 16, 3);
+    // head / hood
+    ctx.fillStyle = '#242c3d';
+    ctx.fillRect(-7, 0, 14, 10);
+    // headband tails
+    ctx.fillStyle = '#c62828';
+    ctx.fillRect(-12, 2, 6, 3);
+    // eye slit
+    ctx.fillStyle = '#e8f0ff';
+    ctx.fillRect(0, 4, 5, 3);
+    // arms
+    ctx.fillStyle = '#242c3d';
+    if (airborne) { ctx.fillRect(4, 6, 5, 10); ctx.fillRect(-9, 6, 5, 10); }
+    else { ctx.fillRect(2, 10, 5, 9); ctx.fillRect(-7, 10, 5, 9); }
+    // legs
+    ctx.fillStyle = '#1c2230';
+    if (airborne) { ctx.fillRect(-7, 22, 5, 8); ctx.fillRect(2, 22, 5, 8); }
+    else {
+        ctx.fillRect(-6 - legSwing, 22, 5, 7);
+        ctx.fillRect(1 + legSwing, 22, 5, 7);
+    }
+    ctx.restore();
+}
+
+function render() {
+    // World units → device pixels. Opaque background fills the whole view,
+    // so no explicit clear is needed.
+    ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+    ctx.save();
+
+    drawBackground();
+
+    ctx.translate(-camX, 0);
+    // cull to view for perf
+    const vx0 = camX - 40, vx1 = camX + viewW + 40;
+    for (const s of solids) if (s.x < vx1 && s.x + s.w > vx0) drawSolid(s);
+    if (exitGate) drawGate(exitGate);
+    for (const b of boxes) if (!b.broken && b.x < vx1 && b.x + b.w > vx0) drawBox(b);
+    for (const sp of spikes) if (sp.x < vx1 && sp.x + sp.w > vx0) drawSpike(sp);
+    for (const s of saws) if (s.x < vx1 && s.x > vx0) drawSaw(s);
+
+    drawNinja();
+
+    // particles
+    for (const p of particles) {
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+    // floaters
+    ctx.textAlign = 'center'; ctx.font = 'bold 15px Arial';
+    for (const f of floaters) {
+        ctx.globalAlpha = Math.min(1, f.life);
+        ctx.fillStyle = f.color;
+        ctx.fillText(f.txt, f.x, f.y);
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+}
+
+// ─── Main loop ───
+let lastT = 0;
+function loop(now) {
+    if (!running) return;
+    let dt = (now - lastT) / 1000;
+    lastT = now;
+    if (dt > 0.05) dt = 0.05;   // clamp big frame gaps
+    if (gateHintT > 0) gateHintT -= dt;
+    update(dt);
+    render();
+    document.getElementById('timer').textContent = elapsed.toFixed(1) + 's';
+    requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

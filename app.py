@@ -265,6 +265,13 @@ GAME_06_DIR = os.path.join(os.path.dirname(__file__), 'games', '06')
 def serve_game_06(filename='game.html'):
     return send_from_directory(GAME_06_DIR, filename)
 
+GAME_07_DIR = os.path.join(os.path.dirname(__file__), 'games', '07')
+
+@app.route('/games/07/')
+@app.route('/games/07/<path:filename>')
+def serve_game_07(filename='game.html'):
+    return send_from_directory(GAME_07_DIR, filename)
+
 # Game JWT authentication decorator
 def game_token_required(f):
     @wraps(f)

@@ -18,8 +18,9 @@ This repository contains a Flask monolith serving two applications plus six brow
 | 04 | **Elf Quest** | `/games/04/` | Top-down action RPG with pixel-art elf on 2D canvas. 40×30 tile overworld, house interiors, 12 missions, Socket.IO multiplayer (up to 4 players). |
 | 05 | **Floor is Lava** | `/games/05/` | Arcade platformer on 2D canvas. Jump between rising blocks as lava rises from below. Pixel-art character, procedural block generation, increasing speed. |
 | 06 | **City Life** | `/games/06/` | 3D walk-around life sim with Three.js. First-person view in a shared seeded city; work/sleep/eat/relax to manage cash, energy, hunger, mood. Socket.IO multiplayer (up to 8 players) with chat. |
+| 07 | **Ninja Dash** | `/games/07/` | 2D side-scrolling platformer on canvas. A pixel-art ninja runs/jumps through a level breaking floating mystery boxes for hidden treasures while dodging spike & saw traps, then reaches the ⛩️ gate. Easy/Medium/Hard difficulty, iPad touch controls on the right. |
 
-Games 02, 03 and 05 are standalone HTML/JS with no dedicated Flask API. Games 04 and 06 are HTML/JS clients backed by Socket.IO room handlers in `app.py`. All games optionally link to `/games/01/login.html` for shared JWT auth.
+Games 02, 03, 05 and 07 are standalone HTML/JS with no dedicated Flask API. Games 04 and 06 are HTML/JS clients backed by Socket.IO room handlers in `app.py`. All games optionally link to `/games/01/login.html` for shared JWT auth.
 
 ## Development Commands
 
@@ -216,6 +217,24 @@ Single-file 3D walk-around life sim (`game.html`). Three.js r128 + Socket.IO 4.7
 **Code sections:** Device Detection → Auth (JWT + cash/coin sync) → Seeded RNG → Constants → Game State → Three.js Setup (renderer, scene, fog, lights) → City Generation (`buildCity()`, towers, special buildings, trees, lamps, label sprites) → House Interior (`box()`, `buildInterior()`, `enterHouse()`/`exitHouse()`) → Avatar (`makeAvatar()`, walk anim) → Multiplayer (`connectMultiplayer()`, remote players) → Chat → Day/Night → HUD → Interactions (`doAction()`, `updateNearBuilding()`) → Movement & Collision → Camera → Remote Interpolation & Emit → Save/Load → Input (keyboard, mouse, touch) → Mobile Controls → Game Loop → Start/Init
 
 **Socket.IO server note:** handlers obtain the session id via `sid = request.sid` (Flask-SocketIO sets `request.sid` on the standard `flask.request`; it does **not** export its own `request`). The shared `on_disconnect(reason=None)` accepts an optional arg for newer python-socketio. `python-socketio`/`python-engineio` are unpinned in `requirements.txt`.
+
+### Game 07 — Ninja Dash (`games/07/`)
+
+Single-file 2D side-scrolling platformer (`game.html`). Canvas rendering with procedurally-drawn pixel art; no external libraries. Inspired by a child's sketch: a ninja that walks a 2D map collecting items hidden in floating boxes while escaping traps, with movement controls on the right and an Easy/Medium/Hard picker.
+
+**Technical details:**
+- Runs as **Guest** (no forced login) — reads `user`/`token` from localStorage only to optionally sync coins; `backToMenu()` sends logged-in users to `home.html`, guests to `login.html`
+- World is measured in fixed **world units** (`WORLD_H = 480` tall); the level is camera-scrolled horizontally. `resize()` computes `scale = screenHeight / WORLD_H` and `viewW = screenWidth / scale`, then the renderer draws everything under a single `ctx.setTransform(scale*dpr, …)` with `ctx.translate(-camX, 0)`. DPR-aware, letterbox-free (fills the screen at any aspect)
+- **Difficulty presets** (`DIFF.easy/med/hard`) drive hearts, box/item count, saw count & speed, spike frequency, world width, and pit-gap chance. The three overlay buttons ("ESY / MYd / HARd") call `startGame(diff)`
+- **Level generation** (`buildLevel()`, uses `Math.random` — single-player, no sync needed): ground band split into segments with occasional pits (falling in costs a heart via `respawn()`); floating wood platforms; one **mystery box** per item placed within jump reach above a surface; **spikes** on ground segments; **saw blades** patrolling wider platforms; an **exit ⛩️ gate** on the final ground segment
+- **Solids** (ground + platforms) are full-solid AABB colliders resolved axis-separately (move X then resolve, move Y then resolve; landing sets `onGround`). **Boxes** are non-solid collectibles that break on overlap → spawn the hidden item, points, particle burst, and a small upward bounce if hit from below. **Spikes/saws** are hazards that call `loseHeart()` (knockback + `invuln` i-frames)
+- Platforming feel: **coyote time** (`COYOTE`) and **jump buffering** (`JUMP_BUFFER`) via `jumpBufT`/`coyoteT`; gravity clamped to `MAX_FALL`. **Double jump**: `player.jumps` (refilled to `maxJumps`=2 on landing/spawn/respawn) lets a second jump fire mid-air; the double jump plays a full-360 spin (`player.spinT`, duration `DJUMP_SPIN`) applied as a rotation in `drawNinja()` plus a brighter particle puff
+- **Sound** is fully synthesized via WebAudio (`AudioContext`), no asset files: `tone()` builds one enveloped oscillator blip (with optional pitch slide/stagger) and the `sfx` object composes them (`jump`, `djump`, `collect`, `hurt`, `land`, `denied`, `win`, `lose`). `audio()` lazily creates and resumes the context; it's unlocked on the difficulty-button tap in `startGame()` (iOS/iPad autoplay policy). A 🔊/🔇 HUD toggle (`toggleMute()`) persists to localStorage (`ninjaDashMute`)
+- **Win** requires collecting *all* items AND touching the gate (`endGame(true)`); the gate shows a "Need all N!" floater until then. Win awards coins (base + per-item + difficulty bonus) via `syncCoins()`, which GETs the profile for the current `coins` total then PUTs `current + earned` (the API stores an absolute total, not a delta). Best time per difficulty saved to localStorage (`ninjaDashBest`)
+- Ninja sprite drawn procedurally each frame (`drawNinja()`): dark gi, red headband + belt, eye slit, limb swing keyed off `runT`/airborne state, flicker during i-frames. Night theme with moon, parallax mountains, and stars in `drawBackground()`
+- **Controls on the right** (per the sketch): touch D-pad (◀ ▶) + JUMP button, shown only on touch devices (`ontouchstart`/`maxTouchPoints`); `bindHold()` wires touch + mouse press/release. Keyboard: ← → / A D to move, Space / ↑ / W to jump
+
+**Code sections:** Auth (guest-friendly + coin sync) → Sound (`tone`, `sfx`, `audio`, `toggleMute`) → Canvas/Scaling → Difficulty Presets → Physics Constants → Item Catalog → Game State → Input (keyboard + touch `bindHold`) → Level Generation (`buildLevel`) → Start/End (`startGame`, `loseHeart`, `respawn`, `endGame`) → Particles/Floaters → Collision (`aabb`) → Update → Rendering (`drawBackground`, `drawSolid`, `drawBox`, `drawSpike`, `drawSaw`, `drawGate`, `drawNinja`, `render`) → Main Loop
 
 ### Game API Endpoints
 All under `/games/01/api/`:
